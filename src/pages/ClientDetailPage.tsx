@@ -1,18 +1,15 @@
 import { ArrowLeft } from "lucide-react";
 import StatusTag from "@/components/StatusTag";
-import { Client, TODAS_CONSULTAS, FREQUENCIAS } from "@/data/constants";
+import { type AnyClient, type ProductId, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS } from "@/data/constants";
 
 interface Props {
-  client: Client;
+  client: AnyClient;
+  activeProduct: ProductId;
   onBack: () => void;
 }
 
-export default function ClientDetailPage({ client, onBack }: Props) {
-  const freq = FREQUENCIAS.find((f) => f.id === client.frequencia);
-  const custo = client.consultas.reduce((s, cid) => {
-    const q = TODAS_CONSULTAS.find((x) => x.id === cid);
-    return s + (q?.custo || 0) * client.cnpjs * (freq?.vezes || 1);
-  }, 0);
+export default function ClientDetailPage({ client, activeProduct, onBack }: Props) {
+  const isHefsys = isHefSysClient(client);
 
   return (
     <div>
@@ -30,55 +27,76 @@ export default function ClientDetailPage({ client, onBack }: Props) {
         </div>
 
         <div className="p-6">
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div>
-              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">CNPJs</label>
-              <div className="text-lg font-bold font-mono mt-1">{client.cnpjs}</div>
-            </div>
-            <div>
-              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Frequência</label>
-              <div className="text-lg font-bold mt-1">{freq?.label}</div>
-            </div>
-            <div>
-              <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Custo Estimado/Mês</label>
-              <div className="text-lg font-bold font-mono mt-1 text-clix-warning">
-                R$ {custo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          {isHefsys ? (
+            <>
+              {(() => {
+                const freq = FREQUENCIAS.find((f) => f.id === client.frequencia);
+                const custo = client.consultas.reduce((s, cid) => {
+                  const q = TODAS_CONSULTAS.find((x) => x.id === cid);
+                  return s + (q?.custo || 0) * client.cnpjs * (freq?.vezes || 1);
+                }, 0);
+                return (
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div>
+                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">CNPJs</label>
+                      <div className="text-lg font-bold font-mono mt-1">{client.cnpjs}</div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Frequência</label>
+                      <div className="text-lg font-bold mt-1">{freq?.label}</div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Custo Estimado/Mês</label>
+                      <div className="text-lg font-bold font-mono mt-1 text-clix-warning">
+                        R$ {custo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Consultas Ativas</label>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {client.consultas.map((cid) => {
+                    const q = TODAS_CONSULTAS.find((x) => x.id === cid);
+                    if (!q) return null;
+                    return (
+                      <span key={cid} className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold ${
+                        q.tipo === "certidao" ? "bg-clix-info/10 text-clix-info" : "bg-clix-magenta/10 text-clix-magenta"
+                      }`}>
+                        {q.nome}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Dias de Execução</label>
+                <div className="flex gap-2 mt-2">
+                  {client.diasExecucao.map((d) => (
+                    <span key={d} className="bg-secondary text-foreground font-mono text-sm font-semibold px-3 py-1.5 rounded-lg">
+                      Dia {d}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Valor do Contrato</label>
+                <div className="text-lg font-bold font-mono mt-1 text-primary">
+                  R$ {(client as any).valorContrato?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Status</label>
+                <div className="mt-1"><StatusTag status={client.status} /></div>
               </div>
             </div>
-          </div>
-
-          <div>
-            <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Consultas Ativas</label>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {client.consultas.map((cid) => {
-                const q = TODAS_CONSULTAS.find((x) => x.id === cid);
-                if (!q) return null;
-                return (
-                  <span
-                    key={cid}
-                    className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold ${
-                      q.tipo === "certidao"
-                        ? "bg-clix-info/10 text-clix-info"
-                        : "bg-clix-magenta/10 text-clix-magenta"
-                    }`}
-                  >
-                    {q.nome}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Dias de Execução</label>
-            <div className="flex gap-2 mt-2">
-              {client.diasExecucao.map((d) => (
-                <span key={d} className="bg-secondary text-foreground font-mono text-sm font-semibold px-3 py-1.5 rounded-lg">
-                  Dia {d}
-                </span>
-              ))}
-            </div>
-          </div>
+          )}
 
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div>
