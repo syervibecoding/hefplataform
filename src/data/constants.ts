@@ -49,7 +49,7 @@ export type MelhoriaStatus = "backlog" | "em_desenvolvimento" | "concluido";
 
 // ─── Client Types ───
 export interface BaseClient {
-  id: number;
+  id: string;
   nome: string;
   contato: string;
   whatsapp: string;
@@ -80,34 +80,17 @@ export function isHefSysClient(client: AnyClient): client is HefSysClient {
 
 // ─── Melhorias ───
 export interface Melhoria {
-  id: number;
+  id: string;
   titulo: string;
   prioridade: "alta" | "media" | "baixa";
   status: MelhoriaStatus;
   tipo: string;
 }
 
-// ─── Initial Data ───
-export const INITIAL_HEFSYS_CLIENTS: HefSysClient[] = [];
-
-export const INITIAL_TRAFEGO_CLIENTS: GenericClient[] = [];
-
-export const INITIAL_AUTOMACAO_CLIENTS: GenericClient[] = [];
-
-export const INITIAL_PLATAFORMAS_CLIENTS: GenericClient[] = [];
-
+// Types for backward compat (data now comes from database)
 export type ClientsByProduct = {
   hefsys: HefSysClient[];
   trafego: GenericClient[];
   automacao: GenericClient[];
   plataformas: GenericClient[];
 };
-
-export const INITIAL_CLIENTS_BY_PRODUCT: ClientsByProduct = {
-  hefsys: INITIAL_HEFSYS_CLIENTS,
-  trafego: INITIAL_TRAFEGO_CLIENTS,
-  automacao: INITIAL_AUTOMACAO_CLIENTS,
-  plataformas: INITIAL_PLATAFORMAS_CLIENTS,
-};
-
-export const INITIAL_MELHORIAS: Melhoria[] = [];

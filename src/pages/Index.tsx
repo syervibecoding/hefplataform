@@ -6,27 +6,23 @@ import ClientsPage from "./ClientsPage";
 import ClientDetailPage from "./ClientDetailPage";
 import MelhoriasPage from "./MelhoriasPage";
 import CalendarPage from "./CalendarPage";
+import { useClients } from "@/hooks/useClients";
+import { useMelhorias } from "@/hooks/useMelhorias";
 import {
   type ProductId,
   type AnyClient,
-  type Melhoria,
-  type MelhoriaStatus,
-  type ClientsByProduct,
   type HefSysClient,
-  isHefSysClient,
-  INITIAL_CLIENTS_BY_PRODUCT,
-  INITIAL_MELHORIAS,
   PRODUCTS,
 } from "@/data/constants";
 
 export default function Index() {
   const [activePage, setActivePage] = useState("dashboard");
   const [activeProduct, setActiveProduct] = useState<ProductId>("hefsys");
-  const [clientsByProduct, setClientsByProduct] = useState<ClientsByProduct>(INITIAL_CLIENTS_BY_PRODUCT);
-  const [melhorias, setMelhorias] = useState<Melhoria[]>(INITIAL_MELHORIAS);
   const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);
 
-  const currentClients = clientsByProduct[activeProduct];
+  const { clients, isLoading: clientsLoading, addClient, editClient, deleteClient } = useClients(activeProduct);
+  const { melhorias, isLoading: melhoriasLoading, addMelhoria, editMelhoria, deleteMelhoria, changeStatus } = useMelhorias();
+
   const currentProductInfo = PRODUCTS.find((p) => p.id === activeProduct)!;
 
   const handleNavigate = (page: string) => {
@@ -46,52 +42,38 @@ export default function Index() {
   };
 
   const handleAddClient = (data: any) => {
-    const newId = Date.now();
-    const newClient = { id: newId, ...data };
-    setClientsByProduct((prev) => ({
-      ...prev,
-      [activeProduct]: [...prev[activeProduct], newClient],
-    }));
+    addClient.mutate(data);
   };
 
-  const handleEditClient = (id: number, data: any) => {
-    setClientsByProduct((prev) => ({
-      ...prev,
-      [activeProduct]: prev[activeProduct].map((c) =>
-        c.id === id ? { ...c, ...data } : c
-      ),
-    }));
+  const handleEditClient = (id: string, data: any) => {
+    editClient.mutate({ id, data });
     if (selectedClient?.id === id) {
       setSelectedClient((prev) => prev ? { ...prev, ...data } : prev);
     }
   };
 
-  const handleDeleteClient = (id: number) => {
-    setClientsByProduct((prev) => ({
-      ...prev,
-      [activeProduct]: prev[activeProduct].filter((c) => c.id !== id),
-    }));
+  const handleDeleteClient = (id: string) => {
+    deleteClient.mutate(id);
     if (selectedClient?.id === id) {
       setSelectedClient(null);
       setActivePage("clients");
     }
   };
 
-  // Melhorias handlers
-  const handleAddMelhoria = (data: Omit<Melhoria, "id">) => {
-    setMelhorias((prev) => [...prev, { id: Date.now(), ...data }]);
+  const handleAddMelhoria = (data: any) => {
+    addMelhoria.mutate(data);
   };
 
-  const handleEditMelhoria = (id: number, data: Partial<Melhoria>) => {
-    setMelhorias((prev) => prev.map((m) => (m.id === id ? { ...m, ...data } : m)));
+  const handleEditMelhoria = (id: string, data: any) => {
+    editMelhoria.mutate({ id, data });
   };
 
-  const handleDeleteMelhoria = (id: number) => {
-    setMelhorias((prev) => prev.filter((m) => m.id !== id));
+  const handleDeleteMelhoria = (id: string) => {
+    deleteMelhoria.mutate(id);
   };
 
-  const handleChangeStatus = (id: number, status: MelhoriaStatus) => {
-    setMelhorias((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)));
+  const handleChangeStatus = (id: string, status: any) => {
+    changeStatus.mutate({ id, status });
   };
 
   const renderPage = () => {
@@ -108,11 +90,11 @@ export default function Index() {
     }
     switch (activePage) {
       case "dashboard":
-        return <DashboardPage clients={currentClients} melhorias={melhorias} activeProduct={activeProduct} />;
+        return <DashboardPage clients={clients} melhorias={melhorias} activeProduct={activeProduct} />;
       case "clients":
         return (
           <ClientsPage
-            clients={currentClients}
+            clients={clients}
             activeProduct={activeProduct}
             onSelectClient={handleSelectClient}
             onAddClient={handleAddClient}
@@ -131,7 +113,7 @@ export default function Index() {
           />
         );
       case "calendar":
-        return <CalendarPage clients={clientsByProduct.hefsys as HefSysClient[]} />;
+        return <CalendarPage clients={clients.filter((c): c is HefSysClient => "cnpjs" in c)} />;
       case "workflow":
       case "settings":
         return (
@@ -140,7 +122,7 @@ export default function Index() {
           </div>
         );
       default:
-        return <DashboardPage clients={currentClients} melhorias={melhorias} activeProduct={activeProduct} />;
+        return <DashboardPage clients={clients} melhorias={melhorias} activeProduct={activeProduct} />;
     }
   };
 

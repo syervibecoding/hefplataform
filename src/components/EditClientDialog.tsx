@@ -32,7 +32,7 @@ const genericSchema = baseSchema.extend({
 interface Props {
   client: AnyClient;
   activeProduct: ProductId;
-  onEditClient: (id: number, data: any) => void;
+  onEditClient: (id: string, data: any) => void;
 }
 
 export default function EditClientDialog({ client, activeProduct, onEditClient }: Props) {

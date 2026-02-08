@@ -8,8 +8,8 @@ interface Props {
   client: AnyClient;
   activeProduct: ProductId;
   onBack: () => void;
-  onEditClient: (id: number, data: any) => void;
-  onDeleteClient: (id: number) => void;
+  onEditClient: (id: string, data: any) => void;
+  onDeleteClient: (id: string) => void;
 }
 
 export default function ClientDetailPage({ client, activeProduct, onBack, onEditClient, onDeleteClient }: Props) {
