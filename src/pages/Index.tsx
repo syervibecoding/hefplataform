@@ -5,33 +5,59 @@ import DashboardPage from "./DashboardPage";
 import ClientsPage from "./ClientsPage";
 import ClientDetailPage from "./ClientDetailPage";
 import MelhoriasPage from "./MelhoriasPage";
-import { Client, INITIAL_CLIENTS, INITIAL_MELHORIAS } from "@/data/constants";
+import {
+  type ProductId,
+  type AnyClient,
+  type ClientsByProduct,
+  INITIAL_CLIENTS_BY_PRODUCT,
+  INITIAL_MELHORIAS,
+  PRODUCTS,
+} from "@/data/constants";
 
 export default function Index() {
   const [activePage, setActivePage] = useState("dashboard");
-  const [clients] = useState(INITIAL_CLIENTS);
+  const [activeProduct, setActiveProduct] = useState<ProductId>("hefsys");
+  const [clientsByProduct, setClientsByProduct] = useState<ClientsByProduct>(INITIAL_CLIENTS_BY_PRODUCT);
   const [melhorias] = useState(INITIAL_MELHORIAS);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);
+
+  const currentClients = clientsByProduct[activeProduct];
+  const currentProductInfo = PRODUCTS.find((p) => p.id === activeProduct)!;
 
   const handleNavigate = (page: string) => {
     setActivePage(page);
     setSelectedClient(null);
   };
 
-  const handleSelectClient = (client: Client) => {
+  const handleChangeProduct = (product: ProductId) => {
+    setActiveProduct(product);
+    setSelectedClient(null);
+    setActivePage("dashboard");
+  };
+
+  const handleSelectClient = (client: AnyClient) => {
     setSelectedClient(client);
     setActivePage("client-detail");
   };
 
+  const handleAddClient = (data: any) => {
+    const newId = Date.now();
+    const newClient = { id: newId, ...data };
+    setClientsByProduct((prev) => ({
+      ...prev,
+      [activeProduct]: [...prev[activeProduct], newClient],
+    }));
+  };
+
   const renderPage = () => {
     if (activePage === "client-detail" && selectedClient) {
-      return <ClientDetailPage client={selectedClient} onBack={() => handleNavigate("clients")} />;
+      return <ClientDetailPage client={selectedClient} activeProduct={activeProduct} onBack={() => handleNavigate("clients")} />;
     }
     switch (activePage) {
       case "dashboard":
-        return <DashboardPage clients={clients} melhorias={melhorias} />;
+        return <DashboardPage clients={currentClients} melhorias={melhorias} activeProduct={activeProduct} />;
       case "clients":
-        return <ClientsPage clients={clients} onSelectClient={handleSelectClient} />;
+        return <ClientsPage clients={currentClients} activeProduct={activeProduct} onSelectClient={handleSelectClient} onAddClient={handleAddClient} />;
       case "melhorias":
         return <MelhoriasPage melhorias={melhorias} />;
       case "calendar":
@@ -43,15 +69,15 @@ export default function Index() {
           </div>
         );
       default:
-        return <DashboardPage clients={clients} melhorias={melhorias} />;
+        return <DashboardPage clients={currentClients} melhorias={melhorias} activeProduct={activeProduct} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar activePage={activePage} onNavigate={handleNavigate} />
+      <Sidebar activePage={activePage} onNavigate={handleNavigate} activeProduct={activeProduct} onChangeProduct={handleChangeProduct} />
       <main className="ml-60 min-h-screen">
-        <Topbar title={activePage === "client-detail" ? "clients" : activePage} />
+        <Topbar title={activePage === "client-detail" ? "clients" : activePage} tag={currentProductInfo.nome} />
         <div className="p-7">{renderPage()}</div>
       </main>
     </div>
