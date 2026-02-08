@@ -1,14 +1,18 @@
 import { ArrowLeft } from "lucide-react";
 import StatusTag from "@/components/StatusTag";
+import EditClientDialog from "@/components/EditClientDialog";
+import DeleteClientDialog from "@/components/DeleteClientDialog";
 import { type AnyClient, type ProductId, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS } from "@/data/constants";
 
 interface Props {
   client: AnyClient;
   activeProduct: ProductId;
   onBack: () => void;
+  onEditClient: (id: number, data: any) => void;
+  onDeleteClient: (id: number) => void;
 }
 
-export default function ClientDetailPage({ client, activeProduct, onBack }: Props) {
+export default function ClientDetailPage({ client, activeProduct, onBack, onEditClient, onDeleteClient }: Props) {
   const isHefsys = isHefSysClient(client);
 
   return (
@@ -23,7 +27,17 @@ export default function ClientDetailPage({ client, activeProduct, onBack }: Prop
             <h2 className="text-lg font-bold">{client.nome}</h2>
             <p className="text-sm text-muted-foreground mt-0.5">{client.contato} · {client.email}</p>
           </div>
-          <StatusTag status={client.status} />
+          <div className="flex items-center gap-2">
+            <StatusTag status={client.status} />
+            <EditClientDialog client={client} activeProduct={activeProduct} onEditClient={onEditClient} />
+            <DeleteClientDialog
+              clientName={client.nome}
+              onDelete={() => {
+                onDeleteClient(client.id);
+                onBack();
+              }}
+            />
+          </div>
         </div>
 
         <div className="p-6">
@@ -31,12 +45,12 @@ export default function ClientDetailPage({ client, activeProduct, onBack }: Prop
             <>
               {(() => {
                 const freq = FREQUENCIAS.find((f) => f.id === client.frequencia);
-                const custo = client.consultas.reduce((s, cid) => {
+                const custoEstimado = client.consultas.reduce((s, cid) => {
                   const q = TODAS_CONSULTAS.find((x) => x.id === cid);
                   return s + (q?.custo || 0) * client.cnpjs * (freq?.vezes || 1);
                 }, 0);
                 return (
-                  <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="grid grid-cols-4 gap-4 mb-6">
                     <div>
                       <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">CNPJs</label>
                       <div className="text-lg font-bold font-mono mt-1">{client.cnpjs}</div>
@@ -46,9 +60,15 @@ export default function ClientDetailPage({ client, activeProduct, onBack }: Prop
                       <div className="text-lg font-bold mt-1">{freq?.label}</div>
                     </div>
                     <div>
-                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Custo Estimado/Mês</label>
+                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Faturamento/Mês</label>
+                      <div className="text-lg font-bold font-mono mt-1 text-clix-success">
+                        R$ {(client.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Custo API/Mês</label>
                       <div className="text-lg font-bold font-mono mt-1 text-clix-warning">
-                        R$ {custo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        R$ {(client.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </div>
                     </div>
                   </div>
