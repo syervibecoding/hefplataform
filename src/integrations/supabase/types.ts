@@ -14,7 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          cnpjs: number | null
+          consultas: string[] | null
+          contato: string
+          created_at: string
+          custo_api: number | null
+          dias_execucao: number[] | null
+          email: string
+          faturamento: number | null
+          frequencia: string | null
+          id: string
+          nome: string
+          product_id: string
+          status: string
+          updated_at: string
+          valor_contrato: number | null
+          whatsapp: string
+        }
+        Insert: {
+          cnpjs?: number | null
+          consultas?: string[] | null
+          contato?: string
+          created_at?: string
+          custo_api?: number | null
+          dias_execucao?: number[] | null
+          email?: string
+          faturamento?: number | null
+          frequencia?: string | null
+          id?: string
+          nome: string
+          product_id: string
+          status?: string
+          updated_at?: string
+          valor_contrato?: number | null
+          whatsapp?: string
+        }
+        Update: {
+          cnpjs?: number | null
+          consultas?: string[] | null
+          contato?: string
+          created_at?: string
+          custo_api?: number | null
+          dias_execucao?: number[] | null
+          email?: string
+          faturamento?: number | null
+          frequencia?: string | null
+          id?: string
+          nome?: string
+          product_id?: string
+          status?: string
+          updated_at?: string
+          valor_contrato?: number | null
+          whatsapp?: string
+        }
+        Relationships: []
+      }
+      melhorias: {
+        Row: {
+          created_at: string
+          id: string
+          prioridade: string
+          status: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          prioridade?: string
+          status?: string
+          tipo?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          prioridade?: string
+          status?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

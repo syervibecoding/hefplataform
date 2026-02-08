@@ -9,9 +9,9 @@ import { Melhoria, MelhoriaStatus } from "@/data/constants";
 interface Props {
   melhorias: Melhoria[];
   onAddMelhoria: (data: Omit<Melhoria, "id">) => void;
-  onEditMelhoria: (id: number, data: Partial<Melhoria>) => void;
-  onDeleteMelhoria: (id: number) => void;
-  onChangeStatus: (id: number, status: MelhoriaStatus) => void;
+  onEditMelhoria: (id: string, data: Partial<Melhoria>) => void;
+  onDeleteMelhoria: (id: string) => void;
+  onChangeStatus: (id: string, status: MelhoriaStatus) => void;
 }
 
 const STATUS_COLUMNS: { status: MelhoriaStatus; label: string; color: string }[] = [
@@ -70,7 +70,7 @@ function MelhoriaForm({ onSubmit, initial, buttonLabel }: {
 
 export default function MelhoriasPage({ melhorias, onAddMelhoria, onEditMelhoria, onDeleteMelhoria, onChangeStatus }: Props) {
   const [addOpen, setAddOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">

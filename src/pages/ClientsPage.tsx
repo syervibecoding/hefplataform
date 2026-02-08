@@ -10,8 +10,8 @@ interface Props {
   activeProduct: ProductId;
   onSelectClient: (client: AnyClient) => void;
   onAddClient: (data: any) => void;
-  onEditClient: (id: number, data: any) => void;
-  onDeleteClient: (id: number) => void;
+  onEditClient: (id: string, data: any) => void;
+  onDeleteClient: (id: string) => void;
 }
 
 export default function ClientsPage({ clients, activeProduct, onSelectClient, onAddClient, onEditClient, onDeleteClient }: Props) {
