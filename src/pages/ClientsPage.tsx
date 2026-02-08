@@ -1,6 +1,8 @@
 import { ChevronRight } from "lucide-react";
 import StatusTag from "@/components/StatusTag";
 import AddClientDialog from "@/components/AddClientDialog";
+import EditClientDialog from "@/components/EditClientDialog";
+import DeleteClientDialog from "@/components/DeleteClientDialog";
 import { type AnyClient, type ProductId, isHefSysClient, FREQUENCIAS, TODAS_CONSULTAS } from "@/data/constants";
 
 interface Props {
@@ -8,13 +10,15 @@ interface Props {
   activeProduct: ProductId;
   onSelectClient: (client: AnyClient) => void;
   onAddClient: (data: any) => void;
+  onEditClient: (id: number, data: any) => void;
+  onDeleteClient: (id: number) => void;
 }
 
-export default function ClientsPage({ clients, activeProduct, onSelectClient, onAddClient }: Props) {
+export default function ClientsPage({ clients, activeProduct, onSelectClient, onAddClient, onEditClient, onDeleteClient }: Props) {
   const isHefsys = activeProduct === "hefsys";
 
   const headers = isHefsys
-    ? ["Cliente", "CNPJs", "Consultas", "Frequência", "Dias", "Status", "Custo/Mês", ""]
+    ? ["Cliente", "CNPJs", "Consultas", "Frequência", "Faturamento", "Custo API", "Status", ""]
     : ["Cliente", "Contato", "WhatsApp", "Status", "Valor/Mês", ""];
 
   return (
@@ -50,15 +54,13 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                         {FREQUENCIAS.find((f) => f.id === c.frequencia)?.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 border-b border-border/50 font-mono text-[13px]">{c.diasExecucao.join(", ")}</td>
-                    <td className="px-4 py-3.5 border-b border-border/50"><StatusTag status={c.status} /></td>
-                    <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm">
-                      R$ {c.consultas.reduce((s, cid) => {
-                        const q = TODAS_CONSULTAS.find((x) => x.id === cid);
-                        const freq = FREQUENCIAS.find((f) => f.id === c.frequencia);
-                        return s + (q?.custo || 0) * c.cnpjs * (freq?.vezes || 1);
-                      }, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-clix-success">
+                      R$ {(c.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </td>
+                    <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-clix-warning">
+                      R$ {(c.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3.5 border-b border-border/50"><StatusTag status={c.status} /></td>
                   </>
                 ) : !isHefSysClient(c) ? (
                   <>
@@ -74,7 +76,13 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                     </td>
                   </>
                 ) : null}
-                <td className="px-4 py-3.5 border-b border-border/50 text-muted-foreground"><ChevronRight size={16} /></td>
+                <td className="px-4 py-3.5 border-b border-border/50">
+                  <div className="flex items-center gap-1">
+                    <EditClientDialog client={c} activeProduct={activeProduct} onEditClient={onEditClient} />
+                    <DeleteClientDialog clientName={c.nome} onDelete={() => onDeleteClient(c.id)} />
+                    <ChevronRight size={16} className="text-muted-foreground ml-1" />
+                  </div>
+                </td>
               </tr>
             ))}
             {clients.length === 0 && (

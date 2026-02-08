@@ -62,6 +62,8 @@ export interface HefSysClient extends BaseClient {
   consultas: string[];
   frequencia: string;
   diasExecucao: number[];
+  faturamento: number;
+  custoAPI: number;
 }
 
 export interface GenericClient extends BaseClient {
@@ -86,40 +88,13 @@ export interface Melhoria {
 }
 
 // ─── Initial Data ───
-export const INITIAL_HEFSYS_CLIENTS: HefSysClient[] = [
-  {
-    id: 1, nome: "Contabilidade Estrela", cnpjs: 45,
-    consultas: ["cnd_federal", "crf_fgts", "cndt_trab", "cnd_estadual", "cnd_municipal", "ecac_caixa", "dte_efisco", "det_trab"],
-    frequencia: "2x", diasExecucao: [1, 15], status: "ativo",
-    contato: "Maria Silva", whatsapp: "(81) 99999-0001", email: "maria@estrela.com.br",
-  },
-  {
-    id: 2, nome: "RSM Contadores", cnpjs: 120,
-    consultas: ["cnd_federal", "crf_fgts", "cndt_trab", "cnd_estadual", "cnd_municipal", "ecac_caixa", "ecac_situacao", "dte_efisco", "det_trab", "cred_sefaz"],
-    frequencia: "4x", diasExecucao: [1, 8, 15, 22], status: "ativo",
-    contato: "Roberto Mendes", whatsapp: "(81) 99999-0002", email: "roberto@rsm.com.br",
-  },
-  {
-    id: 3, nome: "Fiscal Express", cnpjs: 28,
-    consultas: ["cnd_federal", "crf_fgts", "cndt_trab", "ecac_caixa", "det_trab"],
-    frequencia: "1x", diasExecucao: [5], status: "ativo",
-    contato: "Ana Paula", whatsapp: "(81) 99999-0003", email: "ana@fiscalexpress.com.br",
-  },
-];
+export const INITIAL_HEFSYS_CLIENTS: HefSysClient[] = [];
 
-export const INITIAL_TRAFEGO_CLIENTS: GenericClient[] = [
-  { id: 101, nome: "Loja Bella Moda", contato: "Fernanda Costa", whatsapp: "(81) 98888-0001", email: "fernanda@bellamoda.com", status: "ativo", valorContrato: 3500 },
-  { id: 102, nome: "Clínica Sorriso", contato: "Dr. Pedro Lima", whatsapp: "(81) 98888-0002", email: "pedro@clinicasorriso.com", status: "ativo", valorContrato: 5000 },
-];
+export const INITIAL_TRAFEGO_CLIENTS: GenericClient[] = [];
 
-export const INITIAL_AUTOMACAO_CLIENTS: GenericClient[] = [
-  { id: 201, nome: "Imobiliária Prime", contato: "Lucas Almeida", whatsapp: "(81) 97777-0001", email: "lucas@prime.com", status: "ativo", valorContrato: 8000 },
-];
+export const INITIAL_AUTOMACAO_CLIENTS: GenericClient[] = [];
 
-export const INITIAL_PLATAFORMAS_CLIENTS: GenericClient[] = [
-  { id: 301, nome: "EduTech Brasil", contato: "Camila Souza", whatsapp: "(81) 96666-0001", email: "camila@edutech.com", status: "ativo", valorContrato: 15000 },
-  { id: 302, nome: "HealthTrack", contato: "Ricardo Neves", whatsapp: "(81) 96666-0002", email: "ricardo@healthtrack.com", status: "inativo", valorContrato: 12000 },
-];
+export const INITIAL_PLATAFORMAS_CLIENTS: GenericClient[] = [];
 
 export type ClientsByProduct = {
   hefsys: HefSysClient[];
@@ -135,10 +110,4 @@ export const INITIAL_CLIENTS_BY_PRODUCT: ClientsByProduct = {
   plataformas: INITIAL_PLATAFORMAS_CLIENTS,
 };
 
-export const INITIAL_MELHORIAS: Melhoria[] = [
-  { id: 1, titulo: "Auto-retry em falhas de API", prioridade: "alta", status: "em_desenvolvimento", tipo: "melhoria" },
-  { id: 2, titulo: "Dashboard de emissão por cliente", prioridade: "media", status: "backlog", tipo: "feature" },
-  { id: 3, titulo: "Notificação automática WhatsApp", prioridade: "alta", status: "em_desenvolvimento", tipo: "feature" },
-  { id: 4, titulo: "Relatório comparativo mês a mês", prioridade: "media", status: "backlog", tipo: "melhoria" },
-  { id: 5, titulo: "Integração com Google Drive automática", prioridade: "alta", status: "concluido", tipo: "feature" },
-];
+export const INITIAL_MELHORIAS: Melhoria[] = [];

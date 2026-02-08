@@ -17,18 +17,9 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
   const hefsysMetrics = () => {
     const hefsysClients = clients.filter(isHefSysClient);
     const totalCnpjs = hefsysClients.reduce((s, c) => s + c.cnpjs, 0);
-    const totalConsultas = hefsysClients.reduce((s, c) => {
-      const freq = FREQUENCIAS.find((f) => f.id === c.frequencia);
-      return s + c.cnpjs * c.consultas.length * (freq?.vezes || 1);
-    }, 0);
-    const custoEstimado = hefsysClients.reduce((s, c) => {
-      const freq = FREQUENCIAS.find((f) => f.id === c.frequencia);
-      return s + c.consultas.reduce((cs, cid) => {
-        const q = TODAS_CONSULTAS.find((x) => x.id === cid);
-        return cs + (q?.custo || 0) * c.cnpjs * (freq?.vezes || 1);
-      }, 0);
-    }, 0);
-    return { totalCnpjs, totalConsultas, custoEstimado };
+    const totalFaturamento = hefsysClients.filter((c) => c.status === "ativo").reduce((s, c) => s + (c.faturamento || 0), 0);
+    const totalCustoAPI = hefsysClients.filter((c) => c.status === "ativo").reduce((s, c) => s + (c.custoAPI || 0), 0);
+    return { totalCnpjs, totalFaturamento, totalCustoAPI };
   };
 
   // Generic metrics
@@ -46,8 +37,8 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
         {isHefsys ? (
           <>
             <StatCard label="CNPJs Monitorados" value={hefsysMetrics().totalCnpjs} sub="total de empresas" colorClass="text-clix-info" />
-            <StatCard label="Consultas/Mês" value={hefsysMetrics().totalConsultas.toLocaleString("pt-BR")} sub="execuções estimadas" colorClass="text-clix-magenta" />
-            <StatCard label="Custo API/Mês" value={`R$ ${hefsysMetrics().custoEstimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub={`${emDev} melhorias em dev`} colorClass="text-clix-warning" />
+            <StatCard label="Faturamento/Mês" value={`R$ ${hefsysMetrics().totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-clix-success" />
+            <StatCard label="Custo API/Mês" value={`R$ ${hefsysMetrics().totalCustoAPI.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub={`${emDev} melhorias em dev`} colorClass="text-clix-warning" />
           </>
         ) : (
           <>
