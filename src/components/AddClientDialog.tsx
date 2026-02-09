@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type ProductId, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
+import { type ProductId, type ScheduleConfig, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
+import ScheduleInput from "@/components/ScheduleInput";
 
 const baseSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -20,8 +21,6 @@ const hefsysSchema = baseSchema.extend({
   cnpjs: z.coerce.number().min(1, "Mínimo 1 CNPJ"),
   consultas: z.array(z.string()).min(1, "Selecione ao menos 1 consulta"),
   frequencia: z.string().min(1, "Selecione a frequência"),
-  diasCertidoes: z.string().optional().default(""),
-  diasCaixasPostais: z.string().optional().default(""),
   faturamento: z.coerce.number().min(0, "Valor inválido"),
   custoAPI: z.coerce.number().min(0, "Valor inválido"),
 });
@@ -41,10 +40,12 @@ interface Props {
 export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
   const [open, setOpen] = useState(false);
   const isHefsys = activeProduct === "hefsys";
+  const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
+  const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
 
   const hefsysForm = useForm<HefsysForm>({
     resolver: zodResolver(hefsysSchema),
-    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", cnpjs: 1, consultas: [], frequencia: "1x", diasCertidoes: "", diasCaixasPostais: "", faturamento: 0, custoAPI: 0 },
+    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", cnpjs: 1, consultas: [], frequencia: "1x", faturamento: 0, custoAPI: 0 },
   });
 
   const genericForm = useForm<GenericForm>({
@@ -57,14 +58,13 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
 
   const onSubmit = (data: any) => {
     if (isHefsys) {
-      const diasCert = (data.diasCertidoes || "").split(",").map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n));
-      const diasCaixa = (data.diasCaixasPostais || "").split(",").map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n));
-      const { diasCertidoes: _a, diasCaixasPostais: _b, ...rest } = data;
-      onAddClient({ ...rest, diasCertidoes: diasCert, diasCaixasPostais: diasCaixa });
+      onAddClient({ ...data, agendaCertidoes, agendaCaixasPostais });
     } else {
       onAddClient(data);
     }
     reset();
+    setAgendaCertidoes({});
+    setAgendaCaixasPostais({});
     setOpen(false);
   };
 
@@ -75,6 +75,9 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
     const next = current.includes(id) ? current.filter((c: string) => c !== id) : [...current, id];
     setValue("consultas", next, { shouldValidate: true });
   };
+
+  const hasCertidoes = selectedConsultas.some((id: string) => CONSULTAS_CERTIDOES.some((c) => c.id === id));
+  const hasCaixas = selectedConsultas.some((id: string) => CONSULTAS_CAIXAS.some((c) => c.id === id));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -90,7 +93,6 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-          {/* Base fields */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground">Nome da Empresa</Label>
@@ -125,7 +127,6 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
             </select>
           </div>
 
-          {/* HefSys-specific */}
           {isHefsys && (
             <>
               <div className="grid grid-cols-2 gap-3">
@@ -144,23 +145,27 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                 </div>
               </div>
 
-              {selectedConsultas.some((id: string) => CONSULTAS_CERTIDOES.some((c) => c.id === id)) && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Dias das Certidões (separados por vírgula)</Label>
-                  <Input {...register("diasCertidoes")} placeholder="1, 15, 22" className="mt-1 bg-secondary border-border" />
-                </div>
+              {hasCertidoes && (
+                <ScheduleInput
+                  label="Agenda das Certidões"
+                  value={agendaCertidoes}
+                  onChange={setAgendaCertidoes}
+                  colorClass="text-clix-info"
+                />
               )}
-              {selectedConsultas.some((id: string) => CONSULTAS_CAIXAS.some((c) => c.id === id)) && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Dias das Caixas Postais (separados por vírgula)</Label>
-                  <Input {...register("diasCaixasPostais")} placeholder="5, 20" className="mt-1 bg-secondary border-border" />
-                </div>
+              {hasCaixas && (
+                <ScheduleInput
+                  label="Agenda das Caixas Postais"
+                  value={agendaCaixasPostais}
+                  onChange={setAgendaCaixasPostais}
+                  colorClass="text-clix-magenta"
+                />
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs text-muted-foreground">Faturamento Mensal (R$)</Label>
-                  <Input {...register("faturamento")} type="number" min={0} step={100} className="mt-1 bg-secondary border-border" />
+                  <Input {...register("faturamento")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
                   {errors.faturamento && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.faturamento as any).message}</p>}
                 </div>
                 <div>
@@ -217,11 +222,10 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
             </>
           )}
 
-          {/* Generic product fields */}
           {!isHefsys && (
             <div>
               <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
-              <Input {...register("valorContrato")} type="number" min={0} step={100} className="mt-1 bg-secondary border-border" />
+              <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
               {errors.valorContrato && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
             </div>
           )}

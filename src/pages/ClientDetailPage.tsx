@@ -3,6 +3,7 @@ import StatusTag from "@/components/StatusTag";
 import EditClientDialog from "@/components/EditClientDialog";
 import DeleteClientDialog from "@/components/DeleteClientDialog";
 import { type AnyClient, type ProductId, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS } from "@/data/constants";
+import { scheduleLabel } from "@/lib/schedule-utils";
 
 interface Props {
   client: AnyClient;
@@ -45,10 +46,6 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
             <>
               {(() => {
                 const freq = FREQUENCIAS.find((f) => f.id === client.frequencia);
-                const custoEstimado = client.consultas.reduce((s, cid) => {
-                  const q = TODAS_CONSULTAS.find((x) => x.id === cid);
-                  return s + (q?.custo || 0) * client.cnpjs * (freq?.vezes || 1);
-                }, 0);
                 return (
                   <div className="grid grid-cols-4 gap-4 mb-6">
                     <div>
@@ -92,30 +89,20 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                 </div>
               </div>
 
-              {client.diasCertidoes.length > 0 && (
-                <div className="mt-6">
-                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Dias das Certidões</label>
-                  <div className="flex gap-2 mt-2">
-                    {client.diasCertidoes.map((d) => (
-                      <span key={d} className="bg-clix-info/10 text-clix-info font-mono text-sm font-semibold px-3 py-1.5 rounded-lg border border-clix-info/20">
-                        Dia {d}
-                      </span>
-                    ))}
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Agenda das Certidões</label>
+                  <div className="text-sm font-medium mt-1 text-clix-info">
+                    {scheduleLabel(client.agendaCertidoes || {})}
                   </div>
                 </div>
-              )}
-              {client.diasCaixasPostais.length > 0 && (
-                <div className="mt-6">
-                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Dias das Caixas Postais</label>
-                  <div className="flex gap-2 mt-2">
-                    {client.diasCaixasPostais.map((d) => (
-                      <span key={d} className="bg-clix-magenta/10 text-clix-magenta font-mono text-sm font-semibold px-3 py-1.5 rounded-lg border border-clix-magenta/20">
-                        Dia {d}
-                      </span>
-                    ))}
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Agenda das Caixas Postais</label>
+                  <div className="text-sm font-medium mt-1 text-clix-magenta">
+                    {scheduleLabel(client.agendaCaixasPostais || {})}
                   </div>
                 </div>
-              )}
+              </div>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-4 mb-6">

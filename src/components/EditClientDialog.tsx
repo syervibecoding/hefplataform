@@ -6,7 +6,8 @@ import { Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type ProductId, type AnyClient, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
+import { type ProductId, type AnyClient, type ScheduleConfig, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
+import ScheduleInput from "@/components/ScheduleInput";
 
 const baseSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -20,8 +21,6 @@ const hefsysSchema = baseSchema.extend({
   cnpjs: z.coerce.number().min(1, "Mínimo 1 CNPJ"),
   consultas: z.array(z.string()).min(1, "Selecione ao menos 1 consulta"),
   frequencia: z.string().min(1, "Selecione a frequência"),
-  diasCertidoes: z.string().optional().default(""),
-  diasCaixasPostais: z.string().optional().default(""),
   faturamento: z.coerce.number().min(0, "Valor inválido"),
   custoAPI: z.coerce.number().min(0, "Valor inválido"),
 });
@@ -39,6 +38,8 @@ interface Props {
 export default function EditClientDialog({ client, activeProduct, onEditClient }: Props) {
   const [open, setOpen] = useState(false);
   const isHefsys = activeProduct === "hefsys";
+  const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
+  const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
 
   const hefsysForm = useForm<z.infer<typeof hefsysSchema>>({
     resolver: zodResolver(hefsysSchema),
@@ -49,7 +50,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
   });
 
   const form = isHefsys ? hefsysForm : genericForm;
-  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = form as any;
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = form as any;
 
   useEffect(() => {
     if (open) {
@@ -63,11 +64,11 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           cnpjs: client.cnpjs,
           consultas: client.consultas,
           frequencia: client.frequencia,
-          diasCertidoes: client.diasCertidoes.join(", "),
-          diasCaixasPostais: client.diasCaixasPostais.join(", "),
           faturamento: client.faturamento || 0,
           custoAPI: client.custoAPI || 0,
         });
+        setAgendaCertidoes(client.agendaCertidoes || {});
+        setAgendaCaixasPostais(client.agendaCaixasPostais || {});
       } else if (!isHefSysClient(client)) {
         genericForm.reset({
           nome: client.nome,
@@ -83,10 +84,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
 
   const onSubmit = (data: any) => {
     if (isHefsys) {
-      const diasCert = (data.diasCertidoes || "").split(",").map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n));
-      const diasCaixa = (data.diasCaixasPostais || "").split(",").map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n));
-      const { diasCertidoes: _a, diasCaixasPostais: _b, ...rest } = data;
-      onEditClient(client.id, { ...rest, diasCertidoes: diasCert, diasCaixasPostais: diasCaixa });
+      onEditClient(client.id, { ...data, agendaCertidoes, agendaCaixasPostais });
     } else {
       onEditClient(client.id, data);
     }
@@ -100,6 +98,9 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
     const next = current.includes(id) ? current.filter((c: string) => c !== id) : [...current, id];
     setValue("consultas", next, { shouldValidate: true });
   };
+
+  const hasCertidoes = selectedConsultas.some((id: string) => CONSULTAS_CERTIDOES.some((c) => c.id === id));
+  const hasCaixas = selectedConsultas.some((id: string) => CONSULTAS_CAIXAS.some((c) => c.id === id));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -170,23 +171,27 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                 </div>
               </div>
 
-              {selectedConsultas.some((id: string) => CONSULTAS_CERTIDOES.some((c) => c.id === id)) && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Dias das Certidões (separados por vírgula)</Label>
-                  <Input {...register("diasCertidoes")} placeholder="1, 15, 22" className="mt-1 bg-secondary border-border" />
-                </div>
+              {hasCertidoes && (
+                <ScheduleInput
+                  label="Agenda das Certidões"
+                  value={agendaCertidoes}
+                  onChange={setAgendaCertidoes}
+                  colorClass="text-clix-info"
+                />
               )}
-              {selectedConsultas.some((id: string) => CONSULTAS_CAIXAS.some((c) => c.id === id)) && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Dias das Caixas Postais (separados por vírgula)</Label>
-                  <Input {...register("diasCaixasPostais")} placeholder="5, 20" className="mt-1 bg-secondary border-border" />
-                </div>
+              {hasCaixas && (
+                <ScheduleInput
+                  label="Agenda das Caixas Postais"
+                  value={agendaCaixasPostais}
+                  onChange={setAgendaCaixasPostais}
+                  colorClass="text-clix-magenta"
+                />
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs text-muted-foreground">Faturamento Mensal (R$)</Label>
-                  <Input {...register("faturamento")} type="number" min={0} step={100} className="mt-1 bg-secondary border-border" />
+                  <Input {...register("faturamento")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
                   {errors.faturamento && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.faturamento as any).message}</p>}
                 </div>
                 <div>
@@ -246,7 +251,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           {!isHefsys && (
             <div>
               <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
-              <Input {...register("valorContrato")} type="number" min={0} step={100} className="mt-1 bg-secondary border-border" />
+              <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
               {errors.valorContrato && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
             </div>
           )}

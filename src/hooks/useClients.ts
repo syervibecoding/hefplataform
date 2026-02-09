@@ -14,8 +14,8 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
       cnpjs: row.cnpjs || 0,
       consultas: row.consultas || [],
       frequencia: row.frequencia || "1x",
-      diasCertidoes: row.dias_certidoes || [],
-      diasCaixasPostais: row.dias_caixas_postais || [],
+      agendaCertidoes: row.agenda_certidoes || {},
+      agendaCaixasPostais: row.agenda_caixas_postais || {},
       faturamento: Number(row.faturamento) || 0,
       custoAPI: Number(row.custo_api) || 0,
     } as HefSysClient;
@@ -61,8 +61,8 @@ export function useClients(productId: ProductId) {
         row.cnpjs = clientData.cnpjs;
         row.consultas = clientData.consultas;
         row.frequencia = clientData.frequencia;
-        row.dias_certidoes = clientData.diasCertidoes;
-        row.dias_caixas_postais = clientData.diasCaixasPostais;
+        row.agenda_certidoes = clientData.agendaCertidoes;
+        row.agenda_caixas_postais = clientData.agendaCaixasPostais;
         row.faturamento = clientData.faturamento;
         row.custo_api = clientData.custoAPI;
       } else {
@@ -87,8 +87,8 @@ export function useClients(productId: ProductId) {
         row.cnpjs = data.cnpjs;
         row.consultas = data.consultas;
         row.frequencia = data.frequencia;
-        row.dias_certidoes = data.diasCertidoes;
-        row.dias_caixas_postais = data.diasCaixasPostais;
+        row.agenda_certidoes = data.agendaCertidoes;
+        row.agenda_caixas_postais = data.agendaCaixasPostais;
         row.faturamento = data.faturamento;
         row.custo_api = data.custoAPI;
       } else {
