@@ -1,113 +1,79 @@
 
+# Plano: Corrigir Agenda + Excluir Usuarios
 
-# Plano de Implementacao: Checklists Dinamicos, Autenticacao e Controle de Acesso
+## Problema 1: Agenda nao persiste alteracoes
 
-Este plano cobre tres melhorias solicitadas:
+O calendario (`CalendarPage.tsx`) usa `dragOverrides` apenas em estado local (`useState`). Quando o usuario arrasta um evento para outro dia, a mudanca fica apenas na memoria e se perde ao trocar de pagina. Alem disso, a agenda do cliente (`agenda_certidoes`, `agenda_caixas_postais`) e salva como `ScheduleConfig` no banco -- nao como datas individuais. O drag-and-drop atual nao grava nada no banco.
 
-1. Checklists acompanham a agenda (se mudar o dia, o checklist reflete)
-2. Sistema de login com usuario e senha (sem email)
-3. Controle de acesso: dados financeiros so para admin + rastreio de quem deu check
+**Solucao**: Ao soltar um evento em outro dia, gravar a mudanca no banco. Como a `ScheduleConfig` define regras (ex: "dia 15 de cada mes") e nao datas avulsas, a abordagem sera:
 
----
+1. Adicionar um campo `overrides` (jsonb) nas colunas `agenda_certidoes` e `agenda_caixas_postais` da tabela `clients`, no formato:
+   ```text
+   { "overrides": { "2026-02": { "originalDay": 15, "newDay": 20 } } }
+   ```
+   Isso permite que o sistema saiba que, para fevereiro de 2026, o dia original 15 foi movido para o dia 20.
 
-## 1. Checklists Acompanham a Agenda
+2. Atualizar `getScheduleDays` em `schedule-utils.ts` para aceitar overrides e aplicar as substituicoes.
 
-**Problema atual**: O checklist salva o `periodo` como data fixa (ex: `2026-02-15`). Se voce mover a consulta do dia 15 para o dia 20, o checklist antigo fica "orfao" e o dia 20 aparece vazio.
+3. No `CalendarPage.tsx`, ao fazer drop, chamar uma mutation que atualiza o campo de agenda do cliente no banco com o override do mes correspondente.
 
-**Solucao**: O componente `ProcessChecklist` ja recalcula as datas de execucao dinamicamente a partir da `ScheduleConfig` do cliente. Quando a agenda muda, as datas listadas ja mudam. O problema e que os dados salvos com a data antiga ficam perdidos.
+4. O `ProcessChecklist` ja recalcula as datas a partir do `schedule` -- entao, ao incluir os overrides no schedule, os checklists automaticamente refletem a mudanca.
 
-**Abordagem**:
-- Ao detectar que a agenda mudou (ex: dia 15 virou dia 20), o sistema automaticamente migra os registros de checklist para a nova data
-- Na pratica: quando o componente carrega, ele compara as datas salvas no banco com as datas calculadas pela agenda atual. Se houver datas orfas (salvas mas nao existem mais na agenda) e datas novas sem dados, o sistema oferece a opcao de mover os dados
+5. O hook `useReconcileChecklists` ja cuida de mover registros orfaos para novas datas.
 
-**Mudancas**:
-- `src/hooks/useClientChecklist.ts`: Adicionar logica de reconciliacao que atualiza o campo `periodo` dos registros orfaos para as novas datas calculadas
-- `src/components/ProcessChecklist.tsx`: Usar os dados reconciliados
+## Problema 2: Excluir usuarios (admin)
 
----
+**Solucao**: Criar uma edge function `delete-user` que usa o service role key para chamar `supabaseAdmin.auth.admin.deleteUser()`. Na interface, adicionar um botao de exclusao na tabela de usuarios com confirmacao.
 
-## 2. Sistema de Login (Usuario e Senha)
+### Mudancas por arquivo
 
-**Contexto**: Atualmente nao ha autenticacao. Precisamos de um sistema de login com usuario e senha (sem email).
+**Novo: `supabase/functions/delete-user/index.ts`**
+- Recebe `{ user_id }` no body
+- Valida que o chamador e admin (via token)
+- Deleta o usuario com `auth.admin.deleteUser()`
+- As tabelas `profiles` e `user_roles` devem ter cascade ou serao limpas manualmente
 
-**Abordagem**: Usar o sistema de autenticacao do Lovable Cloud com email como campo interno, mas apresentar ao usuario como "nome de usuario". Na pratica, cada usuario tera um email gerado automaticamente (ex: `joao@internal.local`) para compatibilidade com o sistema, mas na interface so aparece o nome de usuario.
+**`src/pages/UsersPage.tsx`**
+- Adicionar coluna "Acoes" na tabela
+- Botao de excluir com dialog de confirmacao (`AlertDialog`)
+- Chamar a edge function `delete-user`
+- Impedir que o admin exclua a si mesmo
+- Refetch apos exclusao
 
-**Mudancas no banco de dados** (migracao SQL):
-- Criar tabela `profiles` com campos: `id` (referencia auth.users), `username` (texto unico), `display_name`
-- Criar tabela `user_roles` com campos: `id`, `user_id`, `role` (enum: admin, user)
-- Criar funcao `has_role` (security definer) para verificar roles sem recursao RLS
-- Atualizar RLS de todas as tabelas existentes para exigir autenticacao
-- Criar trigger para auto-criar perfil no signup
+**`src/pages/CalendarPage.tsx`**
+- No `handleDrop`, chamar mutation para salvar override no campo de agenda do cliente no banco
+- Remover dependencia exclusiva do estado local para overrides
+- Carregar overrides existentes do banco ao montar
 
-**Novos arquivos**:
-- `src/pages/LoginPage.tsx`: Tela de login com campos usuario e senha
-- `src/hooks/useAuth.ts`: Hook para gerenciar estado de autenticacao
-- `src/contexts/AuthContext.tsx`: Contexto global de autenticacao e role do usuario
+**`src/lib/schedule-utils.ts`**
+- `getScheduleDays` aceitar parametro opcional `overrides` e aplicar substituicoes de dia
 
-**Arquivos modificados**:
-- `src/App.tsx`: Adicionar rotas protegidas e redirecionamento para login
-- `src/components/Sidebar.tsx`: Adicionar botao de logout e exibir nome do usuario
+**`src/hooks/useClients.ts`**
+- Garantir que `agendaCertidoes` e `agendaCaixasPostais` carregam os overrides corretamente
 
----
+**Migracao SQL**
+- Adicionar `ON DELETE CASCADE` nas foreign keys de `user_roles` e garantir que o `handle_new_user` trigger esta ativo para limpeza automatica
 
-## 3. Controle de Acesso por Role
-
-### 3A. Dados financeiros so para admin
-
-**Campos protegidos**: `faturamento`, `custoAPI`, `valorContrato` na pagina de detalhes e na listagem de clientes.
-
-**Mudancas**:
-- `src/pages/ClientDetailPage.tsx`: Condicionar exibicao de Faturamento/Mes e Custo API/Mes ao role "admin"
-- `src/pages/ClientsPage.tsx`: Ocultar colunas Faturamento e Custo API para nao-admins
-- `src/pages/DashboardPage.tsx`: Ocultar cards financeiros (Faturamento/Mes, Custo API/Mes, Receita Mensal) para nao-admins
-
-### 3B. Rastreio de quem deu check
-
-**Mudancas no banco de dados**:
-- Alterar coluna `steps` da tabela `client_checklists` para armazenar nao apenas `true/false`, mas tambem `user_id` e `timestamp` de quem marcou cada step
-- Formato: `{ "step_id": { "done": true, "user_id": "uuid", "username": "joao", "at": "2026-02-09T..." } }`
-
-**Mudancas na interface**:
-- `src/components/ProcessChecklist.tsx`: Para admins, exibir ao lado de cada step quem deu o check e quando (ex: "Joao - 09/02 14:30")
-- `src/hooks/useClientChecklist.ts`: Ao fazer toggle, incluir `user_id` e `username` do usuario logado nos dados salvos
-
----
-
-## Detalhes Tecnicos
-
-### Migracao SQL
+### Detalhes tecnicos
 
 ```text
-1. Criar enum app_role (admin, user)
-2. Criar tabela profiles (id uuid PK -> auth.users, username text unique, display_name text)
-3. Criar tabela user_roles (id uuid PK, user_id uuid -> auth.users, role app_role)
-4. Criar funcao has_role() security definer
-5. Trigger auto-criar profile no signup
-6. Atualizar RLS de clients, client_checklists, melhorias para authenticated only
-7. Criar RLS para profiles e user_roles
+Edge Function delete-user:
+  POST { user_id: string }
+  -> Verifica auth do chamador
+  -> supabaseAdmin.auth.admin.deleteUser(user_id)
+  -> Limpa profiles e user_roles manualmente (ou via cascade)
+  -> Retorna { success: true }
+
+Formato de overrides na agenda:
+  agenda_certidoes = {
+    dias: [15],
+    overrides: {
+      "2026-02": { "15": 20 }  // dia 15 movido para dia 20 em fev/2026
+    }
+  }
+
+getScheduleDays(config, year, month):
+  1. Calcula dias normais
+  2. Se config.overrides?.[`${year}-${month+1}`] existir, substitui dias
+  3. Retorna dias finais
 ```
-
-### Fluxo de autenticacao
-
-```text
-Login -> usuario digita "joao" e senha
-       -> sistema converte para "joao@internal.app"
-       -> autentica via Lovable Cloud auth
-       -> carrega profile e role
-       -> redireciona para dashboard
-```
-
-### Criacao do primeiro admin
-
-- Sera necessario criar o primeiro usuario admin manualmente (via SQL ou uma tela de setup inicial)
-- Apos isso, apenas admins podem criar novos usuarios e atribuir roles
-
-### Ordem de implementacao
-
-1. Migracao do banco (profiles, user_roles, RLS)
-2. Pagina de login e hook de autenticacao
-3. Protecao de rotas e contexto de auth
-4. Controle de visibilidade financeira por role
-5. Rastreio de usuario nos checks
-6. Reconciliacao de datas dos checklists com a agenda
-
