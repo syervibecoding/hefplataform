@@ -114,12 +114,12 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     {hasCertidoes && (
                       <div className="bg-muted/30 border border-border rounded-lg p-4">
-                        <ProcessChecklist clientId={client.id} tipo="certidoes" />
+                        <ProcessChecklist clientId={client.id} tipo="certidoes" schedule={client.agendaCertidoes || {}} />
                       </div>
                     )}
                     {hasCaixas && (
                       <div className="bg-muted/30 border border-border rounded-lg p-4">
-                        <ProcessChecklist clientId={client.id} tipo="caixas_postais" />
+                        <ProcessChecklist clientId={client.id} tipo="caixas_postais" schedule={client.agendaCaixasPostais || {}} />
                       </div>
                     )}
                   </div>
