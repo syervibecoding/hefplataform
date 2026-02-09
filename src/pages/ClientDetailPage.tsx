@@ -2,7 +2,8 @@ import { ArrowLeft } from "lucide-react";
 import StatusTag from "@/components/StatusTag";
 import EditClientDialog from "@/components/EditClientDialog";
 import DeleteClientDialog from "@/components/DeleteClientDialog";
-import { type AnyClient, type ProductId, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS } from "@/data/constants";
+import ProcessChecklist from "@/components/ProcessChecklist";
+import { type AnyClient, type ProductId, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS } from "@/data/constants";
 import { scheduleLabel } from "@/lib/schedule-utils";
 
 interface Props {
@@ -103,6 +104,27 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                   </div>
                 </div>
               </div>
+
+              {/* Checklists de Processo */}
+              {(() => {
+                const hasCertidoes = client.consultas.some((c) => CONSULTAS_CERTIDOES.some((x) => x.id === c));
+                const hasCaixas = client.consultas.some((c) => CONSULTAS_CAIXAS.some((x) => x.id === c));
+                if (!hasCertidoes && !hasCaixas) return null;
+                return (
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {hasCertidoes && (
+                      <div className="bg-muted/30 border border-border rounded-lg p-4">
+                        <ProcessChecklist clientId={client.id} tipo="certidoes" />
+                      </div>
+                    )}
+                    {hasCaixas && (
+                      <div className="bg-muted/30 border border-border rounded-lg p-4">
+                        <ProcessChecklist clientId={client.id} tipo="caixas_postais" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </>
           ) : (
             <div className="grid grid-cols-2 gap-4 mb-6">

@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_checklists: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          periodo: string
+          steps: Json
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          periodo: string
+          steps?: Json
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          periodo?: string
+          steps?: Json
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_checklists_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           agenda_caixas_postais: Json | null
