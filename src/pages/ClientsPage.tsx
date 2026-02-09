@@ -4,6 +4,7 @@ import AddClientDialog from "@/components/AddClientDialog";
 import EditClientDialog from "@/components/EditClientDialog";
 import DeleteClientDialog from "@/components/DeleteClientDialog";
 import { type AnyClient, type ProductId, isHefSysClient, FREQUENCIAS, TODAS_CONSULTAS } from "@/data/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   clients: AnyClient[];
@@ -15,11 +16,16 @@ interface Props {
 }
 
 export default function ClientsPage({ clients, activeProduct, onSelectClient, onAddClient, onEditClient, onDeleteClient }: Props) {
+  const { isAdmin } = useAuth();
   const isHefsys = activeProduct === "hefsys";
 
   const headers = isHefsys
-    ? ["Cliente", "CNPJs", "Consultas", "Frequência", "Faturamento", "Custo API", "Status", ""]
-    : ["Cliente", "Contato", "WhatsApp", "Status", "Valor/Mês", ""];
+    ? isAdmin
+      ? ["Cliente", "CNPJs", "Consultas", "Frequência", "Faturamento", "Custo API", "Status", ""]
+      : ["Cliente", "CNPJs", "Consultas", "Frequência", "Status", ""]
+    : isAdmin
+      ? ["Cliente", "Contato", "WhatsApp", "Status", "Valor/Mês", ""]
+      : ["Cliente", "Contato", "WhatsApp", "Status", ""];
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -54,12 +60,16 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                         {FREQUENCIAS.find((f) => f.id === c.frequencia)?.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-clix-success">
-                      R$ {(c.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-clix-warning">
-                      R$ {(c.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </td>
+                    {isAdmin && (
+                      <>
+                        <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-clix-success">
+                          R$ {(c.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-clix-warning">
+                          R$ {(c.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-3.5 border-b border-border/50"><StatusTag status={c.status} /></td>
                   </>
                 ) : !isHefSysClient(c) ? (
@@ -71,9 +81,11 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                     <td className="px-4 py-3.5 border-b border-border/50 text-sm">{c.contato}</td>
                     <td className="px-4 py-3.5 border-b border-border/50 text-sm font-mono">{c.whatsapp}</td>
                     <td className="px-4 py-3.5 border-b border-border/50"><StatusTag status={c.status} /></td>
-                    <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm">
-                      R$ {c.valorContrato.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm">
+                        R$ {c.valorContrato.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
                   </>
                 ) : null}
                 <td className="px-4 py-3.5 border-b border-border/50">

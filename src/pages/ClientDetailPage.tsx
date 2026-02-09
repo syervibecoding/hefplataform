@@ -5,6 +5,7 @@ import DeleteClientDialog from "@/components/DeleteClientDialog";
 import ProcessChecklist from "@/components/ProcessChecklist";
 import { type AnyClient, type ProductId, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS } from "@/data/constants";
 import { scheduleLabel } from "@/lib/schedule-utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   client: AnyClient;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function ClientDetailPage({ client, activeProduct, onBack, onEditClient, onDeleteClient }: Props) {
+  const { isAdmin } = useAuth();
   const isHefsys = isHefSysClient(client);
 
   return (
@@ -48,7 +50,7 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
               {(() => {
                 const freq = FREQUENCIAS.find((f) => f.id === client.frequencia);
                 return (
-                  <div className="grid grid-cols-4 gap-4 mb-6">
+                  <div className={`grid ${isAdmin ? 'grid-cols-4' : 'grid-cols-2'} gap-4 mb-6`}>
                     <div>
                       <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">CNPJs</label>
                       <div className="text-lg font-bold font-mono mt-1">{client.cnpjs}</div>
@@ -57,18 +59,22 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                       <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Frequência</label>
                       <div className="text-lg font-bold mt-1">{freq?.label}</div>
                     </div>
-                    <div>
-                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Faturamento/Mês</label>
-                      <div className="text-lg font-bold font-mono mt-1 text-clix-success">
-                        R$ {(client.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Custo API/Mês</label>
-                      <div className="text-lg font-bold font-mono mt-1 text-clix-warning">
-                        R$ {(client.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
+                    {isAdmin && (
+                      <>
+                        <div>
+                          <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Faturamento/Mês</label>
+                          <div className="text-lg font-bold font-mono mt-1 text-clix-success">
+                            R$ {(client.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Custo API/Mês</label>
+                          <div className="text-lg font-bold font-mono mt-1 text-clix-warning">
+                            R$ {(client.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -128,12 +134,14 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
             </>
           ) : (
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Valor do Contrato</label>
-                <div className="text-lg font-bold font-mono mt-1 text-primary">
-                  R$ {(client as any).valorContrato?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              {isAdmin && (
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Valor do Contrato</label>
+                  <div className="text-lg font-bold font-mono mt-1 text-primary">
+                    R$ {(client as any).valorContrato?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </div>
                 </div>
-              </div>
+              )}
               <div>
                 <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Status</label>
                 <div className="mt-1"><StatusTag status={client.status} /></div>

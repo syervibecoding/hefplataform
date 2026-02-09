@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useClientChecklist, type ChecklistTipo } from "@/hooks/useClientChecklist";
+import { useClientChecklist, useReconcileChecklists, isStepDone, getStepInfo, type ChecklistTipo } from "@/hooks/useClientChecklist";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Loader2 } from "lucide-react";
 import { type ScheduleConfig } from "@/data/constants";
 import { getScheduleDays } from "@/lib/schedule-utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CERTIDOES_STEPS = [
   { id: "verificar_bases", label: "Verificar as bases que estamos rodando no código / usar o código correto" },
@@ -22,13 +23,11 @@ const CAIXAS_POSTAIS_STEPS = [
   { id: "enviar_cliente", label: "Se houver, enviar para o WhatsApp do cliente e email" },
 ];
 
-/** Build a sorted list of all execution dates (YYYY-MM-DD) for the given month range */
 function getExecutionDates(schedule: ScheduleConfig, year: number, month: number): string[] {
   const days = getScheduleDays(schedule, year, month);
   return days.map((d) => `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
 }
 
-/** Collect execution dates across multiple months for navigation */
 function collectDates(schedule: ScheduleConfig, centerYear: number, centerMonth: number, rangeMonths = 6): string[] {
   const dates: string[] = [];
   for (let offset = -rangeMonths; offset <= rangeMonths; offset++) {
@@ -46,6 +45,11 @@ function formatDate(dateStr: string): string {
   return `${weekdays[date.getDay()]}, ${d} ${months[m - 1]} ${y}`;
 }
 
+function formatCheckTime(isoStr: string): string {
+  const d = new Date(isoStr);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 interface Props {
   clientId: string;
   tipo: ChecklistTipo;
@@ -53,6 +57,7 @@ interface Props {
 }
 
 export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
+  const { user, profile, isAdmin } = useAuth();
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
@@ -61,7 +66,9 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
     [schedule, today.getFullYear(), today.getMonth()]
   );
 
-  // Find closest date <= today, or first future date
+  // Reconcile orphan checklists when schedule changes
+  useReconcileChecklists(clientId, tipo, allDates);
+
   const initialDate = useMemo(() => {
     const pastOrToday = allDates.filter((d) => d <= todayStr);
     if (pastOrToday.length > 0) return pastOrToday[pastOrToday.length - 1];
@@ -77,7 +84,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
   const { checklist, isLoading, toggleStep } = useClientChecklist(clientId, tipo, selectedDate);
   const steps = tipo === "certidoes" ? CERTIDOES_STEPS : CAIXAS_POSTAIS_STEPS;
   const stepsState = checklist?.steps || {};
-  const doneCount = steps.filter((s) => stepsState[s.id]).length;
+  const doneCount = steps.filter((s) => isStepDone(stepsState[s.id])).length;
   const allDone = doneCount === steps.length;
 
   if (isLoading) {
@@ -135,20 +142,29 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
 
       <ol className="space-y-0.5">
         {steps.map((step, i) => {
-          const done = !!stepsState[step.id];
+          const val = stepsState[step.id];
+          const done = isStepDone(val);
+          const info = getStepInfo(val);
           return (
             <li
               key={step.id}
               className={`flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
                 done ? "bg-clix-success/5" : "hover:bg-muted/50"
               }`}
-              onClick={() => toggleStep(step.id)}
+              onClick={() => user && toggleStep(step.id, user.id, profile?.username || "desconhecido")}
             >
               <Checkbox checked={done} className="mt-0.5 shrink-0" tabIndex={-1} />
-              <span className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                <span className="text-muted-foreground font-mono text-[11px] mr-1.5">{i + 1}.</span>
-                {step.label}
-              </span>
+              <div className="flex-1 min-w-0">
+                <span className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                  <span className="text-muted-foreground font-mono text-[11px] mr-1.5">{i + 1}.</span>
+                  {step.label}
+                </span>
+                {isAdmin && done && info?.username && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    {info.username}{info.at ? ` · ${formatCheckTime(info.at)}` : ""}
+                  </div>
+                )}
+              </div>
             </li>
           );
         })}
