@@ -41,6 +41,22 @@ export function getScheduleDays(
     result.add(getLastBusinessDay(year, month));
   }
 
+  // Apply month-specific overrides
+  const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const overrides = config.overrides?.[monthKey];
+  if (overrides) {
+    const finalDays = new Set<number>();
+    for (const day of result) {
+      const overrideTarget = overrides[String(day)];
+      if (overrideTarget !== undefined) {
+        finalDays.add(overrideTarget);
+      } else {
+        finalDays.add(day);
+      }
+    }
+    return Array.from(finalDays).sort((a, b) => a - b);
+  }
+
   return Array.from(result).sort((a, b) => a - b);
 }
 

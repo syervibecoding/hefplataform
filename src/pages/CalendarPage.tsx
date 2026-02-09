@@ -1,7 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
 import { ChevronLeft, ChevronRight, X, GripVertical } from "lucide-react";
-import { type HefSysClient, TODAS_CONSULTAS, FREQUENCIAS } from "@/data/constants";
+import { type HefSysClient, type ScheduleConfig, TODAS_CONSULTAS, FREQUENCIAS } from "@/data/constants";
 import { getScheduleDays, scheduleLabel } from "@/lib/schedule-utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Props {
   clients: HefSysClient[];
@@ -25,7 +28,9 @@ interface CalendarEvent {
   clientId: string;
   consultas: { id: string; nome: string; tipo: string }[];
   color: string;
-  eventKey: string; // unique key for drag tracking
+  eventKey: string;
+  originalDay: number; // the day before overrides, for tracking drag source
+  tipo: "certidoes" | "caixas";
 }
 
 const COLORS = [
@@ -47,20 +52,44 @@ export default function CalendarPage({ clients }: Props) {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  // Drag overrides: map "eventKey" → new day number (visual only)
-  const [dragOverrides, setDragOverrides] = useState<Record<string, number>>({});
+  // Drag overrides removed - now persisted in DB via schedule overrides
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const saveOverrideMutation = useMutation({
+    mutationFn: async ({ clientId, tipo, schedule, originalDay, newDay }: {
+      clientId: string; tipo: "certidoes" | "caixas"; schedule: ScheduleConfig; originalDay: number; newDay: number;
+    }) => {
+      const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
+      const updatedSchedule: ScheduleConfig = {
+        ...schedule,
+        overrides: {
+          ...(schedule.overrides || {}),
+          [monthKey]: {
+            ...((schedule.overrides || {})[monthKey] || {}),
+            [String(originalDay)]: newDay,
+          },
+        },
+      };
+      const col = tipo === "certidoes" ? "agenda_certidoes" : "agenda_caixas_postais";
+      const { error } = await supabase.from("clients").update({ [col]: updatedSchedule as any }).eq("id", clientId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients", "hefsys"] });
+    },
+    onError: () => toast.error("Erro ao salvar movimentação"),
+  });
 
   const prevMonth = () => {
     setCurrentMonth((m) => (m === 0 ? (setCurrentYear((y) => y - 1), 11) : m - 1));
     setSelectedDay(null);
-    setDragOverrides({});
   };
 
   const nextMonth = () => {
     setCurrentMonth((m) => (m === 11 ? (setCurrentYear((y) => y + 1), 0) : m + 1));
     setSelectedDay(null);
-    setDragOverrides({});
   };
 
   const baseEventsByDay = useMemo(() => {
@@ -86,11 +115,11 @@ export default function CalendarPage({ clients }: Props) {
         days.forEach((day) => {
           const eventKey = `${client.id}-cert-${day}`;
           if (!map[day]) map[day] = [];
-          const existing = map[day].find((e) => e.clientId === client.id);
+          const existing = map[day].find((e) => e.clientId === client.id && e.tipo === "certidoes");
           if (existing) {
             existing.consultas.push(...certidoes);
           } else {
-            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...certidoes], color, eventKey });
+            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...certidoes], color, eventKey, originalDay: day, tipo: "certidoes" });
           }
         });
       }
@@ -101,11 +130,11 @@ export default function CalendarPage({ clients }: Props) {
         days.forEach((day) => {
           const eventKey = `${client.id}-caixa-${day}`;
           if (!map[day]) map[day] = [];
-          const existing = map[day].find((e) => e.clientId === client.id);
+          const existing = map[day].find((e) => e.clientId === client.id && e.tipo === "caixas");
           if (existing) {
             existing.consultas.push(...caixas);
           } else {
-            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...caixas], color, eventKey });
+            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...caixas], color, eventKey, originalDay: day, tipo: "caixas" });
           }
         });
       }
@@ -114,21 +143,8 @@ export default function CalendarPage({ clients }: Props) {
     return map;
   }, [clients, currentMonth, currentYear]);
 
-  // Apply drag overrides to build final eventsByDay
-  const eventsByDay = useMemo(() => {
-    if (Object.keys(dragOverrides).length === 0) return baseEventsByDay;
-
-    const map: Record<number, CalendarEvent[]> = {};
-    // Copy all events, moving overridden ones
-    for (const [dayStr, events] of Object.entries(baseEventsByDay)) {
-      for (const ev of events) {
-        const targetDay = dragOverrides[ev.eventKey] ?? parseInt(dayStr);
-        if (!map[targetDay]) map[targetDay] = [];
-        map[targetDay].push(ev);
-      }
-    }
-    return map;
-  }, [baseEventsByDay, dragOverrides]);
+  // Overrides are now persisted in DB — eventsByDay comes directly from baseEventsByDay
+  const eventsByDay = baseEventsByDay;
 
   const handleDragStart = useCallback((e: React.DragEvent, eventKey: string) => {
     e.dataTransfer.setData("text/plain", eventKey);
@@ -144,11 +160,23 @@ export default function CalendarPage({ clients }: Props) {
   const handleDrop = useCallback((e: React.DragEvent, targetDay: number) => {
     e.preventDefault();
     const eventKey = e.dataTransfer.getData("text/plain");
-    if (eventKey) {
-      setDragOverrides((prev) => ({ ...prev, [eventKey]: targetDay }));
+    if (!eventKey) { setDraggingKey(null); return; }
+
+    // Find the event and its source day
+    for (const [dayStr, events] of Object.entries(baseEventsByDay)) {
+      const ev = events.find((e) => e.eventKey === eventKey);
+      if (ev) {
+        const sourceDay = parseInt(dayStr);
+        if (sourceDay === targetDay) break;
+        const client = clients.find((c) => c.id === ev.clientId);
+        if (!client) break;
+        const schedule = ev.tipo === "certidoes" ? (client.agendaCertidoes || {}) : (client.agendaCaixasPostais || {});
+        saveOverrideMutation.mutate({ clientId: ev.clientId, tipo: ev.tipo, schedule, originalDay: sourceDay, newDay: targetDay });
+        break;
+      }
     }
     setDraggingKey(null);
-  }, []);
+  }, [baseEventsByDay, clients, saveOverrideMutation]);
 
   const handleDragEnd = useCallback(() => {
     setDraggingKey(null);
@@ -159,7 +187,6 @@ export default function CalendarPage({ clients }: Props) {
   const totalCells = Math.ceil((firstDayOfWeek + daysInMonth) / 7) * 7;
 
   const selectedEvents = selectedDay ? (eventsByDay[selectedDay] || []) : [];
-  const hasOverrides = Object.keys(dragOverrides).length > 0;
 
   return (
     <div className="space-y-4">
@@ -177,14 +204,6 @@ export default function CalendarPage({ clients }: Props) {
             </button>
           </div>
           <div className="flex items-center gap-3">
-            {hasOverrides && (
-              <button
-                onClick={() => setDragOverrides({})}
-                className="text-[11px] px-2.5 py-1 rounded-md bg-clix-warning/10 text-clix-warning border border-clix-warning/30 hover:bg-clix-warning/20 transition-colors"
-              >
-                Resetar movimentações
-              </button>
-            )}
             <span className="text-xs text-muted-foreground">
               {clients.filter((c) => c.status === "ativo").length} clientes ativos · Arraste eventos entre dias
             </span>
@@ -232,10 +251,8 @@ export default function CalendarPage({ clients }: Props) {
                           draggable
                           onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ev.eventKey); }}
                           onDragEnd={handleDragEnd}
-                          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border truncate cursor-grab active:cursor-grabbing flex items-center gap-0.5 ${ev.color} ${
-                            dragOverrides[ev.eventKey] !== undefined ? "ring-1 ring-clix-warning/50" : ""
-                          }`}
-                          title={`${ev.clientName}: ${ev.consultas.map((c) => c.nome).join(", ")}${dragOverrides[ev.eventKey] !== undefined ? " (movido)" : ""}`}
+                          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border truncate cursor-grab active:cursor-grabbing flex items-center gap-0.5 ${ev.color}`}
+                          title={`${ev.clientName}: ${ev.consultas.map((c) => c.nome).join(", ")}`}
                         >
                           <GripVertical size={8} className="opacity-40 flex-shrink-0" />
                           {ev.clientName} ({ev.consultas.length})
@@ -269,9 +286,6 @@ export default function CalendarPage({ clients }: Props) {
                   <span className="text-sm font-bold">{ev.clientName}</span>
                   <span className="text-[11px] text-muted-foreground">
                     · {ev.consultas.length} consultas
-                    {dragOverrides[ev.eventKey] !== undefined && (
-                      <span className="text-clix-warning ml-1">(movido)</span>
-                    )}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
