@@ -21,7 +21,8 @@ export type Database = {
           contato: string
           created_at: string
           custo_api: number | null
-          dias_execucao: number[] | null
+          dias_caixas_postais: number[] | null
+          dias_certidoes: number[] | null
           email: string
           faturamento: number | null
           frequencia: string | null
@@ -39,7 +40,8 @@ export type Database = {
           contato?: string
           created_at?: string
           custo_api?: number | null
-          dias_execucao?: number[] | null
+          dias_caixas_postais?: number[] | null
+          dias_certidoes?: number[] | null
           email?: string
           faturamento?: number | null
           frequencia?: string | null
@@ -57,7 +59,8 @@ export type Database = {
           contato?: string
           created_at?: string
           custo_api?: number | null
-          dias_execucao?: number[] | null
+          dias_caixas_postais?: number[] | null
+          dias_certidoes?: number[] | null
           email?: string
           faturamento?: number | null
           frequencia?: string | null

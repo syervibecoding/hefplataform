@@ -61,7 +61,8 @@ export interface HefSysClient extends BaseClient {
   cnpjs: number;
   consultas: string[];
   frequencia: string;
-  diasExecucao: number[];
+  diasCertidoes: number[];
+  diasCaixasPostais: number[];
   faturamento: number;
   custoAPI: number;
 }

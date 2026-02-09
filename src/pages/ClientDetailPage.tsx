@@ -92,16 +92,30 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                 </div>
               </div>
 
-              <div className="mt-6">
-                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Dias de Execução</label>
-                <div className="flex gap-2 mt-2">
-                  {client.diasExecucao.map((d) => (
-                    <span key={d} className="bg-secondary text-foreground font-mono text-sm font-semibold px-3 py-1.5 rounded-lg">
-                      Dia {d}
-                    </span>
-                  ))}
+              {client.diasCertidoes.length > 0 && (
+                <div className="mt-6">
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Dias das Certidões</label>
+                  <div className="flex gap-2 mt-2">
+                    {client.diasCertidoes.map((d) => (
+                      <span key={d} className="bg-clix-info/10 text-clix-info font-mono text-sm font-semibold px-3 py-1.5 rounded-lg border border-clix-info/20">
+                        Dia {d}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+              {client.diasCaixasPostais.length > 0 && (
+                <div className="mt-6">
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Dias das Caixas Postais</label>
+                  <div className="flex gap-2 mt-2">
+                    {client.diasCaixasPostais.map((d) => (
+                      <span key={d} className="bg-clix-magenta/10 text-clix-magenta font-mono text-sm font-semibold px-3 py-1.5 rounded-lg border border-clix-magenta/20">
+                        Dia {d}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="grid grid-cols-2 gap-4 mb-6">

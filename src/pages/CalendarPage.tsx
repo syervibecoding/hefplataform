@@ -83,21 +83,44 @@ export default function CalendarPage({ clients }: Props) {
 
     activeClients.forEach((client, idx) => {
       const color = COLORS[idx % COLORS.length];
-      const consultaDetails = client.consultas
+
+      const certidoes = client.consultas
         .map((cid) => TODAS_CONSULTAS.find((q) => q.id === cid))
-        .filter(Boolean)
+        .filter((q) => q && q.tipo === "certidao")
         .map((q) => ({ id: q!.id, nome: q!.nome, tipo: q!.tipo }));
 
-      client.diasExecucao.forEach((day) => {
-        const adjustedDay = adjustForWeekend(currentYear, currentMonth, day);
-        if (!map[adjustedDay]) map[adjustedDay] = [];
-        map[adjustedDay].push({
-          clientName: client.nome,
-          clientId: client.id,
-          consultas: consultaDetails,
-          color,
+      const caixas = client.consultas
+        .map((cid) => TODAS_CONSULTAS.find((q) => q.id === cid))
+        .filter((q) => q && q.tipo === "caixa_postal")
+        .map((q) => ({ id: q!.id, nome: q!.nome, tipo: q!.tipo }));
+
+      // Certidões nos dias de certidões
+      if (certidoes.length > 0) {
+        client.diasCertidoes.forEach((day) => {
+          const adjustedDay = adjustForWeekend(currentYear, currentMonth, day);
+          if (!map[adjustedDay]) map[adjustedDay] = [];
+          const existing = map[adjustedDay].find((e) => e.clientId === client.id);
+          if (existing) {
+            existing.consultas.push(...certidoes);
+          } else {
+            map[adjustedDay].push({ clientName: client.nome, clientId: client.id, consultas: [...certidoes], color });
+          }
         });
-      });
+      }
+
+      // Caixas postais nos dias de caixas postais
+      if (caixas.length > 0) {
+        client.diasCaixasPostais.forEach((day) => {
+          const adjustedDay = adjustForWeekend(currentYear, currentMonth, day);
+          if (!map[adjustedDay]) map[adjustedDay] = [];
+          const existing = map[adjustedDay].find((e) => e.clientId === client.id);
+          if (existing) {
+            existing.consultas.push(...caixas);
+          } else {
+            map[adjustedDay].push({ clientName: client.nome, clientId: client.id, consultas: [...caixas], color });
+          }
+        });
+      }
     });
 
     return map;
@@ -246,7 +269,7 @@ export default function CalendarPage({ clients }: Props) {
                   <div className={`w-3 h-3 rounded ${color.split(" ")[0]}`} />
                   <span className="text-sm font-medium">{client.nome}</span>
                   <span className="text-[11px] text-muted-foreground">
-                    · {freq?.label} · Dias: {client.diasExecucao.join(", ")} · {client.consultas.length} consultas
+                    · {freq?.label} · Certidões: {client.diasCertidoes.join(", ") || "—"} · Caixas: {client.diasCaixasPostais.join(", ") || "—"}
                   </span>
                 </div>
               );
