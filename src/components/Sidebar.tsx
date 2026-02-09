@@ -1,7 +1,8 @@
-import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut } from "lucide-react";
 import { useState } from "react";
 import logoWhite from "@/assets/logo-white.png";
 import { PRODUCTS, type ProductId } from "@/data/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarProps {
   activePage: string;
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar({ activePage, onNavigate, activeProduct, onChangeProduct }: SidebarProps) {
+  const { profile, signOut } = useAuth();
   const [productOpen, setProductOpen] = useState(false);
   const currentProduct = PRODUCTS.find((p) => p.id === activeProduct)!;
   const ProductIcon = currentProduct.icon;
@@ -106,7 +108,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
         })}
       </nav>
 
-      <div className="px-3 pb-4">
+      <div className="px-3 pb-4 space-y-1">
         <button
           onClick={() => onNavigate("settings")}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground transition-all w-full"
@@ -114,6 +116,20 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
           <Settings size={18} />
           Configurações
         </button>
+
+        <div className="border-t border-sidebar-border pt-3 mt-2">
+          <div className="px-3 pb-2">
+            <div className="text-xs font-semibold truncate">{profile?.display_name || profile?.username}</div>
+            <div className="text-[10px] text-muted-foreground">@{profile?.username}</div>
+          </div>
+          <button
+            onClick={signOut}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-destructive/80 border border-transparent hover:bg-destructive/10 transition-all w-full"
+          >
+            <LogOut size={16} />
+            Sair
+          </button>
+        </div>
       </div>
     </aside>
   );

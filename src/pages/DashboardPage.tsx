@@ -2,6 +2,7 @@ import StatCard from "@/components/StatCard";
 import StatusTag from "@/components/StatusTag";
 import { type AnyClient, type ProductId, type Melhoria, isHefSysClient, FREQUENCIAS } from "@/data/constants";
 import { getNextScheduleDay } from "@/lib/schedule-utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   clients: AnyClient[];
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function DashboardPage({ clients, melhorias, activeProduct }: Props) {
+  const { isAdmin } = useAuth();
   const isHefsys = activeProduct === "hefsys";
   const activeClients = clients.filter((c) => c.status === "ativo");
   const emDev = melhorias.filter((m) => m.status === "em_desenvolvimento").length;
@@ -37,12 +39,21 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
         {isHefsys ? (
           <>
             <StatCard label="CNPJs Monitorados" value={hefsysMetrics().totalCnpjs} sub="total de empresas" colorClass="text-clix-info" />
-            <StatCard label="Faturamento/Mês" value={`R$ ${hefsysMetrics().totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-clix-success" />
-            <StatCard label="Custo API/Mês" value={`R$ ${hefsysMetrics().totalCustoAPI.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub={`${emDev} melhorias em dev`} colorClass="text-clix-warning" />
+            {isAdmin && (
+              <>
+                <StatCard label="Faturamento/Mês" value={`R$ ${hefsysMetrics().totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-clix-success" />
+                <StatCard label="Custo API/Mês" value={`R$ ${hefsysMetrics().totalCustoAPI.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub={`${emDev} melhorias em dev`} colorClass="text-clix-warning" />
+              </>
+            )}
+            {!isAdmin && (
+              <StatCard label="Em Desenvolvimento" value={emDev} sub="melhorias ativas" colorClass="text-clix-warning" />
+            )}
           </>
         ) : (
           <>
-            <StatCard label="Receita Mensal" value={`R$ ${genericMetrics().receita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-clix-info" />
+            {isAdmin && (
+              <StatCard label="Receita Mensal" value={`R$ ${genericMetrics().receita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-clix-info" />
+            )}
             <StatCard label="Total Clientes" value={clients.length} sub="cadastrados" colorClass="text-clix-magenta" />
             <StatCard label="Em Desenvolvimento" value={emDev} sub="melhorias ativas" colorClass="text-clix-warning" />
           </>
