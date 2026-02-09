@@ -1,72 +1,62 @@
 
 
-# Reestruturar Plataforma por Produtos + Adicionar Novo Cliente
+# Separar Dias de Execucao por Tipo de Consulta (Certidoes vs Caixas Postais)
 
-## Resumo
+## Problema Atual
 
-A plataforma vai ser reorganizada para funcionar dividida por **4 produtos da Clix**, cada um com seus clientes e dashboard independentes. Tambem vamos implementar o formulario funcional de "Novo Cliente" em cada produto.
+Hoje, o cliente HefSys tem um unico campo `dias_execucao` (ex: `[1, 15, 22]`) que se aplica a **todas** as consultas igualmente. Na realidade, certidoes e caixas postais sao executadas em dias diferentes:
 
-## Estrutura de Produtos
+- Certidoes: dias 1, 15, 22
+- Caixas Postais: dias 5, 20
 
-| Produto | Descricao |
-|---|---|
-| **HefSys** | Contabilidade (produto atual, ja tem dados e logica de consultas/CNPJs) |
-| **Trafego Pago** | Agencia de marketing digital |
-| **Automacao com IA** | Solucoes de automacao |
-| **Plataformas com IA** | Desenvolvimento de plataformas com IA |
+## Solucao
 
-## O que muda na interface
+Substituir o campo unico `dias_execucao` por dois campos separados: `dias_certidoes` e `dias_caixas_postais`. Assim cada tipo de consulta tem seu proprio calendario.
 
-1. **Sidebar** ganha um seletor de produto no topo (abaixo do logo), permitindo alternar entre os 4 produtos. O menu abaixo se adapta ao produto selecionado.
+## Mudancas
 
-2. **Dashboard, Clientes e demais paginas** ficam contextualizados ao produto ativo. Cada produto tem sua propria lista de clientes.
+### 1. Migracao de Banco de Dados
 
-3. **Formulario "Novo Cliente"** - Um modal/dialog funcional ao clicar no botao "+ Novo Cliente" com campos:
-   - Nome da empresa
-   - Contato (nome da pessoa)
-   - WhatsApp
-   - Email
-   - Status (ativo/inativo)
-   - **Campos especificos do HefSys**: CNPJs, consultas, frequencia, dias de execucao
-   - Para os demais produtos: apenas os campos basicos por enquanto
+Adicionar duas novas colunas na tabela `clients` e remover a antiga:
 
-## Detalhes Tecnicos
+- `dias_certidoes integer[] DEFAULT '{}'` -- dias para consultas do tipo "certidao"
+- `dias_caixas_postais integer[] DEFAULT '{}'` -- dias para consultas do tipo "caixa_postal"
+- Migrar dados existentes de `dias_execucao` para ambas as colunas
+- Remover coluna `dias_execucao`
 
-### 1. Atualizar `src/data/constants.ts`
-- Adicionar tipo `Product` com id, nome e icone
-- Adicionar array `PRODUCTS` com os 4 produtos
-- Criar interface `BaseClient` com campos compartilhados (nome, contato, whatsapp, email, status)
-- Manter `Client` (HefSys) extendendo `BaseClient` com campos especificos (cnpjs, consultas, frequencia, diasExecucao)
-- Criar `GenericClient` extendendo `BaseClient` para os demais produtos (campos basicos + valor do contrato)
-- Adicionar dados iniciais de exemplo para os outros produtos
+### 2. Atualizar Tipos (`src/data/constants.ts`)
 
-### 2. Atualizar `src/components/Sidebar.tsx`
-- Adicionar seletor de produto (dropdown ou lista com icones) entre o logo e o menu
-- Passar `activeProduct` e `onChangeProduct` como props
-- Adaptar label do menu conforme produto
+Substituir `diasExecucao: number[]` na interface `HefSysClient` por:
+- `diasCertidoes: number[]`
+- `diasCaixasPostais: number[]`
 
-### 3. Criar `src/components/AddClientDialog.tsx`
-- Modal usando Radix Dialog
-- Formulario com react-hook-form + zod para validacao
-- Campos condicionais: se produto = hefsys, mostra campos extras (CNPJs, consultas com checkboxes, frequencia, dias)
-- Para demais produtos: campos basicos + valor mensal do contrato
+### 3. Atualizar Hook `useClients.ts`
 
-### 4. Atualizar `src/pages/Index.tsx`
-- Adicionar state `activeProduct` (default: "hefsys")
-- Separar listas de clientes por produto
-- Funcao `addClient` para adicionar cliente ao estado do produto ativo
-- Passar produto ativo para componentes filhos
+Mapear as novas colunas `dias_certidoes` e `dias_caixas_postais` do banco para os campos do modelo.
 
-### 5. Atualizar `src/pages/ClientsPage.tsx`
-- Receber `activeProduct` como prop
-- Adaptar colunas da tabela conforme produto (HefSys mostra CNPJs/consultas, outros mostram valor do contrato)
-- Integrar o dialog de novo cliente
+### 4. Atualizar Formularios (Add e Edit Client)
 
-### 6. Atualizar `src/pages/DashboardPage.tsx`
-- Adaptar metricas conforme produto ativo
-- HefSys: manter metricas atuais (CNPJs, consultas, custo API)
-- Outros: metricas basicas (total clientes, receita, etc.)
+Trocar o campo unico "Dias de Execucao" por dois campos separados:
+- **Dias das Certidoes**: input para informar dias (ex: "1, 15, 22")
+- **Dias das Caixas Postais**: input para informar dias (ex: "5, 20")
 
-### 7. Atualizar `src/pages/ClientDetailPage.tsx`
-- Adaptar exibicao conforme tipo de cliente/produto
+Cada campo so aparece se o cliente tiver consultas daquele tipo selecionadas.
+
+### 5. Atualizar Calendario (`CalendarPage.tsx`)
+
+A logica `eventsByDay` passa a mapear separadamente:
+- Consultas tipo `certidao` usando `diasCertidoes`
+- Consultas tipo `caixa_postal` usando `diasCaixasPostais`
+
+Isso faz com que no dia 1 apareca apenas "CND Federal, CRF FGTS..." e no dia 5 apareca "ECAC Caixa Postal, DET..." corretamente.
+
+### 6. Atualizar Detalhes do Cliente (`ClientDetailPage.tsx`)
+
+Exibir os dias separados por tipo na pagina de detalhes.
+
+## Resultado Esperado
+
+- Ao adicionar/editar um cliente HefSys, voce define dias especificos para certidoes e dias especificos para caixas postais
+- O calendario mostra corretamente quais consultas caem em quais dias
+- Ajuste de final de semana continua funcionando independentemente para cada grupo
 
