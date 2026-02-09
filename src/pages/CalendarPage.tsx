@@ -95,6 +95,7 @@ export default function CalendarPage({ clients }: Props) {
   const baseEventsByDay = useMemo(() => {
     const map: Record<number, CalendarEvent[]> = {};
     const activeClients = clients.filter((c) => c.status === "ativo");
+    const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
 
     activeClients.forEach((client, idx) => {
       const color = COLORS[idx % COLORS.length];
@@ -109,32 +110,50 @@ export default function CalendarPage({ clients }: Props) {
         .filter((q) => q && q.tipo === "caixa_postal")
         .map((q) => ({ id: q!.id, nome: q!.nome, tipo: q!.tipo }));
 
+      // Build reverse override map: renderedDay → originalRuleDay
+      const buildReverseMap = (schedule: ScheduleConfig) => {
+        const reverseMap: Record<number, number> = {};
+        const overrides = schedule.overrides?.[monthKey];
+        if (overrides) {
+          for (const [origStr, newDay] of Object.entries(overrides)) {
+            reverseMap[newDay] = parseInt(origStr);
+          }
+        }
+        return reverseMap;
+      };
+
       // Certidões
       if (certidoes.length > 0) {
-        const days = getScheduleDays(client.agendaCertidoes || {}, currentYear, currentMonth);
+        const schedule = client.agendaCertidoes || {};
+        const days = getScheduleDays(schedule, currentYear, currentMonth);
+        const reverseMap = buildReverseMap(schedule);
         days.forEach((day) => {
-          const eventKey = `${client.id}-cert-${day}`;
+          const ruleDay = reverseMap[day] ?? day; // the original rule day before overrides
+          const eventKey = `${client.id}-cert-${ruleDay}`;
           if (!map[day]) map[day] = [];
           const existing = map[day].find((e) => e.clientId === client.id && e.tipo === "certidoes");
           if (existing) {
             existing.consultas.push(...certidoes);
           } else {
-            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...certidoes], color, eventKey, originalDay: day, tipo: "certidoes" });
+            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...certidoes], color, eventKey, originalDay: ruleDay, tipo: "certidoes" });
           }
         });
       }
 
       // Caixas Postais
       if (caixas.length > 0) {
-        const days = getScheduleDays(client.agendaCaixasPostais || {}, currentYear, currentMonth);
+        const schedule = client.agendaCaixasPostais || {};
+        const days = getScheduleDays(schedule, currentYear, currentMonth);
+        const reverseMap = buildReverseMap(schedule);
         days.forEach((day) => {
-          const eventKey = `${client.id}-caixa-${day}`;
+          const ruleDay = reverseMap[day] ?? day;
+          const eventKey = `${client.id}-caixa-${ruleDay}`;
           if (!map[day]) map[day] = [];
           const existing = map[day].find((e) => e.clientId === client.id && e.tipo === "caixas");
           if (existing) {
             existing.consultas.push(...caixas);
           } else {
-            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...caixas], color, eventKey, originalDay: day, tipo: "caixas" });
+            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...caixas], color, eventKey, originalDay: ruleDay, tipo: "caixas" });
           }
         });
       }
@@ -171,7 +190,8 @@ export default function CalendarPage({ clients }: Props) {
         const client = clients.find((c) => c.id === ev.clientId);
         if (!client) break;
         const schedule = ev.tipo === "certidoes" ? (client.agendaCertidoes || {}) : (client.agendaCaixasPostais || {});
-        saveOverrideMutation.mutate({ clientId: ev.clientId, tipo: ev.tipo, schedule, originalDay: sourceDay, newDay: targetDay });
+        // Use ev.originalDay (the true rule day) so subsequent drags update the same override key
+        saveOverrideMutation.mutate({ clientId: ev.clientId, tipo: ev.tipo, schedule, originalDay: ev.originalDay, newDay: targetDay });
         break;
       }
     }
