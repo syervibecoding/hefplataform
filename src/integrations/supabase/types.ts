@@ -16,13 +16,13 @@ export type Database = {
     Tables: {
       clients: {
         Row: {
+          agenda_caixas_postais: Json | null
+          agenda_certidoes: Json | null
           cnpjs: number | null
           consultas: string[] | null
           contato: string
           created_at: string
           custo_api: number | null
-          dias_caixas_postais: number[] | null
-          dias_certidoes: number[] | null
           email: string
           faturamento: number | null
           frequencia: string | null
@@ -35,13 +35,13 @@ export type Database = {
           whatsapp: string
         }
         Insert: {
+          agenda_caixas_postais?: Json | null
+          agenda_certidoes?: Json | null
           cnpjs?: number | null
           consultas?: string[] | null
           contato?: string
           created_at?: string
           custo_api?: number | null
-          dias_caixas_postais?: number[] | null
-          dias_certidoes?: number[] | null
           email?: string
           faturamento?: number | null
           frequencia?: string | null
@@ -54,13 +54,13 @@ export type Database = {
           whatsapp?: string
         }
         Update: {
+          agenda_caixas_postais?: Json | null
+          agenda_certidoes?: Json | null
           cnpjs?: number | null
           consultas?: string[] | null
           contato?: string
           created_at?: string
           custo_api?: number | null
-          dias_caixas_postais?: number[] | null
-          dias_certidoes?: number[] | null
           email?: string
           faturamento?: number | null
           frequencia?: string | null

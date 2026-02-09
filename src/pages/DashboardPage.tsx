@@ -1,6 +1,7 @@
 import StatCard from "@/components/StatCard";
 import StatusTag from "@/components/StatusTag";
-import { type AnyClient, type ProductId, type Melhoria, isHefSysClient, FREQUENCIAS, TODAS_CONSULTAS } from "@/data/constants";
+import { type AnyClient, type ProductId, type Melhoria, isHefSysClient, FREQUENCIAS } from "@/data/constants";
+import { getNextScheduleDay } from "@/lib/schedule-utils";
 
 interface Props {
   clients: AnyClient[];
@@ -13,7 +14,6 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
   const activeClients = clients.filter((c) => c.status === "ativo");
   const emDev = melhorias.filter((m) => m.status === "em_desenvolvimento").length;
 
-  // HefSys metrics
   const hefsysMetrics = () => {
     const hefsysClients = clients.filter(isHefSysClient);
     const totalCnpjs = hefsysClients.reduce((s, c) => s + c.cnpjs, 0);
@@ -22,18 +22,18 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
     return { totalCnpjs, totalFaturamento, totalCustoAPI };
   };
 
-  // Generic metrics
   const genericMetrics = () => {
     const genericClients = clients.filter((c) => !isHefSysClient(c)) as any[];
     const receita = genericClients.filter((c) => c.status === "ativo").reduce((s: number, c: any) => s + (c.valorContrato || 0), 0);
     return { receita };
   };
 
+  const now = new Date();
+
   return (
     <div>
       <div className="grid grid-cols-4 gap-4 mb-7">
         <StatCard label="Clientes Ativos" value={activeClients.length} sub="neste produto" colorClass="text-primary" />
-
         {isHefsys ? (
           <>
             <StatCard label="CNPJs Monitorados" value={hefsysMetrics().totalCnpjs} sub="total de empresas" colorClass="text-clix-info" />
@@ -50,7 +50,6 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* Left panel */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <h2 className="text-[15px] font-semibold">{isHefsys ? "Próximas Execuções" : "Clientes Recentes"}</h2>
@@ -61,8 +60,9 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
           <div>
             {isHefsys
               ? clients.filter(isHefSysClient).map((c) => {
-                  const allDias = [...c.diasCertidoes, ...c.diasCaixasPostais].sort((a, b) => a - b);
-                  const nextDay = allDias.find((d) => d >= new Date().getDate()) || allDias[0];
+                  const nextCert = getNextScheduleDay(c.agendaCertidoes || {}, now.getFullYear(), now.getMonth());
+                  const nextCaixa = getNextScheduleDay(c.agendaCaixasPostais || {}, now.getFullYear(), now.getMonth());
+                  const nextDay = [nextCert, nextCaixa].filter((d): d is number => d !== null).sort((a, b) => a - b)[0];
                   return (
                     <div key={c.id} className="flex items-center justify-between px-5 py-3 border-b border-border last:border-b-0">
                       <div>
@@ -70,7 +70,7 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
                         <div className="text-xs text-muted-foreground">{c.cnpjs} CNPJs · {c.consultas.length} consultas</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-semibold font-mono">Dia {nextDay}</div>
+                        <div className="text-sm font-semibold font-mono">{nextDay ? `Dia ${nextDay}` : "—"}</div>
                         <div className="text-[11px] text-muted-foreground">{FREQUENCIAS.find((f) => f.id === c.frequencia)?.label}</div>
                       </div>
                     </div>
@@ -88,7 +88,6 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
           </div>
         </div>
 
-        {/* Melhorias */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <h2 className="text-[15px] font-semibold">Melhorias & Desenvolvimento</h2>
