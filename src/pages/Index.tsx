@@ -6,6 +6,7 @@ import ClientsPage from "./ClientsPage";
 import ClientDetailPage from "./ClientDetailPage";
 import MelhoriasPage from "./MelhoriasPage";
 import CalendarPage from "./CalendarPage";
+import UsersPage from "./UsersPage";
 import { useClients } from "@/hooks/useClients";
 import { useMelhorias } from "@/hooks/useMelhorias";
 import {
@@ -114,6 +115,8 @@ export default function Index() {
         );
       case "calendar":
         return <CalendarPage clients={clients.filter((c): c is HefSysClient => "cnpjs" in c)} />;
+      case "users":
+        return <UsersPage />;
       case "workflow":
       case "settings":
         return (
