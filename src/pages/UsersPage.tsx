@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Shield, User } from "lucide-react";
+import { UserPlus, Shield, User, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserRow {
@@ -19,7 +20,8 @@ interface UserRow {
 }
 
 export default function UsersPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ username: "", password: "", display_name: "", role: "user" });
@@ -47,6 +49,20 @@ export default function UsersPage() {
       })) as UserRow[];
     },
     enabled: isAdmin,
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { user_id: userId },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+    },
+    onSuccess: () => {
+      toast.success("Usuário excluído com sucesso");
+      refetch();
+    },
+    onError: (err: Error) => toast.error(err.message || "Erro ao excluir usuário"),
   });
 
   const handleCreate = async () => {
@@ -164,6 +180,7 @@ export default function UsersPage() {
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuário</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Perfil</th>
+              <th className="text-right px-4 py-3 font-medium text-muted-foreground">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -177,11 +194,39 @@ export default function UsersPage() {
                     {u.role === "admin" ? "Admin" : "Usuário"}
                   </Badge>
                 </td>
+                <td className="px-4 py-3 text-right">
+                  {u.id !== user?.id && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                          <Trash2 size={14} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir o usuário <strong>@{u.username}</strong>? Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteUserMutation.mutate(u.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </td>
               </tr>
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                   Nenhum usuário encontrado.
                 </td>
               </tr>

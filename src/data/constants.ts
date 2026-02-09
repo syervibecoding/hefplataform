@@ -63,6 +63,7 @@ export interface ScheduleConfig {
   diaSemana?: number;     // 0=Dom..6=Sáb (repeats every week)
   primeiroDiaUtil?: boolean; // first business day of month
   ultimoDiaUtil?: boolean;   // last business day of month
+  overrides?: Record<string, Record<string, number>>; // "YYYY-MM": { "originalDay": newDay }
 }
 
 export const DIAS_SEMANA_LABELS: Record<number, string> = {
