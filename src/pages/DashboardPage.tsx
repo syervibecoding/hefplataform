@@ -61,7 +61,8 @@ export default function DashboardPage({ clients, melhorias, activeProduct }: Pro
           <div>
             {isHefsys
               ? clients.filter(isHefSysClient).map((c) => {
-                  const nextDay = c.diasExecucao.find((d) => d >= new Date().getDate()) || c.diasExecucao[0];
+                  const allDias = [...c.diasCertidoes, ...c.diasCaixasPostais].sort((a, b) => a - b);
+                  const nextDay = allDias.find((d) => d >= new Date().getDate()) || allDias[0];
                   return (
                     <div key={c.id} className="flex items-center justify-between px-5 py-3 border-b border-border last:border-b-0">
                       <div>

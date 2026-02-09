@@ -20,7 +20,8 @@ const hefsysSchema = baseSchema.extend({
   cnpjs: z.coerce.number().min(1, "Mínimo 1 CNPJ"),
   consultas: z.array(z.string()).min(1, "Selecione ao menos 1 consulta"),
   frequencia: z.string().min(1, "Selecione a frequência"),
-  diasExecucao: z.string().min(1, "Informe os dias"),
+  diasCertidoes: z.string().optional().default(""),
+  diasCaixasPostais: z.string().optional().default(""),
   faturamento: z.coerce.number().min(0, "Valor inválido"),
   custoAPI: z.coerce.number().min(0, "Valor inválido"),
 });
@@ -62,7 +63,8 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           cnpjs: client.cnpjs,
           consultas: client.consultas,
           frequencia: client.frequencia,
-          diasExecucao: client.diasExecucao.join(", "),
+          diasCertidoes: client.diasCertidoes.join(", "),
+          diasCaixasPostais: client.diasCaixasPostais.join(", "),
           faturamento: client.faturamento || 0,
           custoAPI: client.custoAPI || 0,
         });
@@ -81,8 +83,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
 
   const onSubmit = (data: any) => {
     if (isHefsys) {
-      const dias = data.diasExecucao.split(",").map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n));
-      onEditClient(client.id, { ...data, diasExecucao: dias });
+      const diasCert = (data.diasCertidoes || "").split(",").map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n));
+      const diasCaixa = (data.diasCaixasPostais || "").split(",").map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n));
+      const { diasCertidoes: _a, diasCaixasPostais: _b, ...rest } = data;
+      onEditClient(client.id, { ...rest, diasCertidoes: diasCert, diasCaixasPostais: diasCaixa });
     } else {
       onEditClient(client.id, data);
     }
@@ -166,11 +170,18 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                 </div>
               </div>
 
-              <div>
-                <Label className="text-xs text-muted-foreground">Dias de Execução (separados por vírgula)</Label>
-                <Input {...register("diasExecucao")} placeholder="1, 15" className="mt-1 bg-secondary border-border" />
-                {errors.diasExecucao && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.diasExecucao as any).message}</p>}
-              </div>
+              {selectedConsultas.some((id: string) => CONSULTAS_CERTIDOES.some((c) => c.id === id)) && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Dias das Certidões (separados por vírgula)</Label>
+                  <Input {...register("diasCertidoes")} placeholder="1, 15, 22" className="mt-1 bg-secondary border-border" />
+                </div>
+              )}
+              {selectedConsultas.some((id: string) => CONSULTAS_CAIXAS.some((c) => c.id === id)) && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Dias das Caixas Postais (separados por vírgula)</Label>
+                  <Input {...register("diasCaixasPostais")} placeholder="5, 20" className="mt-1 bg-secondary border-border" />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
