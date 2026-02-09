@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      checklist_steps: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          position: number
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          position?: number
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+          tipo?: string
+        }
+        Relationships: []
+      }
       client_checklists: {
         Row: {
           client_id: string

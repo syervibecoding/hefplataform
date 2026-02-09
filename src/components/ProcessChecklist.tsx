@@ -1,27 +1,13 @@
 import { useState, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useClientChecklist, useReconcileChecklists, isStepDone, getStepInfo, type ChecklistTipo } from "@/hooks/useClientChecklist";
+import { useChecklistSteps } from "@/hooks/useChecklistSteps";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Loader2, Plus, Trash2, X } from "lucide-react";
 import { type ScheduleConfig } from "@/data/constants";
 import { getScheduleDays } from "@/lib/schedule-utils";
 import { useAuth } from "@/contexts/AuthContext";
-
-const CERTIDOES_STEPS = [
-  { id: "verificar_bases", label: "Verificar as bases que estamos rodando no código / usar o código correto" },
-  { id: "rodar_api", label: "Rodar a API / automação" },
-  { id: "verificar_emissao", label: "Verificar quanto foi emitido no mês anterior e se tiver menos, verificar o porquê" },
-  { id: "relatorio_excel", label: "Fazer o relatório em Excel do que foi emitido e não foi emitido" },
-  { id: "subir_arquivos", label: "Subir os arquivos para pasta" },
-  { id: "check_arquivos", label: "Verificar se todos os arquivos subiram corretamente ou esquecemos de subir/fazer" },
-];
-
-const CAIXAS_POSTAIS_STEPS = [
-  { id: "verificar_bases", label: "Verificar as bases que estamos rodando no código / usar o código correto" },
-  { id: "rodar_api", label: "Rodar a API / automação" },
-  { id: "verificar_mensagens", label: "Verificar se houve mensagens importantes" },
-  { id: "enviar_cliente", label: "Se houver, enviar para o WhatsApp do cliente e email" },
-];
 
 function getExecutionDates(schedule: ScheduleConfig, year: number, month: number): string[] {
   const days = getScheduleDays(schedule, year, month);
@@ -66,7 +52,6 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
     [schedule, today.getFullYear(), today.getMonth()]
   );
 
-  // Reconcile orphan checklists when schedule changes
   useReconcileChecklists(clientId, tipo, allDates);
 
   const initialDate = useMemo(() => {
@@ -76,18 +61,29 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
   }, [allDates, todayStr]);
 
   const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [showAddStep, setShowAddStep] = useState(false);
+  const [newStepLabel, setNewStepLabel] = useState("");
 
   const currentIndex = allDates.indexOf(selectedDate);
   const canPrev = currentIndex > 0;
   const canNext = currentIndex < allDates.length - 1 && allDates[currentIndex + 1] <= todayStr;
 
   const { checklist, isLoading, toggleStep } = useClientChecklist(clientId, tipo, selectedDate);
-  const steps = tipo === "certidoes" ? CERTIDOES_STEPS : CAIXAS_POSTAIS_STEPS;
+  const { steps, isLoading: stepsLoading, addStep, removeStep, isAdding } = useChecklistSteps(tipo);
+
   const stepsState = checklist?.steps || {};
   const doneCount = steps.filter((s) => isStepDone(stepsState[s.id])).length;
-  const allDone = doneCount === steps.length;
+  const allDone = steps.length > 0 && doneCount === steps.length;
 
-  if (isLoading) {
+  const handleAddStep = () => {
+    const trimmed = newStepLabel.trim();
+    if (!trimmed) return;
+    addStep(trimmed);
+    setNewStepLabel("");
+    setShowAddStep(false);
+  };
+
+  if (isLoading || stepsLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-3">
         <Loader2 size={14} className="animate-spin" /> Carregando...
@@ -136,7 +132,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
       <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mb-3">
         <div
           className="h-full bg-clix-success transition-all duration-300 rounded-full"
-          style={{ width: `${(doneCount / steps.length) * 100}%` }}
+          style={{ width: steps.length > 0 ? `${(doneCount / steps.length) * 100}%` : "0%" }}
         />
       </div>
 
@@ -148,7 +144,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
           return (
             <li
               key={step.id}
-              className={`flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+              className={`flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group ${
                 done ? "bg-clix-success/5" : "hover:bg-muted/50"
               }`}
               onClick={() => user && toggleStep(step.id, user.id, profile?.username || "desconhecido")}
@@ -165,10 +161,58 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
                   </div>
                 )}
               </div>
+              {isAdmin && (
+                <button
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0 mt-0.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeStep(step.id);
+                  }}
+                  title="Remover processo"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </li>
           );
         })}
       </ol>
+
+      {/* Add step (admin only) */}
+      {isAdmin && (
+        <div className="pt-2">
+          {showAddStep ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={newStepLabel}
+                onChange={(e) => setNewStepLabel(e.target.value)}
+                placeholder="Descreva o processo..."
+                className="h-8 text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddStep();
+                  if (e.key === "Escape") { setShowAddStep(false); setNewStepLabel(""); }
+                }}
+              />
+              <Button size="sm" className="h-8 px-3" onClick={handleAddStep} disabled={isAdding || !newStepLabel.trim()}>
+                {isAdding ? <Loader2 size={14} className="animate-spin" /> : "Adicionar"}
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setShowAddStep(false); setNewStepLabel(""); }}>
+                <X size={14} />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-start gap-1"
+              onClick={() => setShowAddStep(true)}
+            >
+              <Plus size={12} /> Adicionar processo
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
