@@ -36,6 +36,11 @@ export function getScheduleDays(
     result.add(getFirstBusinessDay(year, month));
   }
 
+  // Last business day
+  if (config.ultimoDiaUtil) {
+    result.add(getLastBusinessDay(year, month));
+  }
+
   return Array.from(result).sort((a, b) => a - b);
 }
 
@@ -58,10 +63,20 @@ function getFirstBusinessDay(year: number, month: number): number {
   return 1;
 }
 
+function getLastBusinessDay(year: number, month: number): number {
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  for (let d = totalDays; d >= 1; d--) {
+    const dow = new Date(year, month, d).getDay();
+    if (dow !== 0 && dow !== 6) return d;
+  }
+  return totalDays;
+}
+
 /** Human-readable label for a schedule config */
 export function scheduleLabel(config: ScheduleConfig): string {
   const parts: string[] = [];
   if (config.primeiroDiaUtil) parts.push("1º dia útil");
+  if (config.ultimoDiaUtil) parts.push("Último dia útil");
   if (config.dias && config.dias.length > 0) parts.push(`dias ${config.dias.join(", ")}`);
   if (config.diaSemana !== undefined) parts.push(`toda ${DIAS_SEMANA_LABELS[config.diaSemana]}`);
   return parts.length > 0 ? parts.join(" · ") : "—";

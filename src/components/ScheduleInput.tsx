@@ -83,6 +83,24 @@ export default function ScheduleInput({ label, value, onChange, colorClass = "te
         />
         <span className="text-[11px] text-muted-foreground">Primeiro dia útil do mês</span>
       </label>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={!!value.ultimoDiaUtil}
+          onChange={(e) => {
+            const next = { ...value };
+            if (e.target.checked) {
+              next.ultimoDiaUtil = true;
+            } else {
+              delete next.ultimoDiaUtil;
+            }
+            onChange(next);
+          }}
+          className="rounded border-border"
+        />
+        <span className="text-[11px] text-muted-foreground">Último dia útil do mês</span>
+      </label>
     </div>
   );
 }
