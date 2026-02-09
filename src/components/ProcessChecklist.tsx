@@ -1,25 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useClientChecklist, type ChecklistTipo } from "@/hooks/useClientChecklist";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Loader2 } from "lucide-react";
-
-function currentPeriod() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function shiftPeriod(periodo: string, delta: number) {
-  const [y, m] = periodo.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function formatPeriod(periodo: string) {
-  const [y, m] = periodo.split("-").map(Number);
-  const months = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-  return `${months[m - 1]} ${y}`;
-}
+import { type ScheduleConfig } from "@/data/constants";
+import { getScheduleDays } from "@/lib/schedule-utils";
 
 const CERTIDOES_STEPS = [
   { id: "verificar_bases", label: "Verificar as bases que estamos rodando no código / usar o código correto" },
@@ -37,20 +22,63 @@ const CAIXAS_POSTAIS_STEPS = [
   { id: "enviar_cliente", label: "Se houver, enviar para o WhatsApp do cliente e email" },
 ];
 
+/** Build a sorted list of all execution dates (YYYY-MM-DD) for the given month range */
+function getExecutionDates(schedule: ScheduleConfig, year: number, month: number): string[] {
+  const days = getScheduleDays(schedule, year, month);
+  return days.map((d) => `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+}
+
+/** Collect execution dates across multiple months for navigation */
+function collectDates(schedule: ScheduleConfig, centerYear: number, centerMonth: number, rangeMonths = 6): string[] {
+  const dates: string[] = [];
+  for (let offset = -rangeMonths; offset <= rangeMonths; offset++) {
+    const d = new Date(centerYear, centerMonth + offset, 1);
+    dates.push(...getExecutionDates(schedule, d.getFullYear(), d.getMonth()));
+  }
+  return [...new Set(dates)].sort();
+}
+
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const weekdays = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  const date = new Date(y, m - 1, d);
+  return `${weekdays[date.getDay()]}, ${d} ${months[m - 1]} ${y}`;
+}
+
 interface Props {
   clientId: string;
   tipo: ChecklistTipo;
+  schedule: ScheduleConfig;
 }
 
-export default function ProcessChecklist({ clientId, tipo }: Props) {
-  const cur = currentPeriod();
-  const [periodo, setPeriodo] = useState(cur);
-  const { checklist, isLoading, toggleStep } = useClientChecklist(clientId, tipo, periodo);
+export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const allDates = useMemo(
+    () => collectDates(schedule, today.getFullYear(), today.getMonth(), 12),
+    [schedule, today.getFullYear(), today.getMonth()]
+  );
+
+  // Find closest date <= today, or first future date
+  const initialDate = useMemo(() => {
+    const pastOrToday = allDates.filter((d) => d <= todayStr);
+    if (pastOrToday.length > 0) return pastOrToday[pastOrToday.length - 1];
+    return allDates[0] || todayStr;
+  }, [allDates, todayStr]);
+
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+
+  const currentIndex = allDates.indexOf(selectedDate);
+  const canPrev = currentIndex > 0;
+  const canNext = currentIndex < allDates.length - 1 && allDates[currentIndex + 1] <= todayStr;
+
+  const { checklist, isLoading, toggleStep } = useClientChecklist(clientId, tipo, selectedDate);
   const steps = tipo === "certidoes" ? CERTIDOES_STEPS : CAIXAS_POSTAIS_STEPS;
   const stepsState = checklist?.steps || {};
   const doneCount = steps.filter((s) => stepsState[s.id]).length;
   const allDone = doneCount === steps.length;
-  const isCurrentMonth = periodo === cur;
 
   if (isLoading) {
     return (
@@ -72,13 +100,27 @@ export default function ProcessChecklist({ clientId, tipo }: Props) {
         </span>
       </div>
 
-      {/* Month navigation */}
-      <div className="flex items-center justify-center gap-2 mb-2">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPeriodo(shiftPeriod(periodo, -1))}>
+      {/* Day navigation */}
+      <div className="flex items-center justify-center gap-1 mb-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          disabled={!canPrev}
+          onClick={() => setSelectedDate(allDates[currentIndex - 1])}
+        >
           <ChevronLeft size={14} />
         </Button>
-        <span className="text-sm font-medium min-w-[130px] text-center">{formatPeriod(periodo)}</span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPeriodo(shiftPeriod(periodo, 1))} disabled={isCurrentMonth}>
+        <span className="text-xs font-medium min-w-[150px] text-center">
+          {formatDate(selectedDate)}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          disabled={!canNext}
+          onClick={() => setSelectedDate(allDates[currentIndex + 1])}
+        >
           <ChevronRight size={14} />
         </Button>
       </div>
