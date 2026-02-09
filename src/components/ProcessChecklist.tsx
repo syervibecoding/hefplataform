@@ -1,6 +1,25 @@
+import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useClientChecklist, type ChecklistTipo } from "@/hooks/useClientChecklist";
-import { CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Loader2 } from "lucide-react";
+
+function currentPeriod() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function shiftPeriod(periodo: string, delta: number) {
+  const [y, m] = periodo.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatPeriod(periodo: string) {
+  const [y, m] = periodo.split("-").map(Number);
+  const months = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  return `${months[m - 1]} ${y}`;
+}
 
 const CERTIDOES_STEPS = [
   { id: "verificar_bases", label: "Verificar as bases que estamos rodando no código / usar o código correto" },
@@ -24,11 +43,14 @@ interface Props {
 }
 
 export default function ProcessChecklist({ clientId, tipo }: Props) {
-  const { checklist, isLoading, toggleStep } = useClientChecklist(clientId, tipo);
+  const cur = currentPeriod();
+  const [periodo, setPeriodo] = useState(cur);
+  const { checklist, isLoading, toggleStep } = useClientChecklist(clientId, tipo, periodo);
   const steps = tipo === "certidoes" ? CERTIDOES_STEPS : CAIXAS_POSTAIS_STEPS;
   const stepsState = checklist?.steps || {};
   const doneCount = steps.filter((s) => stepsState[s.id]).length;
   const allDone = doneCount === steps.length;
+  const isCurrentMonth = periodo === cur;
 
   if (isLoading) {
     return (
@@ -40,7 +62,7 @@ export default function ProcessChecklist({ clientId, tipo }: Props) {
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-1">
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
           {tipo === "certidoes" ? "Checklist Certidões" : "Checklist Caixas Postais"}
         </span>
@@ -48,6 +70,17 @@ export default function ProcessChecklist({ clientId, tipo }: Props) {
           {allDone ? <CheckCircle2 size={12} /> : <Circle size={12} />}
           {doneCount}/{steps.length}
         </span>
+      </div>
+
+      {/* Month navigation */}
+      <div className="flex items-center justify-center gap-2 mb-2">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPeriodo(shiftPeriod(periodo, -1))}>
+          <ChevronLeft size={14} />
+        </Button>
+        <span className="text-sm font-medium min-w-[130px] text-center">{formatPeriod(periodo)}</span>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPeriodo(shiftPeriod(periodo, 1))} disabled={isCurrentMonth}>
+          <ChevronRight size={14} />
+        </Button>
       </div>
 
       {/* Progress bar */}
