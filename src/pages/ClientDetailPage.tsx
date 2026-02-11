@@ -3,7 +3,7 @@ import StatusTag from "@/components/StatusTag";
 import EditClientDialog from "@/components/EditClientDialog";
 import DeleteClientDialog from "@/components/DeleteClientDialog";
 import ProcessChecklist from "@/components/ProcessChecklist";
-import { type AnyClient, type ProductId, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS } from "@/data/constants";
+import { type AnyClient, type ProductId, type GenericClient, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS } from "@/data/constants";
 import { scheduleLabel } from "@/lib/schedule-utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -18,6 +18,7 @@ interface Props {
 export default function ClientDetailPage({ client, activeProduct, onBack, onEditClient, onDeleteClient }: Props) {
   const { isAdmin } = useAuth();
   const isHefsys = isHefSysClient(client);
+  const isTrafego = activeProduct === "trafego";
 
   return (
     <div>
@@ -133,20 +134,91 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
               })()}
             </>
           ) : (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {isAdmin && (
-                <div>
-                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Valor do Contrato</label>
-                  <div className="text-lg font-bold font-mono mt-1 text-primary">
-                    R$ {(client as any).valorContrato?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            <>
+              <div className={`grid ${isTrafego ? 'grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}>
+                {isAdmin && (
+                  <div>
+                    <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Valor do Contrato</label>
+                    <div className="text-lg font-bold font-mono mt-1 text-primary">
+                      R$ {((client as GenericClient).valorContrato || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </div>
                   </div>
+                )}
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Status</label>
+                  <div className="mt-1"><StatusTag status={client.status} /></div>
                 </div>
-              )}
-              <div>
-                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Status</label>
-                <div className="mt-1"><StatusTag status={client.status} /></div>
+                {isTrafego && (client as GenericClient).formaPagamento && (
+                  <div>
+                    <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Forma de Pagamento</label>
+                    <div className="text-sm font-bold mt-1 capitalize">{(client as GenericClient).formaPagamento}</div>
+                  </div>
+                )}
               </div>
-            </div>
+
+              {isTrafego && (() => {
+                const gc = client as GenericClient;
+                const hasRotina = gc.rotinaConferencia && Object.keys(gc.rotinaConferencia).length > 0;
+                const isPix = gc.formaPagamento === "pix";
+
+                return (
+                  <div className="space-y-4">
+                    {hasRotina && (
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Rotina de Conferência</label>
+                        <div className="text-sm font-medium mt-1 text-clix-warning">
+                          {scheduleLabel(gc.rotinaConferencia!)}
+                        </div>
+                      </div>
+                    )}
+
+                    {isPix && (
+                      <div className="p-4 bg-clix-warning/5 border border-clix-warning/20 rounded-lg space-y-3">
+                        <p className="text-[10px] uppercase tracking-wider text-clix-warning font-semibold">Controle de Saldo PIX</p>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-[11px] text-muted-foreground">Saldo Depositado</label>
+                            <div className="text-sm font-bold font-mono mt-0.5">
+                              R$ {(gc.saldoAnuncio || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-muted-foreground">Gasto Diário Médio</label>
+                            <div className="text-sm font-bold font-mono mt-0.5">
+                              R$ {(gc.gastoDiarioMedio || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-muted-foreground">Data do Depósito</label>
+                            <div className="text-sm font-bold mt-0.5">
+                              {gc.dataDeposito ? new Date(gc.dataDeposito + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
+                            </div>
+                          </div>
+                        </div>
+                        {gc.saldoAnuncio && gc.gastoDiarioMedio && gc.dataDeposito && (() => {
+                          const diasRestantes = Math.floor(gc.saldoAnuncio / gc.gastoDiarioMedio);
+                          const depositDate = new Date(gc.dataDeposito + "T00:00:00");
+                          const endDate = new Date(depositDate);
+                          endDate.setDate(endDate.getDate() + diasRestantes);
+                          const todayDate = new Date();
+                          const daysUntilEnd = Math.ceil((endDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+                          const isUrgent = daysUntilEnd <= 3;
+
+                          return (
+                            <div className={`flex items-center gap-2 p-2 rounded-lg text-sm font-medium ${
+                              isUrgent ? "bg-destructive/10 text-destructive" : "bg-clix-info/10 text-clix-info"
+                            }`}>
+                              {isUrgent ? "⚠️" : "📅"}
+                              Saldo esgota em {endDate.toLocaleDateString("pt-BR")} ({daysUntilEnd > 0 ? `${daysUntilEnd} dias` : "esgotado"})
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
           )}
 
           <div className="mt-6 grid grid-cols-2 gap-4">

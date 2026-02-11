@@ -28,6 +28,11 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
     email: row.email,
     status: row.status,
     valorContrato: Number(row.valor_contrato) || 0,
+    rotinaConferencia: row.rotina_conferencia || {},
+    formaPagamento: row.forma_pagamento || null,
+    saldoAnuncio: Number(row.saldo_anuncio) || 0,
+    gastoDiarioMedio: Number(row.gasto_diario_medio) || 0,
+    dataDeposito: row.data_deposito || null,
   } as GenericClient;
 }
 
@@ -67,6 +72,11 @@ export function useClients(productId: ProductId) {
         row.custo_api = clientData.custoAPI;
       } else {
         row.valor_contrato = clientData.valorContrato;
+        row.rotina_conferencia = clientData.rotinaConferencia;
+        row.forma_pagamento = clientData.formaPagamento;
+        row.saldo_anuncio = clientData.saldoAnuncio;
+        row.gasto_diario_medio = clientData.gastoDiarioMedio;
+        row.data_deposito = clientData.dataDeposito;
       }
       const { error } = await supabase.from("clients").insert(row);
       if (error) throw error;
@@ -93,6 +103,11 @@ export function useClients(productId: ProductId) {
         row.custo_api = data.custoAPI;
       } else {
         row.valor_contrato = data.valorContrato;
+        row.rotina_conferencia = data.rotinaConferencia;
+        row.forma_pagamento = data.formaPagamento;
+        row.saldo_anuncio = data.saldoAnuncio;
+        row.gasto_diario_medio = data.gastoDiarioMedio;
+        row.data_deposito = data.dataDeposito;
       }
       const { error } = await supabase.from("clients").update(row).eq("id", id);
       if (error) throw error;

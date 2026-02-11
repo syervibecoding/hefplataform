@@ -10,12 +10,17 @@ export interface StepInfo {
   at?: string;
 }
 
+export interface CustomStep {
+  id: string;
+  label: string;
+}
+
 export interface ChecklistRecord {
   id: string;
   client_id: string;
   tipo: ChecklistTipo;
   periodo: string;
-  steps: Record<string, boolean | StepInfo>;
+  steps: Record<string, boolean | StepInfo | CustomStep[]>;
 }
 
 function isStepInfo(v: unknown): v is StepInfo {
@@ -31,6 +36,12 @@ export function isStepDone(v: unknown): boolean {
 export function getStepInfo(v: unknown): StepInfo | null {
   if (isStepInfo(v)) return v;
   return null;
+}
+
+export function getCustomSteps(steps: Record<string, any>): CustomStep[] {
+  const raw = steps?._custom_steps;
+  if (Array.isArray(raw)) return raw as CustomStep[];
+  return [];
 }
 
 export function useClientChecklist(clientId: string, tipo: ChecklistTipo, periodo: string) {
@@ -82,11 +93,77 @@ export function useClientChecklist(clientId: string, tipo: ChecklistTipo, period
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
+  const addCustomStep = useMutation({
+    mutationFn: async (label: string) => {
+      const current = query.data;
+      const currentSteps = { ...(current?.steps || {}) };
+      const customSteps = getCustomSteps(currentSteps);
+      const newCustomStep: CustomStep = { id: `custom_${Date.now()}`, label };
+      const updatedCustomSteps = [...customSteps, newCustomStep];
+      const newSteps = { ...currentSteps, _custom_steps: updatedCustomSteps };
+
+      if (current?.id) {
+        const { error } = await supabase
+          .from("client_checklists")
+          .update({ steps: newSteps as any })
+          .eq("id", current.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("client_checklists")
+          .insert({ client_id: clientId, tipo, periodo, steps: newSteps as any });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  const removeCustomStep = useMutation({
+    mutationFn: async (stepId: string) => {
+      const current = query.data;
+      if (!current?.id) return;
+      const currentSteps = { ...(current.steps || {}) };
+      const customSteps = getCustomSteps(currentSteps).filter((s) => s.id !== stepId);
+      const { [stepId]: _removed, ...restSteps } = currentSteps;
+      const newSteps = { ...restSteps, _custom_steps: customSteps };
+
+      const { error } = await supabase
+        .from("client_checklists")
+        .update({ steps: newSteps as any })
+        .eq("id", current.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  const editCustomStep = useMutation({
+    mutationFn: async ({ stepId, label }: { stepId: string; label: string }) => {
+      const current = query.data;
+      if (!current?.id) return;
+      const currentSteps = { ...(current.steps || {}) };
+      const customSteps = getCustomSteps(currentSteps).map((s) =>
+        s.id === stepId ? { ...s, label } : s
+      );
+      const newSteps = { ...currentSteps, _custom_steps: customSteps };
+
+      const { error } = await supabase
+        .from("client_checklists")
+        .update({ steps: newSteps as any })
+        .eq("id", current.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
   return {
     checklist: query.data,
     isLoading: query.isLoading,
     toggleStep: (stepId: string, userId: string, username: string) =>
       toggleStep.mutate({ stepId, userId, username }),
+    addCustomStep: (label: string) => addCustomStep.mutate(label),
+    removeCustomStep: (stepId: string) => removeCustomStep.mutate(stepId),
+    editCustomStep: (stepId: string, label: string) => editCustomStep.mutate({ stepId, label }),
+    isAddingCustom: addCustomStep.isPending,
   };
 }
 
@@ -99,10 +176,8 @@ export function useReconcileChecklists(clientId: string, tipo: ChecklistTipo, cu
     queryFn: async () => {
       if (currentDates.length === 0) return null;
 
-      // Get the month range from current dates
       const months = new Set(currentDates.map((d) => d.substring(0, 7)));
 
-      // Fetch all existing records for these months
       const allRecords: any[] = [];
       for (const month of months) {
         const { data } = await supabase
@@ -114,18 +189,14 @@ export function useReconcileChecklists(clientId: string, tipo: ChecklistTipo, cu
         if (data) allRecords.push(...data);
       }
 
-      // Find orphans: records whose periodo is not in currentDates
       const orphans = allRecords.filter((r) => !currentDates.includes(r.periodo));
-      // Find missing: dates that have no record
       const existingDates = new Set(allRecords.map((r) => r.periodo));
       const missing = currentDates.filter((d) => !existingDates.has(d));
 
-      // Match orphans to missing dates (same month, closest day)
       for (const orphan of orphans) {
         const orphanMonth = orphan.periodo.substring(0, 7);
         const target = missing.find((m) => m.substring(0, 7) === orphanMonth);
         if (target) {
-          // Move the orphan to the new date
           await supabase
             .from("client_checklists")
             .update({ periodo: target })
@@ -134,10 +205,9 @@ export function useReconcileChecklists(clientId: string, tipo: ChecklistTipo, cu
         }
       }
 
-      // Invalidate to reload fresh data
       qc.invalidateQueries({ queryKey: ["client-checklist", clientId, tipo] });
       return true;
     },
-    staleTime: 60000, // Only reconcile once per minute
+    staleTime: 60000,
   });
 }

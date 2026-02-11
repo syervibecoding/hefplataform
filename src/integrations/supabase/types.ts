@@ -85,12 +85,17 @@ export type Database = {
           contato: string
           created_at: string
           custo_api: number | null
+          data_deposito: string | null
           email: string
           faturamento: number | null
+          forma_pagamento: string | null
           frequencia: string | null
+          gasto_diario_medio: number | null
           id: string
           nome: string
           product_id: string
+          rotina_conferencia: Json | null
+          saldo_anuncio: number | null
           status: string
           updated_at: string
           valor_contrato: number | null
@@ -104,12 +109,17 @@ export type Database = {
           contato?: string
           created_at?: string
           custo_api?: number | null
+          data_deposito?: string | null
           email?: string
           faturamento?: number | null
+          forma_pagamento?: string | null
           frequencia?: string | null
+          gasto_diario_medio?: number | null
           id?: string
           nome: string
           product_id: string
+          rotina_conferencia?: Json | null
+          saldo_anuncio?: number | null
           status?: string
           updated_at?: string
           valor_contrato?: number | null
@@ -123,12 +133,17 @@ export type Database = {
           contato?: string
           created_at?: string
           custo_api?: number | null
+          data_deposito?: string | null
           email?: string
           faturamento?: number | null
+          forma_pagamento?: string | null
           frequencia?: string | null
+          gasto_diario_medio?: number | null
           id?: string
           nome?: string
           product_id?: string
+          rotina_conferencia?: Json | null
+          saldo_anuncio?: number | null
           status?: string
           updated_at?: string
           valor_contrato?: number | null
