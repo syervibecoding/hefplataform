@@ -12,7 +12,6 @@ import { useMelhorias } from "@/hooks/useMelhorias";
 import {
   type ProductId,
   type AnyClient,
-  type HefSysClient,
   PRODUCTS,
 } from "@/data/constants";
 
@@ -114,7 +113,7 @@ export default function Index() {
           />
         );
       case "calendar":
-        return <CalendarPage clients={clients.filter((c): c is HefSysClient => "cnpjs" in c)} />;
+        return <CalendarPage clients={clients} activeProduct={activeProduct} />;
       case "users":
         return <UsersPage />;
       case "workflow":

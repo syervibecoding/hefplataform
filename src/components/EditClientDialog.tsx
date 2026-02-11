@@ -6,7 +6,7 @@ import { Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type ProductId, type AnyClient, type ScheduleConfig, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
+import { type ProductId, type AnyClient, type GenericClient, type ScheduleConfig, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
 import ScheduleInput from "@/components/ScheduleInput";
 
 const baseSchema = z.object({
@@ -29,6 +29,14 @@ const genericSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
 });
 
+const trafegoSchema = baseSchema.extend({
+  valorContrato: z.coerce.number().min(0, "Valor inválido"),
+  formaPagamento: z.string().optional(),
+  saldoAnuncio: z.coerce.number().min(0).optional(),
+  gastoDiarioMedio: z.coerce.number().min(0).optional(),
+  dataDeposito: z.string().optional(),
+});
+
 interface Props {
   client: AnyClient;
   activeProduct: ProductId;
@@ -38,8 +46,10 @@ interface Props {
 export default function EditClientDialog({ client, activeProduct, onEditClient }: Props) {
   const [open, setOpen] = useState(false);
   const isHefsys = activeProduct === "hefsys";
+  const isTrafego = activeProduct === "trafego";
   const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
   const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
+  const [rotinaConferencia, setRotinaConferencia] = useState<ScheduleConfig>({});
 
   const hefsysForm = useForm<z.infer<typeof hefsysSchema>>({
     resolver: zodResolver(hefsysSchema),
@@ -49,8 +59,14 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
     resolver: zodResolver(genericSchema),
   });
 
-  const form = isHefsys ? hefsysForm : genericForm;
+  const trafegoForm = useForm<z.infer<typeof trafegoSchema>>({
+    resolver: zodResolver(trafegoSchema),
+  });
+
+  const form = isHefsys ? hefsysForm : isTrafego ? trafegoForm : genericForm;
   const { register, handleSubmit, formState: { errors }, setValue, watch } = form as any;
+
+  const formaPagamento = isTrafego ? watch("formaPagamento") : "";
 
   useEffect(() => {
     if (open) {
@@ -69,6 +85,21 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
         });
         setAgendaCertidoes(client.agendaCertidoes || {});
         setAgendaCaixasPostais(client.agendaCaixasPostais || {});
+      } else if (isTrafego && !isHefSysClient(client)) {
+        const gc = client as GenericClient;
+        trafegoForm.reset({
+          nome: gc.nome,
+          contato: gc.contato,
+          whatsapp: gc.whatsapp,
+          email: gc.email,
+          status: gc.status,
+          valorContrato: gc.valorContrato,
+          formaPagamento: gc.formaPagamento || "",
+          saldoAnuncio: gc.saldoAnuncio || 0,
+          gastoDiarioMedio: gc.gastoDiarioMedio || 0,
+          dataDeposito: gc.dataDeposito || "",
+        });
+        setRotinaConferencia(gc.rotinaConferencia || {});
       } else if (!isHefSysClient(client)) {
         genericForm.reset({
           nome: client.nome,
@@ -85,6 +116,15 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
   const onSubmit = (data: any) => {
     if (isHefsys) {
       onEditClient(client.id, { ...data, agendaCertidoes, agendaCaixasPostais });
+    } else if (isTrafego) {
+      onEditClient(client.id, {
+        ...data,
+        rotinaConferencia,
+        formaPagamento: data.formaPagamento || null,
+        saldoAnuncio: data.formaPagamento === "pix" ? data.saldoAnuncio : 0,
+        gastoDiarioMedio: data.formaPagamento === "pix" ? data.gastoDiarioMedio : 0,
+        dataDeposito: data.formaPagamento === "pix" ? data.dataDeposito || null : null,
+      });
     } else {
       onEditClient(client.id, data);
     }
@@ -248,7 +288,53 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
             </>
           )}
 
-          {!isHefsys && (
+          {isTrafego && (
+            <>
+              <div>
+                <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
+                <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                {errors.valorContrato && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
+              </div>
+
+              <ScheduleInput
+                label="Rotina de Conferência de Anúncios"
+                value={rotinaConferencia}
+                onChange={setRotinaConferencia}
+                colorClass="text-clix-warning"
+              />
+
+              <div>
+                <Label className="text-xs text-muted-foreground">Forma de Pagamento do Anúncio</Label>
+                <select {...register("formaPagamento")} className="w-full mt-1 h-10 rounded-md border border-border bg-secondary px-3 text-sm">
+                  <option value="">Não informado</option>
+                  <option value="pix">PIX</option>
+                  <option value="cartao">Cartão de Crédito</option>
+                </select>
+              </div>
+
+              {formaPagamento === "pix" && (
+                <div className="space-y-3 p-3 bg-clix-warning/5 border border-clix-warning/20 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-clix-warning font-semibold">Controle de Saldo PIX</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Saldo Depositado (R$)</Label>
+                      <Input {...register("saldoAnuncio")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Gasto Diário Médio (R$)</Label>
+                      <Input {...register("gastoDiarioMedio")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Data do Depósito</Label>
+                    <Input {...register("dataDeposito")} type="date" className="mt-1 bg-secondary border-border" />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {!isHefsys && !isTrafego && (
             <div>
               <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
               <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />

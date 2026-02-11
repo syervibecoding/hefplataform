@@ -83,6 +83,11 @@ export interface HefSysClient extends BaseClient {
 
 export interface GenericClient extends BaseClient {
   valorContrato: number;
+  rotinaConferencia?: ScheduleConfig;
+  formaPagamento?: string | null;
+  saldoAnuncio?: number;
+  gastoDiarioMedio?: number;
+  dataDeposito?: string | null;
 }
 
 // Keep backward compat

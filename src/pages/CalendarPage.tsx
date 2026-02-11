@@ -1,13 +1,14 @@
 import { useState, useMemo, useCallback } from "react";
-import { ChevronLeft, ChevronRight, X, GripVertical } from "lucide-react";
-import { type HefSysClient, type ScheduleConfig, TODAS_CONSULTAS, FREQUENCIAS } from "@/data/constants";
+import { ChevronLeft, ChevronRight, X, GripVertical, AlertTriangle, Eye } from "lucide-react";
+import { type HefSysClient, type GenericClient, type AnyClient, type ScheduleConfig, TODAS_CONSULTAS, FREQUENCIAS, isHefSysClient } from "@/data/constants";
 import { getScheduleDays, scheduleLabel } from "@/lib/schedule-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Props {
-  clients: HefSysClient[];
+  clients: AnyClient[];
+  activeProduct: string;
 }
 
 function getDaysInMonth(year: number, month: number) {
@@ -29,8 +30,9 @@ interface CalendarEvent {
   consultas: { id: string; nome: string; tipo: string }[];
   color: string;
   eventKey: string;
-  originalDay: number; // the day before overrides, for tracking drag source
-  tipo: "certidoes" | "caixas";
+  originalDay: number;
+  tipo: "certidoes" | "caixas" | "conferencia" | "alerta_saldo";
+  label?: string;
 }
 
 const COLORS = [
@@ -47,12 +49,11 @@ const MONTH_NAMES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-export default function CalendarPage({ clients }: Props) {
+export default function CalendarPage({ clients, activeProduct }: Props) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  // Drag overrides removed - now persisted in DB via schedule overrides
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
@@ -77,7 +78,7 @@ export default function CalendarPage({ clients }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients", "hefsys"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
     onError: () => toast.error("Erro ao salvar movimentação"),
   });
@@ -92,78 +93,117 @@ export default function CalendarPage({ clients }: Props) {
     setSelectedDay(null);
   };
 
-  const baseEventsByDay = useMemo(() => {
+  const isHefsysView = activeProduct === "hefsys";
+  const isTrafegoView = activeProduct === "trafego";
+
+  const eventsByDay = useMemo(() => {
     const map: Record<number, CalendarEvent[]> = {};
     const activeClients = clients.filter((c) => c.status === "ativo");
     const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
 
-    activeClients.forEach((client, idx) => {
-      const color = COLORS[idx % COLORS.length];
+    if (isHefsysView) {
+      const hefsysClients = activeClients.filter(isHefSysClient);
+      hefsysClients.forEach((client, idx) => {
+        const color = COLORS[idx % COLORS.length];
 
-      const certidoes = client.consultas
-        .map((cid) => TODAS_CONSULTAS.find((q) => q.id === cid))
-        .filter((q) => q && q.tipo === "certidao")
-        .map((q) => ({ id: q!.id, nome: q!.nome, tipo: q!.tipo }));
+        const certidoes = client.consultas
+          .map((cid) => TODAS_CONSULTAS.find((q) => q.id === cid))
+          .filter((q) => q && q.tipo === "certidao")
+          .map((q) => ({ id: q!.id, nome: q!.nome, tipo: q!.tipo }));
 
-      const caixas = client.consultas
-        .map((cid) => TODAS_CONSULTAS.find((q) => q.id === cid))
-        .filter((q) => q && q.tipo === "caixa_postal")
-        .map((q) => ({ id: q!.id, nome: q!.nome, tipo: q!.tipo }));
+        const caixas = client.consultas
+          .map((cid) => TODAS_CONSULTAS.find((q) => q.id === cid))
+          .filter((q) => q && q.tipo === "caixa_postal")
+          .map((q) => ({ id: q!.id, nome: q!.nome, tipo: q!.tipo }));
 
-      // Build reverse override map: renderedDay → originalRuleDay
-      const buildReverseMap = (schedule: ScheduleConfig) => {
-        const reverseMap: Record<number, number> = {};
-        const overrides = schedule.overrides?.[monthKey];
-        if (overrides) {
-          for (const [origStr, newDay] of Object.entries(overrides)) {
-            reverseMap[newDay] = parseInt(origStr);
+        const buildReverseMap = (schedule: ScheduleConfig) => {
+          const reverseMap: Record<number, number> = {};
+          const overrides = schedule.overrides?.[monthKey];
+          if (overrides) {
+            for (const [origStr, newDay] of Object.entries(overrides)) {
+              reverseMap[newDay] = parseInt(origStr);
+            }
+          }
+          return reverseMap;
+        };
+
+        if (certidoes.length > 0) {
+          const schedule = client.agendaCertidoes || {};
+          const days = getScheduleDays(schedule, currentYear, currentMonth);
+          const reverseMap = buildReverseMap(schedule);
+          days.forEach((day) => {
+            const ruleDay = reverseMap[day] ?? day;
+            const eventKey = `${client.id}-cert-${ruleDay}`;
+            if (!map[day]) map[day] = [];
+            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...certidoes], color, eventKey, originalDay: ruleDay, tipo: "certidoes" });
+          });
+        }
+
+        if (caixas.length > 0) {
+          const schedule = client.agendaCaixasPostais || {};
+          const days = getScheduleDays(schedule, currentYear, currentMonth);
+          const reverseMap = buildReverseMap(schedule);
+          days.forEach((day) => {
+            const ruleDay = reverseMap[day] ?? day;
+            const eventKey = `${client.id}-caixa-${ruleDay}`;
+            if (!map[day]) map[day] = [];
+            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...caixas], color, eventKey, originalDay: ruleDay, tipo: "caixas" });
+          });
+        }
+      });
+    }
+
+    if (isTrafegoView) {
+      const trafegoClients = activeClients.filter((c) => !isHefSysClient(c)) as GenericClient[];
+      trafegoClients.forEach((client, idx) => {
+        const color = COLORS[idx % COLORS.length];
+
+        // Rotina de conferência
+        const rotina = client.rotinaConferencia || {};
+        if (rotina.dias || rotina.diaSemana !== undefined || rotina.primeiroDiaUtil || rotina.ultimoDiaUtil) {
+          const days = getScheduleDays(rotina, currentYear, currentMonth);
+          days.forEach((day) => {
+            if (!map[day]) map[day] = [];
+            map[day].push({
+              clientName: client.nome,
+              clientId: client.id,
+              consultas: [],
+              color: "bg-clix-warning/20 text-clix-warning border-clix-warning/30",
+              eventKey: `${client.id}-conf-${day}`,
+              originalDay: day,
+              tipo: "conferencia",
+              label: `Conferir Anúncios`,
+            });
+          });
+        }
+
+        // Alerta de saldo PIX
+        if (client.formaPagamento === "pix" && client.saldoAnuncio && client.gastoDiarioMedio && client.dataDeposito) {
+          const depositDate = new Date(client.dataDeposito + "T00:00:00");
+          const diasRestantes = Math.floor(client.saldoAnuncio / client.gastoDiarioMedio);
+          const endDate = new Date(depositDate);
+          endDate.setDate(endDate.getDate() + diasRestantes);
+
+          if (endDate.getFullYear() === currentYear && endDate.getMonth() === currentMonth) {
+            const endDay = endDate.getDate();
+            if (!map[endDay]) map[endDay] = [];
+            map[endDay].push({
+              clientName: client.nome,
+              clientId: client.id,
+              consultas: [],
+              color: "bg-destructive/20 text-destructive border-destructive/30",
+              eventKey: `${client.id}-saldo-${endDay}`,
+              originalDay: endDay,
+              tipo: "alerta_saldo",
+              label: `Saldo Esgota`,
+            });
           }
         }
-        return reverseMap;
-      };
-
-      // Certidões
-      if (certidoes.length > 0) {
-        const schedule = client.agendaCertidoes || {};
-        const days = getScheduleDays(schedule, currentYear, currentMonth);
-        const reverseMap = buildReverseMap(schedule);
-        days.forEach((day) => {
-          const ruleDay = reverseMap[day] ?? day; // the original rule day before overrides
-          const eventKey = `${client.id}-cert-${ruleDay}`;
-          if (!map[day]) map[day] = [];
-          const existing = map[day].find((e) => e.clientId === client.id && e.tipo === "certidoes");
-          if (existing) {
-            existing.consultas.push(...certidoes);
-          } else {
-            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...certidoes], color, eventKey, originalDay: ruleDay, tipo: "certidoes" });
-          }
-        });
-      }
-
-      // Caixas Postais
-      if (caixas.length > 0) {
-        const schedule = client.agendaCaixasPostais || {};
-        const days = getScheduleDays(schedule, currentYear, currentMonth);
-        const reverseMap = buildReverseMap(schedule);
-        days.forEach((day) => {
-          const ruleDay = reverseMap[day] ?? day;
-          const eventKey = `${client.id}-caixa-${ruleDay}`;
-          if (!map[day]) map[day] = [];
-          const existing = map[day].find((e) => e.clientId === client.id && e.tipo === "caixas");
-          if (existing) {
-            existing.consultas.push(...caixas);
-          } else {
-            map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...caixas], color, eventKey, originalDay: ruleDay, tipo: "caixas" });
-          }
-        });
-      }
-    });
+      });
+    }
 
     return map;
-  }, [clients, currentMonth, currentYear]);
-
-  // Overrides are now persisted in DB — eventsByDay comes directly from baseEventsByDay
-  const eventsByDay = baseEventsByDay;
+  }, [clients, currentMonth, currentYear, isHefsysView, isTrafegoView]);
 
   const handleDragStart = useCallback((e: React.DragEvent, eventKey: string) => {
     e.dataTransfer.setData("text/plain", eventKey);
@@ -181,22 +221,20 @@ export default function CalendarPage({ clients }: Props) {
     const eventKey = e.dataTransfer.getData("text/plain");
     if (!eventKey) { setDraggingKey(null); return; }
 
-    // Find the event and its source day
-    for (const [dayStr, events] of Object.entries(baseEventsByDay)) {
+    for (const [dayStr, events] of Object.entries(eventsByDay)) {
       const ev = events.find((e) => e.eventKey === eventKey);
-      if (ev) {
+      if (ev && (ev.tipo === "certidoes" || ev.tipo === "caixas")) {
         const sourceDay = parseInt(dayStr);
         if (sourceDay === targetDay) break;
         const client = clients.find((c) => c.id === ev.clientId);
-        if (!client) break;
+        if (!client || !isHefSysClient(client)) break;
         const schedule = ev.tipo === "certidoes" ? (client.agendaCertidoes || {}) : (client.agendaCaixasPostais || {});
-        // Use ev.originalDay (the true rule day) so subsequent drags update the same override key
         saveOverrideMutation.mutate({ clientId: ev.clientId, tipo: ev.tipo, schedule, originalDay: ev.originalDay, newDay: targetDay });
         break;
       }
     }
     setDraggingKey(null);
-  }, [baseEventsByDay, clients, saveOverrideMutation]);
+  }, [eventsByDay, clients, saveOverrideMutation]);
 
   const handleDragEnd = useCallback(() => {
     setDraggingKey(null);
@@ -207,6 +245,8 @@ export default function CalendarPage({ clients }: Props) {
   const totalCells = Math.ceil((firstDayOfWeek + daysInMonth) / 7) * 7;
 
   const selectedEvents = selectedDay ? (eventsByDay[selectedDay] || []) : [];
+
+  const isDraggable = (ev: CalendarEvent) => ev.tipo === "certidoes" || ev.tipo === "caixas";
 
   return (
     <div className="space-y-4">
@@ -225,7 +265,8 @@ export default function CalendarPage({ clients }: Props) {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">
-              {clients.filter((c) => c.status === "ativo").length} clientes ativos · Arraste eventos entre dias
+              {clients.filter((c) => c.status === "ativo").length} clientes ativos
+              {isHefsysView && " · Arraste eventos entre dias"}
             </span>
           </div>
         </div>
@@ -248,8 +289,8 @@ export default function CalendarPage({ clients }: Props) {
             return (
               <div
                 key={i}
-                onDragOver={isValid ? handleDragOver : undefined}
-                onDrop={isValid ? (e) => handleDrop(e, dayNum) : undefined}
+                onDragOver={isValid && isHefsysView ? handleDragOver : undefined}
+                onDrop={isValid && isHefsysView ? (e) => handleDrop(e, dayNum) : undefined}
                 onClick={() => isValid && events.length > 0 && setSelectedDay(dayNum === selectedDay ? null : dayNum)}
                 className={`min-h-[100px] border-b border-r border-border/50 p-1.5 transition-colors ${
                   !isValid ? "bg-secondary/30" : weekend ? "bg-secondary/20" : ""
@@ -268,14 +309,16 @@ export default function CalendarPage({ clients }: Props) {
                       {events.map((ev, idx) => (
                         <div
                           key={idx}
-                          draggable
-                          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ev.eventKey); }}
-                          onDragEnd={handleDragEnd}
-                          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border truncate cursor-grab active:cursor-grabbing flex items-center gap-0.5 ${ev.color}`}
-                          title={`${ev.clientName}: ${ev.consultas.map((c) => c.nome).join(", ")}`}
+                          draggable={isDraggable(ev)}
+                          onDragStart={isDraggable(ev) ? (e) => { e.stopPropagation(); handleDragStart(e, ev.eventKey); } : undefined}
+                          onDragEnd={isDraggable(ev) ? handleDragEnd : undefined}
+                          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border truncate flex items-center gap-0.5 ${ev.color} ${isDraggable(ev) ? "cursor-grab active:cursor-grabbing" : ""}`}
+                          title={ev.label ? `${ev.label} - ${ev.clientName}` : `${ev.clientName}: ${ev.consultas.map((c) => c.nome).join(", ")}`}
                         >
-                          <GripVertical size={8} className="opacity-40 flex-shrink-0" />
-                          {ev.clientName} ({ev.consultas.length})
+                          {isDraggable(ev) && <GripVertical size={8} className="opacity-40 flex-shrink-0" />}
+                          {ev.tipo === "alerta_saldo" && <AlertTriangle size={8} className="flex-shrink-0" />}
+                          {ev.tipo === "conferencia" && <Eye size={8} className="flex-shrink-0" />}
+                          {ev.label ? `${ev.clientName}` : `${ev.clientName} (${ev.consultas.length})`}
                         </div>
                       ))}
                     </div>
@@ -292,7 +335,7 @@ export default function CalendarPage({ clients }: Props) {
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <h3 className="text-[15px] font-semibold">
-              Dia {selectedDay} de {MONTH_NAMES[currentMonth]} — Detalhamento das Consultas
+              Dia {selectedDay} de {MONTH_NAMES[currentMonth]} — Detalhamento
             </h3>
             <button onClick={() => setSelectedDay(null)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
               <X size={16} />
@@ -304,36 +347,51 @@ export default function CalendarPage({ clients }: Props) {
                 <div className="flex items-center gap-2 mb-3">
                   <div className={`w-3 h-3 rounded ${ev.color.split(" ")[0]}`} />
                   <span className="text-sm font-bold">{ev.clientName}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    · {ev.consultas.length} consultas
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {ev.consultas.filter((c) => c.tipo === "certidao").length > 0 && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-1.5">Certidões</p>
-                      <div className="space-y-1">
-                        {ev.consultas.filter((c) => c.tipo === "certidao").map((c) => (
-                          <div key={c.id} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-clix-info/10 text-clix-info border border-clix-info/20">
-                            {c.nome}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {ev.consultas.filter((c) => c.tipo === "caixa_postal").length > 0 && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-1.5">Caixas Postais</p>
-                      <div className="space-y-1">
-                        {ev.consultas.filter((c) => c.tipo === "caixa_postal").map((c) => (
-                          <div key={c.id} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-clix-magenta/10 text-clix-magenta border border-clix-magenta/20">
-                            {c.nome}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  {ev.label && <span className="text-[11px] text-muted-foreground">· {ev.label}</span>}
+                  {ev.consultas.length > 0 && (
+                    <span className="text-[11px] text-muted-foreground">· {ev.consultas.length} consultas</span>
                   )}
                 </div>
+                {ev.tipo === "alerta_saldo" && (
+                  <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive font-medium">
+                    <AlertTriangle size={16} />
+                    Saldo de anúncios previsto para esgotar neste dia!
+                  </div>
+                )}
+                {ev.tipo === "conferencia" && (
+                  <div className="flex items-center gap-2 p-3 bg-clix-warning/10 border border-clix-warning/20 rounded-lg text-sm text-clix-warning font-medium">
+                    <Eye size={16} />
+                    Conferir conta de anúncios deste cliente
+                  </div>
+                )}
+                {ev.consultas.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {ev.consultas.filter((c) => c.tipo === "certidao").length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-1.5">Certidões</p>
+                        <div className="space-y-1">
+                          {ev.consultas.filter((c) => c.tipo === "certidao").map((c) => (
+                            <div key={c.id} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-clix-info/10 text-clix-info border border-clix-info/20">
+                              {c.nome}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {ev.consultas.filter((c) => c.tipo === "caixa_postal").length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-1.5">Caixas Postais</p>
+                        <div className="space-y-1">
+                          {ev.consultas.filter((c) => c.tipo === "caixa_postal").map((c) => (
+                            <div key={c.id} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-clix-magenta/10 text-clix-magenta border border-clix-magenta/20">
+                              {c.nome}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -347,13 +405,26 @@ export default function CalendarPage({ clients }: Props) {
           <div className="grid grid-cols-2 gap-3">
             {clients.filter((c) => c.status === "ativo").map((client, idx) => {
               const color = COLORS[idx % COLORS.length];
-              const freq = FREQUENCIAS.find((f) => f.id === client.frequencia);
+              if (isHefSysClient(client)) {
+                const freq = FREQUENCIAS.find((f) => f.id === client.frequencia);
+                return (
+                  <div key={client.id} className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded ${color.split(" ")[0]}`} />
+                    <span className="text-sm font-medium">{client.nome}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      · {freq?.label} · Cert: {scheduleLabel(client.agendaCertidoes || {})} · Caixas: {scheduleLabel(client.agendaCaixasPostais || {})}
+                    </span>
+                  </div>
+                );
+              }
+              const gc = client as GenericClient;
               return (
                 <div key={client.id} className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded ${color.split(" ")[0]}`} />
                   <span className="text-sm font-medium">{client.nome}</span>
                   <span className="text-[11px] text-muted-foreground">
-                    · {freq?.label} · Cert: {scheduleLabel(client.agendaCertidoes || {})} · Caixas: {scheduleLabel(client.agendaCaixasPostais || {})}
+                    {gc.formaPagamento === "pix" ? " · PIX" : gc.formaPagamento === "cartao" ? " · Cartão" : ""}
+                    {gc.rotinaConferencia && Object.keys(gc.rotinaConferencia).length > 0 ? ` · Conf: ${scheduleLabel(gc.rotinaConferencia)}` : ""}
                   </span>
                 </div>
               );
