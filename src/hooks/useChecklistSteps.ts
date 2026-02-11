@@ -48,11 +48,36 @@ export function useChecklistSteps(tipo: ChecklistTipo) {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
+  const updateStepLabel = useMutation({
+    mutationFn: async ({ stepId, label }: { stepId: string; label: string }) => {
+      const { error } = await supabase
+        .from("checklist_steps")
+        .update({ label })
+        .eq("id", stepId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  const reorderSteps = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      const updates = orderedIds.map((id, idx) =>
+        supabase.from("checklist_steps").update({ position: idx }).eq("id", id)
+      );
+      const results = await Promise.all(updates);
+      const err = results.find((r) => r.error);
+      if (err?.error) throw err.error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
   return {
     steps: query.data || [],
     isLoading: query.isLoading,
     addStep: (label: string) => addStep.mutate(label),
     removeStep: (stepId: string) => removeStep.mutate(stepId),
+    updateStepLabel: (stepId: string, label: string) => updateStepLabel.mutate({ stepId, label }),
+    reorderSteps: (orderedIds: string[]) => reorderSteps.mutate(orderedIds),
     isAdding: addStep.isPending,
   };
 }
