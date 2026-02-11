@@ -1,79 +1,115 @@
+# Plano: Checklist por dia + Agenda de Trafego Pago
 
-# Plano: Corrigir Agenda + Excluir Usuarios
+## 1. Checklist dinamico por dia de consulta
 
-## Problema 1: Agenda nao persiste alteracoes
+### Situacao atual
 
-O calendario (`CalendarPage.tsx`) usa `dragOverrides` apenas em estado local (`useState`). Quando o usuario arrasta um evento para outro dia, a mudanca fica apenas na memoria e se perde ao trocar de pagina. Alem disso, a agenda do cliente (`agenda_certidoes`, `agenda_caixas_postais`) e salva como `ScheduleConfig` no banco -- nao como datas individuais. O drag-and-drop atual nao grava nada no banco.
+Os passos do checklist sao globais por tipo (`certidoes` / `caixas_postais`). Quando o admin adiciona um passo, ele aparece em todos os dias de consulta de todos os clientes.
 
-**Solucao**: Ao soltar um evento em outro dia, gravar a mudanca no banco. Como a `ScheduleConfig` define regras (ex: "dia 15 de cada mes") e nao datas avulsas, a abordagem sera:
+### Solucao
 
-1. Adicionar um campo `overrides` (jsonb) nas colunas `agenda_certidoes` e `agenda_caixas_postais` da tabela `clients`, no formato:
-   ```text
-   { "overrides": { "2026-02": { "originalDay": 15, "newDay": 20 } } }
-   ```
-   Isso permite que o sistema saiba que, para fevereiro de 2026, o dia original 15 foi movido para o dia 20.
+- Manter a tabela `checklist_steps` como **modelo padrao** (template)
+- Armazenar passos extras (adicionados em um dia especifico) dentro do JSONB `steps` da tabela `client_checklists`, usando uma chave especial `_custom_steps`
+- Formato: `{ "_custom_steps": [{ "id": "custom_xxx", "label": "Tarefa extra" }], "step_id_1": { done: true, ... } }`
+- O botao "Adicionar processo" no `ProcessChecklist` passara a salvar o novo passo apenas no registro daquele periodo (dia) e cliente
+- Os passos do template continuam aparecendo em todos os dias; passos customizados so aparecem no dia em que foram criados
+- Possibilidade de arrastar o processo para mudar ordem 
+- Conseguir editar o processo
 
-2. Atualizar `getScheduleDays` em `schedule-utils.ts` para aceitar overrides e aplicar as substituicoes.
+### Arquivos alterados
 
-3. No `CalendarPage.tsx`, ao fazer drop, chamar uma mutation que atualiza o campo de agenda do cliente no banco com o override do mes correspondente.
+- `**src/components/ProcessChecklist.tsx**`: Modificar para ler passos customizados do `client_checklists.steps._custom_steps`, exibir junto dos passos globais, e salvar novos passos apenas no registro do dia
+- `**src/hooks/useClientChecklist.ts**`: Adicionar mutation para inserir/remover passos customizados no JSONB
 
-4. O `ProcessChecklist` ja recalcula as datas a partir do `schedule` -- entao, ao incluir os overrides no schedule, os checklists automaticamente refletem a mudanca.
+---
 
-5. O hook `useReconcileChecklists` ja cuida de mover registros orfaos para novas datas.
+## 2. Trafego Pago - Rotina de conferencia de conta de anuncio
 
-## Problema 2: Excluir usuarios (admin)
+### Solucao
 
-**Solucao**: Criar uma edge function `delete-user` que usa o service role key para chamar `supabaseAdmin.auth.admin.deleteUser()`. Na interface, adicionar um botao de exclusao na tabela de usuarios com confirmacao.
+Adicionar novos campos na tabela `clients` (via migracao SQL):
 
-### Mudancas por arquivo
+- `rotina_conferencia` (jsonb) - ScheduleConfig para quando conferir a conta de anuncio (ex: toda segunda, todos os dias)
 
-**Novo: `supabase/functions/delete-user/index.ts`**
-- Recebe `{ user_id }` no body
-- Valida que o chamador e admin (via token)
-- Deleta o usuario com `auth.admin.deleteUser()`
-- As tabelas `profiles` e `user_roles` devem ter cascade ou serao limpas manualmente
+### Exibicao na agenda
 
-**`src/pages/UsersPage.tsx`**
-- Adicionar coluna "Acoes" na tabela
-- Botao de excluir com dialog de confirmacao (`AlertDialog`)
-- Chamar a edge function `delete-user`
-- Impedir que o admin exclua a si mesmo
-- Refetch apos exclusao
+- O calendario (`CalendarPage`) atualmente so mostra clientes HefSys. Sera expandido para tambem exibir eventos de clientes de Trafego Pago
+- Eventos de conferencia aparecerao com cor/estilo diferente e label como "Conferir Anuncios - [Nome do cliente]"
 
-**`src/pages/CalendarPage.tsx`**
-- No `handleDrop`, chamar mutation para salvar override no campo de agenda do cliente no banco
-- Remover dependencia exclusiva do estado local para overrides
-- Carregar overrides existentes do banco ao montar
+### Formularios
 
-**`src/lib/schedule-utils.ts`**
-- `getScheduleDays` aceitar parametro opcional `overrides` e aplicar substituicoes de dia
+- `**AddClientDialog.tsx**` e `**EditClientDialog.tsx**`: Quando o produto ativo for `trafego`, mostrar o campo `ScheduleInput` para definir a rotina de conferencia
 
-**`src/hooks/useClients.ts`**
-- Garantir que `agendaCertidoes` e `agendaCaixasPostais` carregam os overrides corretamente
+---
 
-**Migracao SQL**
-- Adicionar `ON DELETE CASCADE` nas foreign keys de `user_roles` e garantir que o `handle_new_user` trigger esta ativo para limpeza automatica
+## 3. Trafego Pago - Alerta de saldo de campanha (PIX)
 
-### Detalhes tecnicos
+### Novos campos na tabela `clients`:
+
+- `forma_pagamento` (text, default null) - "pix", "cartao", etc.
+- `saldo_anuncio` (numeric, default 0) - valor colocado na conta de anuncio
+- `gasto_diario_medio` (numeric, default 0) - media de gasto diario
+- `data_deposito` (date, default null) - data do ultimo deposito
+
+### Logica de alerta
+
+- Calculo: `diasRestantes = saldo_anuncio / gasto_diario_medio`
+- A partir de `data_deposito`, calcular em qual dia o saldo acaba
+- Mostrar no calendario um evento de alerta (vermelho) no dia previsto para o saldo acabar
+- Se o saldo acabar dentro de 3 dias, mostrar alerta visual tambem no dashboard
+
+### Formularios
+
+- Quando `product_id === "trafego"`, exibir:
+  - Select para forma de pagamento (PIX / Cartao de Credito)
+  - Se PIX: campos para saldo depositado, data do deposito, e media de gasto diario
+
+---
+
+## Detalhes tecnicos
+
+### Migracao SQL
 
 ```text
-Edge Function delete-user:
-  POST { user_id: string }
-  -> Verifica auth do chamador
-  -> supabaseAdmin.auth.admin.deleteUser(user_id)
-  -> Limpa profiles e user_roles manualmente (ou via cascade)
-  -> Retorna { success: true }
-
-Formato de overrides na agenda:
-  agenda_certidoes = {
-    dias: [15],
-    overrides: {
-      "2026-02": { "15": 20 }  // dia 15 movido para dia 20 em fev/2026
-    }
-  }
-
-getScheduleDays(config, year, month):
-  1. Calcula dias normais
-  2. Se config.overrides?.[`${year}-${month+1}`] existir, substitui dias
-  3. Retorna dias finais
+ALTER TABLE clients ADD COLUMN rotina_conferencia jsonb DEFAULT '{}';
+ALTER TABLE clients ADD COLUMN forma_pagamento text DEFAULT NULL;
+ALTER TABLE clients ADD COLUMN saldo_anuncio numeric DEFAULT 0;
+ALTER TABLE clients ADD COLUMN gasto_diario_medio numeric DEFAULT 0;
+ALTER TABLE clients ADD COLUMN data_deposito date DEFAULT NULL;
 ```
+
+### Estrutura de custom_steps no JSONB
+
+```text
+client_checklists.steps = {
+  "_custom_steps": [
+    { "id": "custom_1739xxx", "label": "Verificar pendencia SEFAZ" }
+  ],
+  "uuid-step-global-1": { "done": true, "user_id": "...", "username": "...", "at": "..." },
+  "custom_1739xxx": { "done": false }
+}
+```
+
+### Arquivos modificados (resumo)
+
+
+| Arquivo                               | Mudanca                                                  |
+| ------------------------------------- | -------------------------------------------------------- |
+| `src/components/ProcessChecklist.tsx` | Ler/adicionar/remover custom_steps por dia               |
+| `src/hooks/useClientChecklist.ts`     | Mutations para custom steps no JSONB                     |
+| `src/data/constants.ts`               | Novos campos em GenericClient (trafego)                  |
+| `src/hooks/useClients.ts`             | Mapear novos campos do DB                                |
+| `src/components/AddClientDialog.tsx`  | Campos de trafego (rotina, pagamento, saldo)             |
+| `src/components/EditClientDialog.tsx` | Campos de trafego (rotina, pagamento, saldo)             |
+| `src/pages/CalendarPage.tsx`          | Suportar eventos de trafego (conferencia + alerta saldo) |
+| `src/pages/Index.tsx`                 | Passar clientes de trafego para CalendarPage             |
+| `src/pages/ClientDetailPage.tsx`      | Exibir info de rotina e saldo para clientes trafego      |
+
+
+### Ordem de implementacao
+
+1. Migracao SQL (novos campos)
+2. Checklist dinamico por dia (ProcessChecklist + useClientChecklist)
+3. Formularios de trafego (Add/Edit dialogs)
+4. Calendario expandido (CalendarPage com eventos de trafego + alertas)
+5. Detail page atualizada para trafego
