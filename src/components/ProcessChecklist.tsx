@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useClientChecklist, useReconcileChecklists, isStepDone, getStepInfo, getCustomSteps, type ChecklistTipo } from "@/hooks/useClientChecklist";
 import { useChecklistSteps } from "@/hooks/useChecklistSteps";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Circle, GripVertical, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { type ScheduleConfig } from "@/data/constants";
 import { getScheduleDays } from "@/lib/schedule-utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -65,13 +65,18 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
   const [newStepLabel, setNewStepLabel] = useState("");
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const currentIndex = allDates.indexOf(selectedDate);
   const canPrev = currentIndex > 0;
-  const canNext = currentIndex < allDates.length - 1 && allDates[currentIndex + 1] <= todayStr;
+  // Admin can navigate to future dates, regular users cannot
+  const canNext = currentIndex < allDates.length - 1 && (isAdmin || allDates[currentIndex + 1] <= todayStr);
+
+  const isFutureDate = selectedDate > todayStr;
 
   const { checklist, isLoading, toggleStep, addCustomStep, removeCustomStep, editCustomStep, isAddingCustom } = useClientChecklist(clientId, tipo, selectedDate);
-  const { steps: templateSteps, isLoading: stepsLoading } = useChecklistSteps(tipo);
+  const { steps: templateSteps, isLoading: stepsLoading, updateStepLabel, reorderSteps } = useChecklistSteps(tipo);
 
   const stepsState = (checklist?.steps || {}) as Record<string, any>;
   const customSteps = getCustomSteps(stepsState);
@@ -102,11 +107,72 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
 
   const handleSaveEdit = () => {
     if (editingStepId && editingLabel.trim()) {
-      editCustomStep(editingStepId, editingLabel.trim());
+      const step = allSteps.find((s) => s.id === editingStepId);
+      if (step?.isCustom) {
+        editCustomStep(editingStepId, editingLabel.trim());
+      } else {
+        updateStepLabel(editingStepId, editingLabel.trim());
+      }
     }
     setEditingStepId(null);
     setEditingLabel("");
   };
+
+  // Drag-and-drop reorder
+  const handleDragStart = useCallback((idx: number) => {
+    setDragIndex(idx);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setDragOverIndex(idx);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragIndex === null || dragOverIndex === null || dragIndex === dragOverIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    // Only reorder template steps among themselves
+    const templateCount = templateSteps.length;
+
+    // If both are template steps, reorder in DB
+    if (dragIndex < templateCount && dragOverIndex < templateCount) {
+      const reordered = [...templateSteps];
+      const [moved] = reordered.splice(dragIndex, 1);
+      reordered.splice(dragOverIndex, 0, moved);
+      reorderSteps(reordered.map((s) => s.id));
+    }
+    // If both are custom steps, reorder in JSONB
+    else if (dragIndex >= templateCount && dragOverIndex >= templateCount) {
+      const customIdx = dragIndex - templateCount;
+      const customOverIdx = dragOverIndex - templateCount;
+      const reordered = [...customSteps];
+      const [moved] = reordered.splice(customIdx, 1);
+      reordered.splice(customOverIdx, 0, moved);
+      // We need to save reordered custom steps — use editCustomStep approach
+      // For now, we'll reconstruct and save via the hook
+      const current = checklist;
+      if (current?.id) {
+        const currentSteps = { ...(current.steps || {}) };
+        (currentSteps as any)._custom_steps = reordered;
+        import("@/integrations/supabase/client").then(({ supabase }) => {
+          supabase.from("client_checklists").update({ steps: currentSteps as any }).eq("id", current.id);
+        });
+      }
+    }
+
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, [dragIndex, dragOverIndex, templateSteps, customSteps, reorderSteps, checklist]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, []);
 
   if (isLoading || stepsLoading) {
     return (
@@ -139,8 +205,9 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
         >
           <ChevronLeft size={14} />
         </Button>
-        <span className="text-xs font-medium min-w-[150px] text-center">
+        <span className={`text-xs font-medium min-w-[150px] text-center ${isFutureDate ? "text-clix-info" : ""}`}>
           {formatDate(selectedDate)}
+          {isFutureDate && <span className="ml-1 text-[9px] opacity-70">(futuro)</span>}
         </span>
         <Button
           variant="ghost"
@@ -167,15 +234,26 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
           const done = isStepDone(val);
           const info = getStepInfo(val);
           const isEditing = editingStepId === step.id;
+          const isDragOver = dragOverIndex === i && dragIndex !== i;
 
           return (
             <li
               key={step.id}
-              className={`flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group ${
+              draggable={isAdmin}
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={(e) => handleDragOver(e, i)}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              className={`flex items-start gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group ${
                 done ? "bg-clix-success/5" : "hover:bg-muted/50"
-              }`}
+              } ${isDragOver ? "border-t-2 border-primary" : ""} ${dragIndex === i ? "opacity-40" : ""}`}
               onClick={() => !isEditing && user && toggleStep(step.id, user.id, profile?.username || "desconhecido")}
             >
+              {isAdmin && (
+                <div className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <GripVertical size={14} />
+                </div>
+              )}
               <Checkbox checked={done} className="mt-0.5 shrink-0" tabIndex={-1} />
               <div className="flex-1 min-w-0">
                 {isEditing ? (
@@ -214,7 +292,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
                   </>
                 )}
               </div>
-              {isAdmin && step.isCustom && !isEditing && (
+              {isAdmin && !isEditing && (
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
                   <button
                     className="text-muted-foreground hover:text-foreground"
@@ -226,16 +304,18 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
                   >
                     <Pencil size={13} />
                   </button>
-                  <button
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeCustomStep(step.id);
-                    }}
-                    title="Remover processo"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  {step.isCustom && (
+                    <button
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeCustomStep(step.id);
+                      }}
+                      title="Remover processo"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               )}
             </li>
