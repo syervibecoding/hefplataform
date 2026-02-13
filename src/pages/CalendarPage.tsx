@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { ChevronLeft, ChevronRight, X, GripVertical, AlertTriangle, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, GripVertical, AlertTriangle, Eye, Bot } from "lucide-react";
 import { type HefSysClient, type GenericClient, type AnyClient, type ScheduleConfig, TODAS_CONSULTAS, FREQUENCIAS, isHefSysClient } from "@/data/constants";
 import { getScheduleDays, scheduleLabel } from "@/lib/schedule-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,7 +31,7 @@ interface CalendarEvent {
   color: string;
   eventKey: string;
   originalDay: number;
-  tipo: "certidoes" | "caixas" | "conferencia" | "alerta_saldo";
+  tipo: "certidoes" | "caixas" | "conferencia" | "alerta_saldo" | "automacao";
   label?: string;
 }
 
@@ -95,6 +95,7 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
 
   const isHefsysView = activeProduct === "hefsys";
   const isTrafegoView = activeProduct === "trafego";
+  const isAutomacaoView = activeProduct === "automacao";
 
   const eventsByDay = useMemo(() => {
     const map: Record<number, CalendarEvent[]> = {};
@@ -202,8 +203,46 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
       });
     }
 
+    // Automação IA - lifecycle events
+    if (isAutomacaoView) {
+      const automacaoClients = activeClients.filter((c) => !isHefSysClient(c)) as GenericClient[];
+      automacaoClients.forEach((client, idx) => {
+        if (!client.dataGoLive) return;
+        const goLive = new Date(client.dataGoLive + "T00:00:00");
+        const color = COLORS[idx % COLORS.length];
+
+        const stages = [
+          { label: "Onboarding", offset: -7 },
+          { label: "Go-Live", offset: 0 },
+          { label: "Fim Testes (7d)", offset: 7 },
+          { label: "Revisão 1", offset: 15 },
+          { label: "Revisão 2", offset: 60 },
+          { label: "Revisão 3", offset: 90 },
+          { label: "Revisão 4", offset: 120 },
+        ];
+
+        stages.forEach((stage) => {
+          const stageDate = new Date(goLive.getTime() + stage.offset * 86400000);
+          if (stageDate.getFullYear() === currentYear && stageDate.getMonth() === currentMonth) {
+            const day = stageDate.getDate();
+            if (!map[day]) map[day] = [];
+            map[day].push({
+              clientName: client.nome,
+              clientId: client.id,
+              consultas: [],
+              color,
+              eventKey: `${client.id}-auto-${stage.offset}`,
+              originalDay: day,
+              tipo: "automacao",
+              label: stage.label,
+            });
+          }
+        });
+      });
+    }
+
     return map;
-  }, [clients, currentMonth, currentYear, isHefsysView, isTrafegoView]);
+  }, [clients, currentMonth, currentYear, isHefsysView, isTrafegoView, isAutomacaoView]);
 
   const handleDragStart = useCallback((e: React.DragEvent, eventKey: string) => {
     e.dataTransfer.setData("text/plain", eventKey);
@@ -362,6 +401,12 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
                   <div className="flex items-center gap-2 p-3 bg-clix-warning/10 border border-clix-warning/20 rounded-lg text-sm text-clix-warning font-medium">
                     <Eye size={16} />
                     Conferir conta de anúncios deste cliente
+                  </div>
+                )}
+                {ev.tipo === "automacao" && (
+                  <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm text-primary font-medium">
+                    <Bot size={16} />
+                    {ev.label} — {ev.clientName}
                   </div>
                 )}
                 {ev.consultas.length > 0 && (

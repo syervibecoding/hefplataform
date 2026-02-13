@@ -19,6 +19,8 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
   const { isAdmin } = useAuth();
   const isHefsys = isHefSysClient(client);
   const isTrafego = activeProduct === "trafego";
+  const isAutomacao = activeProduct === "automacao";
+  const isPlataformas = activeProduct === "plataformas";
 
   return (
     <div>
@@ -155,6 +157,85 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                   </div>
                 )}
               </div>
+
+              {/* Plataformas IA Info */}
+              {isPlataformas && (() => {
+                const gc = client as GenericClient;
+                if (!gc.nomePlataforma) return null;
+                return (
+                  <div className="mb-6 p-4 bg-clix-magenta/5 border border-clix-magenta/20 rounded-lg">
+                    <p className="text-[10px] uppercase tracking-wider text-clix-magenta font-semibold mb-2">Plataforma</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[11px] text-muted-foreground">Nome</label>
+                        <div className="text-sm font-bold mt-0.5">{gc.nomePlataforma}</div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground">Tipo</label>
+                        <div className="text-sm font-bold mt-0.5 capitalize">{gc.tipoPlataforma || "—"}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Automação IA Timeline */}
+              {isAutomacao && (() => {
+                const gc = client as GenericClient;
+                if (!gc.dataGoLive) return null;
+                const goLive = new Date(gc.dataGoLive + "T00:00:00");
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const stages = [
+                  { label: "Onboarding", desc: "Kick-off / Discovery + Parametrização", date: new Date(goLive.getTime() - 7 * 86400000), endDate: goLive },
+                  { label: "Teste e Acompanhamento", desc: "Período de 7 dias de testes", date: goLive, endDate: new Date(goLive.getTime() + 7 * 86400000) },
+                  { label: "Revisão 1", desc: "15–30 dias após go-live", date: new Date(goLive.getTime() + 15 * 86400000), endDate: new Date(goLive.getTime() + 30 * 86400000) },
+                  { label: "Revisão 2", desc: "60 dias após go-live", date: new Date(goLive.getTime() + 60 * 86400000), endDate: new Date(goLive.getTime() + 60 * 86400000) },
+                  { label: "Revisão 3", desc: "90 dias após go-live", date: new Date(goLive.getTime() + 90 * 86400000), endDate: new Date(goLive.getTime() + 90 * 86400000) },
+                  { label: "Revisão 4", desc: "120 dias / Semestral", date: new Date(goLive.getTime() + 120 * 86400000), endDate: new Date(goLive.getTime() + 120 * 86400000) },
+                ];
+
+                return (
+                  <div className="mb-6">
+                    <p className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-3">Timeline de Automação</p>
+                    <div className="space-y-0">
+                      {stages.map((stage, idx) => {
+                        const status = today >= stage.endDate ? "concluido" : today >= stage.date ? "atual" : "pendente";
+                        return (
+                          <div key={idx} className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${
+                                status === "concluido" ? "bg-clix-success border-clix-success" :
+                                status === "atual" ? "bg-primary border-primary" :
+                                "bg-secondary border-border"
+                              }`} />
+                              {idx < stages.length - 1 && (
+                                <div className={`w-0.5 h-8 ${status === "concluido" ? "bg-clix-success/40" : "bg-border"}`} />
+                              )}
+                            </div>
+                            <div className="pb-3 -mt-0.5">
+                              <div className={`text-sm font-semibold ${
+                                status === "concluido" ? "text-clix-success" : status === "atual" ? "text-primary" : "text-muted-foreground"
+                              }`}>{stage.label}</div>
+                              <div className="text-[11px] text-muted-foreground">{stage.desc}</div>
+                              <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                                {stage.date.toLocaleDateString("pt-BR")}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {gc.notasAutomacao && (
+                      <div className="mt-3 p-3 bg-primary/5 border border-primary/15 rounded-lg">
+                        <p className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-1">Notas Importantes</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{gc.notasAutomacao}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {isTrafego && (() => {
                 const gc = client as GenericClient;

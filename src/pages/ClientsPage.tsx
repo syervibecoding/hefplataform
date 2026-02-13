@@ -3,7 +3,7 @@ import StatusTag from "@/components/StatusTag";
 import AddClientDialog from "@/components/AddClientDialog";
 import EditClientDialog from "@/components/EditClientDialog";
 import DeleteClientDialog from "@/components/DeleteClientDialog";
-import { type AnyClient, type ProductId, isHefSysClient, FREQUENCIAS, TODAS_CONSULTAS } from "@/data/constants";
+import { type AnyClient, type ProductId, type GenericClient, isHefSysClient, FREQUENCIAS, TODAS_CONSULTAS } from "@/data/constants";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
@@ -18,14 +18,19 @@ interface Props {
 export default function ClientsPage({ clients, activeProduct, onSelectClient, onAddClient, onEditClient, onDeleteClient }: Props) {
   const { isAdmin } = useAuth();
   const isHefsys = activeProduct === "hefsys";
+  const isPlataformas = activeProduct === "plataformas";
 
   const headers = isHefsys
     ? isAdmin
       ? ["Cliente", "CNPJs", "Consultas", "Frequência", "Faturamento", "Custo API", "Status", ""]
       : ["Cliente", "CNPJs", "Consultas", "Frequência", "Status", ""]
-    : isAdmin
-      ? ["Cliente", "Contato", "WhatsApp", "Status", "Valor/Mês", ""]
-      : ["Cliente", "Contato", "WhatsApp", "Status", ""];
+    : isPlataformas
+      ? isAdmin
+        ? ["Cliente", "Plataforma", "Tipo", "Status", "Valor/Mês", ""]
+        : ["Cliente", "Plataforma", "Tipo", "Status", ""]
+      : isAdmin
+        ? ["Cliente", "Contato", "WhatsApp", "Status", "Valor/Mês", ""]
+        : ["Cliente", "Contato", "WhatsApp", "Status", ""];
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -78,12 +83,21 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                       <div className="font-semibold text-sm">{c.nome}</div>
                       <div className="text-xs text-muted-foreground">{c.email}</div>
                     </td>
-                    <td className="px-4 py-3.5 border-b border-border/50 text-sm">{c.contato}</td>
-                    <td className="px-4 py-3.5 border-b border-border/50 text-sm font-mono">{c.whatsapp}</td>
+                    {isPlataformas ? (
+                      <>
+                        <td className="px-4 py-3.5 border-b border-border/50 text-sm">{(c as GenericClient).nomePlataforma || "—"}</td>
+                        <td className="px-4 py-3.5 border-b border-border/50 text-sm capitalize">{(c as GenericClient).tipoPlataforma || "—"}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3.5 border-b border-border/50 text-sm">{c.contato}</td>
+                        <td className="px-4 py-3.5 border-b border-border/50 text-sm font-mono">{c.whatsapp}</td>
+                      </>
+                    )}
                     <td className="px-4 py-3.5 border-b border-border/50"><StatusTag status={c.status} /></td>
                     {isAdmin && (
                       <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm">
-                        R$ {c.valorContrato.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        R$ {(c as GenericClient).valorContrato.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </td>
                     )}
                   </>

@@ -86,6 +86,7 @@ export type Database = {
           created_at: string
           custo_api: number | null
           data_deposito: string | null
+          data_golive: string | null
           email: string
           faturamento: number | null
           forma_pagamento: string | null
@@ -93,10 +94,13 @@ export type Database = {
           gasto_diario_medio: number | null
           id: string
           nome: string
+          nome_plataforma: string | null
+          notas_automacao: string | null
           product_id: string
           rotina_conferencia: Json | null
           saldo_anuncio: number | null
           status: string
+          tipo_plataforma: string | null
           updated_at: string
           valor_contrato: number | null
           whatsapp: string
@@ -110,6 +114,7 @@ export type Database = {
           created_at?: string
           custo_api?: number | null
           data_deposito?: string | null
+          data_golive?: string | null
           email?: string
           faturamento?: number | null
           forma_pagamento?: string | null
@@ -117,10 +122,13 @@ export type Database = {
           gasto_diario_medio?: number | null
           id?: string
           nome: string
+          nome_plataforma?: string | null
+          notas_automacao?: string | null
           product_id: string
           rotina_conferencia?: Json | null
           saldo_anuncio?: number | null
           status?: string
+          tipo_plataforma?: string | null
           updated_at?: string
           valor_contrato?: number | null
           whatsapp?: string
@@ -134,6 +142,7 @@ export type Database = {
           created_at?: string
           custo_api?: number | null
           data_deposito?: string | null
+          data_golive?: string | null
           email?: string
           faturamento?: number | null
           forma_pagamento?: string | null
@@ -141,10 +150,13 @@ export type Database = {
           gasto_diario_medio?: number | null
           id?: string
           nome?: string
+          nome_plataforma?: string | null
+          notas_automacao?: string | null
           product_id?: string
           rotina_conferencia?: Json | null
           saldo_anuncio?: number | null
           status?: string
+          tipo_plataforma?: string | null
           updated_at?: string
           valor_contrato?: number | null
           whatsapp?: string
@@ -178,6 +190,36 @@ export type Database = {
           tipo?: string
           titulo?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          config: Json | null
+          created_at: string
+          descricao: string
+          icon: string
+          id: string
+          nome: string
+          position: number
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          descricao?: string
+          icon?: string
+          id: string
+          nome: string
+          position?: number
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          descricao?: string
+          icon?: string
+          id?: string
+          nome?: string
+          position?: number
         }
         Relationships: []
       }
