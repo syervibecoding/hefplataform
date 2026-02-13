@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import DashboardPage from "./DashboardPage";
@@ -9,21 +9,29 @@ import CalendarPage from "./CalendarPage";
 import UsersPage from "./UsersPage";
 import { useClients } from "@/hooks/useClients";
 import { useMelhorias } from "@/hooks/useMelhorias";
+import { useProducts } from "@/hooks/useProducts";
 import {
   type ProductId,
   type AnyClient,
-  PRODUCTS,
 } from "@/data/constants";
 
 export default function Index() {
   const [activePage, setActivePage] = useState("dashboard");
-  const [activeProduct, setActiveProduct] = useState<ProductId>("hefsys");
+  const [activeProduct, setActiveProduct] = useState<ProductId>("");
   const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);
 
+  const { products, isLoading: productsLoading } = useProducts();
   const { clients, isLoading: clientsLoading, addClient, editClient, deleteClient } = useClients(activeProduct);
   const { melhorias, isLoading: melhoriasLoading, addMelhoria, editMelhoria, deleteMelhoria, changeStatus } = useMelhorias();
 
-  const currentProductInfo = PRODUCTS.find((p) => p.id === activeProduct)!;
+  // Set first product as default when products load
+  useEffect(() => {
+    if (products.length > 0 && !activeProduct) {
+      setActiveProduct(products[0].id);
+    }
+  }, [products, activeProduct]);
+
+  const currentProductInfo = products.find((p) => p.id === activeProduct);
 
   const handleNavigate = (page: string) => {
     setActivePage(page);
@@ -132,7 +140,7 @@ export default function Index() {
     <div className="min-h-screen bg-background">
       <Sidebar activePage={activePage} onNavigate={handleNavigate} activeProduct={activeProduct} onChangeProduct={handleChangeProduct} />
       <main className="ml-60 min-h-screen">
-        <Topbar title={activePage === "client-detail" ? "clients" : activePage} tag={currentProductInfo.nome} />
+        <Topbar title={activePage === "client-detail" ? "clients" : activePage} tag={currentProductInfo?.nome || ""} />
         <div className="p-7">{renderPage()}</div>
       </main>
     </div>

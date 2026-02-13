@@ -27,6 +27,10 @@ const hefsysSchema = baseSchema.extend({
 
 const genericSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
+  dataGoLive: z.string().optional(),
+  notasAutomacao: z.string().optional(),
+  nomePlataforma: z.string().optional(),
+  tipoPlataforma: z.string().optional(),
 });
 
 const trafegoSchema = baseSchema.extend({
@@ -47,6 +51,8 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
   const [open, setOpen] = useState(false);
   const isHefsys = activeProduct === "hefsys";
   const isTrafego = activeProduct === "trafego";
+  const isAutomacao = activeProduct === "automacao";
+  const isPlataformas = activeProduct === "plataformas";
   const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
   const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
   const [rotinaConferencia, setRotinaConferencia] = useState<ScheduleConfig>({});
@@ -108,6 +114,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           email: client.email,
           status: client.status,
           valorContrato: client.valorContrato,
+          dataGoLive: client.dataGoLive || "",
+          notasAutomacao: client.notasAutomacao || "",
+          nomePlataforma: client.nomePlataforma || "",
+          tipoPlataforma: client.tipoPlataforma || "",
         });
       }
     }
@@ -126,7 +136,13 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
         dataDeposito: data.formaPagamento === "pix" ? data.dataDeposito || null : null,
       });
     } else {
-      onEditClient(client.id, data);
+      onEditClient(client.id, {
+        ...data,
+        dataGoLive: data.dataGoLive || null,
+        notasAutomacao: data.notasAutomacao || null,
+        nomePlataforma: data.nomePlataforma || null,
+        tipoPlataforma: data.tipoPlataforma || null,
+      });
     }
     setOpen(false);
   };
@@ -335,11 +351,45 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           )}
 
           {!isHefsys && !isTrafego && (
-            <div>
-              <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
-              <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
-              {errors.valorContrato && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
-            </div>
+            <>
+              <div>
+                <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
+                <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                {errors.valorContrato && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
+              </div>
+
+              {isAutomacao && (
+                <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Automação IA</p>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Data do Go-Live</Label>
+                    <Input {...register("dataGoLive")} type="date" className="mt-1 bg-secondary border-border" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Notas / Regras / Entregáveis</Label>
+                    <textarea {...register("notasAutomacao")} rows={3} className="w-full mt-1 rounded-md border border-border bg-secondary px-3 py-2 text-sm resize-none" placeholder="Regras e entregáveis do projeto..." />
+                  </div>
+                </div>
+              )}
+
+              {isPlataformas && (
+                <div className="space-y-3 p-3 bg-clix-magenta/5 border border-clix-magenta/20 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-clix-magenta font-semibold">Plataforma IA</p>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Nome da Plataforma</Label>
+                    <Input {...register("nomePlataforma")} className="mt-1 bg-secondary border-border" placeholder="Ex: ChatBot de Vendas" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Tipo</Label>
+                    <select {...register("tipoPlataforma")} className="w-full mt-1 h-10 rounded-md border border-border bg-secondary px-3 text-sm">
+                      <option value="">Selecione</option>
+                      <option value="interna">Interna</option>
+                      <option value="externa">Externa (Cliente)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div className="flex justify-end gap-2 pt-2">

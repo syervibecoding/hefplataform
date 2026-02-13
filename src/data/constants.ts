@@ -1,21 +1,6 @@
-import { Calculator, Megaphone, Bot, MonitorSmartphone } from "lucide-react";
-
 // ─── Produtos ───
-export type ProductId = "hefsys" | "trafego" | "automacao" | "plataformas";
-
-export interface Product {
-  id: ProductId;
-  nome: string;
-  icon: typeof Calculator;
-  descricao: string;
-}
-
-export const PRODUCTS: Product[] = [
-  { id: "hefsys", nome: "HefSys", icon: Calculator, descricao: "Contabilidade" },
-  { id: "trafego", nome: "Tráfego Pago", icon: Megaphone, descricao: "Marketing Digital" },
-  { id: "automacao", nome: "Automação IA", icon: Bot, descricao: "Automações" },
-  { id: "plataformas", nome: "Plataformas IA", icon: MonitorSmartphone, descricao: "Desenvolvimento" },
-];
+// ProductId is now a dynamic string (products come from DB)
+export type ProductId = string;
 
 // ─── Consultas HefSys ───
 export const CONSULTAS_CERTIDOES = [
@@ -88,6 +73,12 @@ export interface GenericClient extends BaseClient {
   saldoAnuncio?: number;
   gastoDiarioMedio?: number;
   dataDeposito?: string | null;
+  // Automação IA
+  dataGoLive?: string | null;
+  notasAutomacao?: string | null;
+  // Plataformas IA
+  nomePlataforma?: string | null;
+  tipoPlataforma?: string | null;
 }
 
 // Keep backward compat

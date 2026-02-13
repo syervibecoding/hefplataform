@@ -1,8 +1,13 @@
-import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus } from "lucide-react";
 import { useState } from "react";
 import logoWhite from "@/assets/logo-white.png";
-import { PRODUCTS, type ProductId } from "@/data/constants";
+import { type ProductId } from "@/data/constants";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProducts } from "@/hooks/useProducts";
+import { getIcon, AVAILABLE_ICONS } from "@/lib/icon-map";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface SidebarProps {
   activePage: string;
@@ -21,9 +26,27 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ activePage, onNavigate, activeProduct, onChangeProduct }: SidebarProps) {
   const { profile, isAdmin, signOut } = useAuth();
+  const { products, addProduct } = useProducts();
   const [productOpen, setProductOpen] = useState(false);
-  const currentProduct = PRODUCTS.find((p) => p.id === activeProduct)!;
-  const ProductIcon = currentProduct.icon;
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newProduct, setNewProduct] = useState({ id: "", nome: "", descricao: "", icon: "Box" });
+
+  const currentProduct = products.find((p) => p.id === activeProduct);
+  const CurrentIcon = currentProduct ? getIcon(currentProduct.icon) : LayoutDashboard;
+
+  const handleAddProduct = () => {
+    if (!newProduct.nome) return;
+    const slug = newProduct.nome.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    addProduct.mutate({
+      id: slug,
+      nome: newProduct.nome,
+      descricao: newProduct.descricao,
+      icon: newProduct.icon,
+      position: products.length,
+    });
+    setNewProduct({ id: "", nome: "", descricao: "", icon: "Box" });
+    setAddDialogOpen(false);
+  };
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border flex flex-col z-50">
@@ -42,19 +65,19 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-secondary/80 border border-border hover:bg-secondary transition-all"
           >
             <div className="w-8 h-8 rounded-lg bg-primary/12 flex items-center justify-center flex-shrink-0">
-              <ProductIcon size={16} className="text-primary" />
+              <CurrentIcon size={16} className="text-primary" />
             </div>
             <div className="flex-1 text-left min-w-0">
-              <div className="text-sm font-semibold truncate">{currentProduct.nome}</div>
-              <div className="text-[10px] text-muted-foreground">{currentProduct.descricao}</div>
+              <div className="text-sm font-semibold truncate">{currentProduct?.nome || "Produto"}</div>
+              <div className="text-[10px] text-muted-foreground">{currentProduct?.descricao}</div>
             </div>
             <ChevronDown size={14} className={`text-muted-foreground transition-transform ${productOpen ? "rotate-180" : ""}`} />
           </button>
 
           {productOpen && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl overflow-hidden z-50">
-              {PRODUCTS.map((product) => {
-                const Icon = product.icon;
+              {products.map((product) => {
+                const Icon = getIcon(product.icon);
                 const isActive = product.id === activeProduct;
                 return (
                   <button
@@ -79,6 +102,17 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
                   </button>
                 );
               })}
+              {isAdmin && (
+                <button
+                  onClick={() => { setProductOpen(false); setAddDialogOpen(true); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-primary hover:bg-primary/5 transition-colors border-t border-border"
+                >
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 bg-primary/10">
+                    <Plus size={14} />
+                  </div>
+                  <div className="text-sm font-semibold">Novo Produto</div>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -144,6 +178,54 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
           </button>
         </div>
       </div>
+
+      {/* Add Product Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="max-w-sm bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Novo Produto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div>
+              <Label className="text-xs text-muted-foreground">Nome</Label>
+              <Input value={newProduct.nome} onChange={(e) => setNewProduct((p) => ({ ...p, nome: e.target.value }))} className="mt-1 bg-secondary border-border" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Descrição</Label>
+              <Input value={newProduct.descricao} onChange={(e) => setNewProduct((p) => ({ ...p, descricao: e.target.value }))} className="mt-1 bg-secondary border-border" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Ícone</Label>
+              <div className="flex flex-wrap gap-1.5 mt-1 max-h-32 overflow-y-auto">
+                {AVAILABLE_ICONS.map((iconName) => {
+                  const Ic = getIcon(iconName);
+                  return (
+                    <button
+                      key={iconName}
+                      type="button"
+                      onClick={() => setNewProduct((p) => ({ ...p, icon: iconName }))}
+                      className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
+                        newProduct.icon === iconName ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary hover:bg-secondary/80 border border-border"
+                      }`}
+                      title={iconName}
+                    >
+                      <Ic size={14} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setAddDialogOpen(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleAddProduct} disabled={!newProduct.nome} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50">
+                Criar Produto
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }
