@@ -1,115 +1,158 @@
-# Plano: Checklist por dia + Agenda de Trafego Pago
 
-## 1. Checklist dinamico por dia de consulta
+# Plano: Produtos Dinamicos + Automacao IA + Plataformas IA
 
-### Situacao atual
+## 1. Produtos Dinamicos (Banco de Dados)
 
-Os passos do checklist sao globais por tipo (`certidoes` / `caixas_postais`). Quando o admin adiciona um passo, ele aparece em todos os dias de consulta de todos os clientes.
+Atualmente os produtos estao hardcoded em `constants.ts`. Para permitir criar novos produtos pelo sistema:
 
-### Solucao
+### Nova tabela `products`
 
-- Manter a tabela `checklist_steps` como **modelo padrao** (template)
-- Armazenar passos extras (adicionados em um dia especifico) dentro do JSONB `steps` da tabela `client_checklists`, usando uma chave especial `_custom_steps`
-- Formato: `{ "_custom_steps": [{ "id": "custom_xxx", "label": "Tarefa extra" }], "step_id_1": { done: true, ... } }`
-- O botao "Adicionar processo" no `ProcessChecklist` passara a salvar o novo passo apenas no registro daquele periodo (dia) e cliente
-- Os passos do template continuam aparecendo em todos os dias; passos customizados so aparecem no dia em que foram criados
-- Possibilidade de arrastar o processo para mudar ordem 
-- Conseguir editar o processo
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | text (PK) | Slug unico (ex: "hefsys", "trafego") |
+| nome | text | Nome de exibicao |
+| descricao | text | Descricao curta |
+| icon | text | Nome do icone Lucide (ex: "Calculator") |
+| position | integer | Ordem na sidebar |
+| created_at | timestamptz | Auto |
+| config | jsonb | Configuracoes especificas do produto (campos extras, etc.) |
 
-### Arquivos alterados
+- Migrar os 4 produtos atuais como seed data
+- RLS: leitura para todos autenticados, escrita apenas admin
+- O tipo `ProductId` deixa de ser um union fixo e passa a ser `string`
+- Sidebar e seletor de produto passam a ler da tabela via hook `useProducts()`
+- Admin tera um botao "Novo Produto" no seletor de produtos para criar novos
 
-- `**src/components/ProcessChecklist.tsx**`: Modificar para ler passos customizados do `client_checklists.steps._custom_steps`, exibir junto dos passos globais, e salvar novos passos apenas no registro do dia
-- `**src/hooks/useClientChecklist.ts**`: Adicionar mutation para inserir/remover passos customizados no JSONB
+### Arquivos impactados
 
----
-
-## 2. Trafego Pago - Rotina de conferencia de conta de anuncio
-
-### Solucao
-
-Adicionar novos campos na tabela `clients` (via migracao SQL):
-
-- `rotina_conferencia` (jsonb) - ScheduleConfig para quando conferir a conta de anuncio (ex: toda segunda, todos os dias)
-
-### Exibicao na agenda
-
-- O calendario (`CalendarPage`) atualmente so mostra clientes HefSys. Sera expandido para tambem exibir eventos de clientes de Trafego Pago
-- Eventos de conferencia aparecerao com cor/estilo diferente e label como "Conferir Anuncios - [Nome do cliente]"
-
-### Formularios
-
-- `**AddClientDialog.tsx**` e `**EditClientDialog.tsx**`: Quando o produto ativo for `trafego`, mostrar o campo `ScheduleInput` para definir a rotina de conferencia
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/data/constants.ts` | `ProductId` vira `string`, remove array `PRODUCTS` hardcoded |
+| `src/hooks/useProducts.ts` | Novo hook: CRUD de produtos via React Query |
+| `src/components/Sidebar.tsx` | Ler produtos do hook ao inves de constante |
+| `src/pages/Index.tsx` | Usar `useProducts()` para lista de produtos |
+| `src/pages/DashboardPage.tsx` | Adaptar para productId generico |
+| Todos os dialogs | Usar `productId` como string |
 
 ---
 
-## 3. Trafego Pago - Alerta de saldo de campanha (PIX)
+## 2. Automacao IA - Timeline de Onboarding
 
-### Novos campos na tabela `clients`:
+Para clientes de automacao, adicionar um sistema de etapas de ciclo de vida com datas calculadas automaticamente a partir de uma "data de go-live":
 
-- `forma_pagamento` (text, default null) - "pix", "cartao", etc.
-- `saldo_anuncio` (numeric, default 0) - valor colocado na conta de anuncio
-- `gasto_diario_medio` (numeric, default 0) - media de gasto diario
-- `data_deposito` (date, default null) - data do ultimo deposito
+### Novos campos na tabela `clients`
 
-### Logica de alerta
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| data_golive | date | Data de inicio do go-live |
+| notas_automacao | text | Campo de texto livre para regras e entregaveis |
 
-- Calculo: `diasRestantes = saldo_anuncio / gasto_diario_medio`
-- A partir de `data_deposito`, calcular em qual dia o saldo acaba
-- Mostrar no calendario um evento de alerta (vermelho) no dia previsto para o saldo acabar
-- Se o saldo acabar dentro de 3 dias, mostrar alerta visual tambem no dashboard
+### Etapas do ciclo (calculadas automaticamente)
 
-### Formularios
+As etapas sao fixas no codigo, mas as datas sao calculadas a partir de `data_golive`:
 
-- Quando `product_id === "trafego"`, exibir:
-  - Select para forma de pagamento (PIX / Cartao de Credito)
-  - Se PIX: campos para saldo depositado, data do deposito, e media de gasto diario
+1. **Onboarding** — Kick-off/Discovery + Parametrizacao (antes do go-live)
+2. **Teste e Acompanhamento** — Dia 1 ao 7 apos go-live
+3. **Revisao 1** — 15 a 30 dias apos go-live
+4. **Revisao 2** — 60 dias apos go-live
+5. **Revisao 3** — 90 dias apos go-live
+6. **Revisao 4** — 120 dias / Semestral
+7. **Notas Importantes** — Regras e entregaveis (texto livre)
+
+### Exibicao
+
+- **ClientDetailPage**: Timeline visual vertical mostrando cada etapa com status (pendente/atual/concluido) baseado na data atual vs data calculada
+- **CalendarPage**: Eventos de revisao aparecem no calendario com cor especifica
+- **AddClientDialog/EditClientDialog**: Quando `product_id === "automacao"`, mostrar campo de data do go-live e notas
+
+### Arquivos impactados
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/data/constants.ts` | Adicionar campos `dataGoLive` e `notasAutomacao` em `GenericClient` |
+| `src/hooks/useClients.ts` | Mapear novos campos |
+| `src/components/AddClientDialog.tsx` | Campos para automacao (data go-live, notas) |
+| `src/components/EditClientDialog.tsx` | Campos para automacao |
+| `src/pages/ClientDetailPage.tsx` | Timeline visual de etapas |
+| `src/pages/CalendarPage.tsx` | Eventos de revisao no calendario |
 
 ---
 
-## Detalhes tecnicos
+## 3. Plataformas IA - Campos extras
+
+### Novos campos na tabela `clients`
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| nome_plataforma | text | Nome da plataforma desenvolvida |
+| tipo_plataforma | text | "interna" ou "externa" (cliente) |
+
+### Exibicao
+
+- **AddClientDialog/EditClientDialog**: Quando `product_id === "plataformas"`, mostrar campos de nome da plataforma e select interna/externa
+- **ClientDetailPage**: Exibir nome da plataforma e tipo
+- **ClientsPage**: Mostrar plataforma e tipo na listagem
+
+---
+
+## Detalhes Tecnicos
 
 ### Migracao SQL
 
 ```text
-ALTER TABLE clients ADD COLUMN rotina_conferencia jsonb DEFAULT '{}';
-ALTER TABLE clients ADD COLUMN forma_pagamento text DEFAULT NULL;
-ALTER TABLE clients ADD COLUMN saldo_anuncio numeric DEFAULT 0;
-ALTER TABLE clients ADD COLUMN gasto_diario_medio numeric DEFAULT 0;
-ALTER TABLE clients ADD COLUMN data_deposito date DEFAULT NULL;
+-- Tabela de produtos dinamicos
+CREATE TABLE public.products (
+  id text PRIMARY KEY,
+  nome text NOT NULL,
+  descricao text NOT NULL DEFAULT '',
+  icon text NOT NULL DEFAULT 'Box',
+  position integer NOT NULL DEFAULT 0,
+  config jsonb DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can read products"
+  ON public.products FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admins can manage products"
+  ON public.products FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'))
+  WITH CHECK (has_role(auth.uid(), 'admin'));
+
+-- Seed dos 4 produtos atuais
+INSERT INTO public.products (id, nome, descricao, icon, position) VALUES
+  ('hefsys', 'HefSys', 'Contabilidade', 'Calculator', 0),
+  ('trafego', 'Tráfego Pago', 'Marketing Digital', 'Megaphone', 1),
+  ('automacao', 'Automação IA', 'Automações', 'Bot', 2),
+  ('plataformas', 'Plataformas IA', 'Desenvolvimento', 'MonitorSmartphone', 3);
+
+-- Novos campos para automacao e plataformas
+ALTER TABLE clients ADD COLUMN data_golive date DEFAULT NULL;
+ALTER TABLE clients ADD COLUMN notas_automacao text DEFAULT NULL;
+ALTER TABLE clients ADD COLUMN nome_plataforma text DEFAULT NULL;
+ALTER TABLE clients ADD COLUMN tipo_plataforma text DEFAULT NULL;
 ```
 
-### Estrutura de custom_steps no JSONB
+### Hook useProducts
 
 ```text
-client_checklists.steps = {
-  "_custom_steps": [
-    { "id": "custom_1739xxx", "label": "Verificar pendencia SEFAZ" }
-  ],
-  "uuid-step-global-1": { "done": true, "user_id": "...", "username": "...", "at": "..." },
-  "custom_1739xxx": { "done": false }
-}
+- Fetch todos os produtos ordenados por position
+- Mutation para criar novo produto (admin only)
+- Mutation para editar produto
+- Mutation para deletar produto
 ```
 
-### Arquivos modificados (resumo)
+### Mapeamento de icones dinamicos
 
-
-| Arquivo                               | Mudanca                                                  |
-| ------------------------------------- | -------------------------------------------------------- |
-| `src/components/ProcessChecklist.tsx` | Ler/adicionar/remover custom_steps por dia               |
-| `src/hooks/useClientChecklist.ts`     | Mutations para custom steps no JSONB                     |
-| `src/data/constants.ts`               | Novos campos em GenericClient (trafego)                  |
-| `src/hooks/useClients.ts`             | Mapear novos campos do DB                                |
-| `src/components/AddClientDialog.tsx`  | Campos de trafego (rotina, pagamento, saldo)             |
-| `src/components/EditClientDialog.tsx` | Campos de trafego (rotina, pagamento, saldo)             |
-| `src/pages/CalendarPage.tsx`          | Suportar eventos de trafego (conferencia + alerta saldo) |
-| `src/pages/Index.tsx`                 | Passar clientes de trafego para CalendarPage             |
-| `src/pages/ClientDetailPage.tsx`      | Exibir info de rotina e saldo para clientes trafego      |
-
+Os icones serao armazenados como string (ex: "Calculator") e mapeados em runtime usando um dicionario de icones do Lucide disponiveis.
 
 ### Ordem de implementacao
 
-1. Migracao SQL (novos campos)
-2. Checklist dinamico por dia (ProcessChecklist + useClientChecklist)
-3. Formularios de trafego (Add/Edit dialogs)
-4. Calendario expandido (CalendarPage com eventos de trafego + alertas)
-5. Detail page atualizada para trafego
+1. Migracao SQL (tabela products + novos campos em clients)
+2. Hook useProducts + adaptar constants.ts
+3. Sidebar e seletor de produtos dinamico + botao "Novo Produto"
+4. Campos de automacao (formularios + timeline + calendario)
+5. Campos de plataformas (formularios + detail page)
+6. Adaptar todos os componentes que usam ProductId como union type
