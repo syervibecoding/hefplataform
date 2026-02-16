@@ -98,7 +98,7 @@ export default function Index() {
     }
     switch (activePage) {
       case "dashboard":
-        return <DashboardPage clients={clients} melhorias={melhorias} activeProduct={activeProduct} />;
+        return <DashboardPage clients={clients} melhorias={melhorias} activeProduct={activeProduct} products={products} />;
       case "clients":
         return (
           <ClientsPage
@@ -132,7 +132,7 @@ export default function Index() {
           </div>
         );
       default:
-        return <DashboardPage clients={clients} melhorias={melhorias} activeProduct={activeProduct} />;
+        return <DashboardPage clients={clients} melhorias={melhorias} activeProduct={activeProduct} products={products} />;
     }
   };
 
