@@ -1,102 +1,118 @@
 
+# Materiais + CRM de Prospecção
 
-# Dashboard Admin: Status de Checklists + Painel Financeiro Geral
+Duas novas funcionalidades independentes, bem integradas à estrutura atual do sistema.
 
-## 1. Painel de Status dos Checklists (admin only, HefSys)
+---
 
-Quando o admin estiver no Dashboard do HefSys, um novo card sera exibido mostrando o status dos checklists do dia atual para cada cliente ativo:
+## 1. Aba de Materiais
 
-- Para cada cliente HefSys ativo, buscar o checklist do dia de hoje (se houver execucao agendada)
-- Mostrar uma lista com:
-  - Nome do cliente
-  - Barra de progresso (X de Y steps completos)
-  - Nome do usuario que fez os checks e horario
-  - Indicador visual: verde (completo), amarelo (parcial), vermelho (nenhum check feito)
-- Se nao houver execucao agendada para hoje, mostrar "Sem execucao hoje"
+Uma biblioteca central de links e vídeos organizados por produto ou tema. Qualquer membro da equipe pode acessar; admins podem adicionar, editar e excluir materiais.
 
-### Dados necessarios
+### Nova tabela `materials`
 
-- Query direta em `client_checklists` filtrada por `periodo = hoje` para todos os clientes HefSys ativos
-- Cruzar com `checklist_steps` para saber o total de passos esperados
-- Extrair `username` e `at` dos steps com `StepInfo`
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | uuid (PK) | Auto |
+| titulo | text | Nome/título do material |
+| descricao | text | Descrição opcional |
+| tipo | text | `"link"` ou `"video"` |
+| url | text | URL do link ou vídeo (YouTube, Loom, etc.) |
+| product_id | text | Produto relacionado (ou `null` = geral) |
+| categoria | text | Tag livre (ex: "Tutorial", "Processo", "Template") |
+| created_by | uuid | Referência ao user_id de quem criou |
+| created_at | timestamptz | Auto |
 
-### Novo hook
+**RLS:**
+- Leitura: todos autenticados
+- Escrita (INSERT/UPDATE/DELETE): apenas admins
 
-**`src/hooks/useTodayChecklists.ts`** — Busca todos os checklists do dia atual para uma lista de clientes, retornando status consolidado (completo/parcial/pendente) com info de quem fez.
+### Comportamento
 
-## 2. Painel Financeiro Geral (admin only, todos os produtos)
+- **Sidebar**: novo item "Materiais" no menu de navegação (ícone `BookOpen`)
+- **Página `MaterialsPage`**:
+  - Grid de cards com título, descrição, tipo (badge Link/Vídeo), produto relacionado e botão de acesso
+  - Vídeos do YouTube/Loom exibem thumbnail automaticamente a partir da URL
+  - Filtro por produto e por categoria (tabs ou pills)
+  - Botão "Adicionar Material" (admin only)
+  - Dialog para adicionar/editar: título, descrição, tipo, URL, produto, categoria
 
-Acima do dashboard especifico do produto, quando o admin estiver logado, exibir um painel consolidado com:
+---
 
-- Um card por produto mostrando:
-  - Nome do produto (com icone)
-  - Quantidade de clientes ativos
-  - Receita mensal total (faturamento para HefSys, valorContrato para os demais)
-- Card de totalizacao geral:
-  - Total de clientes ativos (todos os produtos)
-  - Receita mensal total consolidada
+## 2. CRM de Prospecção
 
-### Dados necessarios
+Painel para rastrear leads e prospects dos produtos do hub, separado dos clientes ativos. Permite acompanhar em qual etapa do funil cada prospect se encontra.
 
-- Query em `clients` agrupada por `product_id`, somando financeiro por produto
-- Usar os `products` ja carregados via `useProducts()`
+### Nova tabela `prospects`
 
-### Novo hook
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | uuid (PK) | Auto |
+| nome | text | Nome do prospect/empresa |
+| contato | text | Nome do responsável |
+| whatsapp | text | Contato |
+| email | text | Email |
+| product_id | text | Produto de interesse |
+| status | text | Etapa do funil (ver abaixo) |
+| origem | text | Como chegou (Indicação, Instagram, etc.) |
+| valor_estimado | numeric | Valor estimado do contrato |
+| notas | text | Anotações livres |
+| data_contato | date | Data do primeiro contato |
+| data_followup | date | Data do próximo follow-up |
+| created_at | timestamptz | Auto |
+| updated_at | timestamptz | Auto |
 
-**`src/hooks/useFinancialOverview.ts`** — Busca todos os clientes ativos de todos os produtos e calcula metricas financeiras agrupadas.
+**Etapas do funil (status):**
+1. `novo_lead` — Lead identificado
+2. `contato_feito` — Primeiro contato realizado
+3. `reuniao_agendada` — Reunião marcada
+4. `proposta_enviada` — Proposta enviada
+5. `negociacao` — Em negociação
+6. `ganho` — Convertido (vira cliente ativo)
+7. `perdido` — Perdido/desistiu
+
+**RLS:** Todos autenticados podem ler e escrever.
+
+### Comportamento
+
+- **Sidebar**: novo item "CRM" no menu de navegação (ícone `TrendingUp`)
+- **Página `CRMPage`**:
+  - Visão em **Kanban** — colunas por etapa do funil, cards arrastáveis para mover entre etapas
+  - Visão em **tabela** — listagem com filtro por produto
+  - Header com mini-métricas: total de prospects, valor potencial do pipeline
+  - Ao clicar em um card/linha: drawer lateral com detalhes completos e histórico de anotações
+  - Botão "Adicionar Prospect" com form: nome, contato, produto, origem, valor estimado, notas, datas
+
+---
 
 ## Arquivos impactados
 
-| Arquivo | Mudanca |
+| Arquivo | Mudança |
 |---------|---------|
-| `src/hooks/useTodayChecklists.ts` | **Novo** — Hook para buscar status de checklists do dia |
-| `src/hooks/useFinancialOverview.ts` | **Novo** — Hook para metricas financeiras cross-product |
-| `src/pages/DashboardPage.tsx` | Adicionar painel financeiro geral (admin) + card de status dos checklists (admin, HefSys) |
-| `src/pages/Index.tsx` | Passar `products` como prop para DashboardPage |
+| `supabase/migrations/...` | **Nova** — Tabelas `materials` e `prospects` com RLS |
+| `src/pages/MaterialsPage.tsx` | **Novo** — Página de materiais |
+| `src/pages/CRMPage.tsx` | **Novo** — Página de CRM com kanban + tabela |
+| `src/components/Sidebar.tsx` | Adicionar itens "Materiais" e "CRM" ao menu |
+| `src/pages/Index.tsx` | Rotas para as novas páginas |
+| `src/hooks/useMaterials.ts` | **Novo** — Hook CRUD de materiais |
+| `src/hooks/useProspects.ts` | **Novo** — Hook CRUD de prospects |
 
-## Detalhes Tecnicos
+---
 
-### useTodayChecklists
+## Detalhes Técnicos
 
-```text
-- Recebe lista de client IDs e tipos (certidoes/caixas_postais)
-- Calcula a data de hoje como "YYYY-MM-DD"
-- Busca em client_checklists WHERE periodo = hoje AND client_id IN (...)
-- Cruza com checklist_steps para saber total esperado
-- Retorna por cliente: { clientId, totalSteps, doneSteps, users: [{username, at}], status: "completo"|"parcial"|"pendente"|"sem_execucao" }
-```
+### Ordem de implementação
 
-### useFinancialOverview
+1. Migração SQL (`materials` + `prospects` + RLS)
+2. Hooks `useMaterials` e `useProspects` com React Query
+3. Página de Materiais com grid, filtros e dialog de adição (admin)
+4. Página de CRM com visão kanban (colunas por status) + tabela
+5. Integrar rotas e sidebar
 
-```text
-- Busca todos os clientes ativos (status = 'ativo') sem filtro de product_id
-- Agrupa por product_id
-- Para cada grupo: count de clientes + soma de faturamento (hefsys) ou valor_contrato (demais)
-- Retorna array de { productId, clientCount, totalRevenue }
-```
+### Kanban do CRM
 
-### Layout do Dashboard atualizado
+O kanban será implementado com CSS/Tailwind (sem biblioteca externa de drag-and-drop), usando o evento `onDragStart` / `onDrop` nativo do HTML5 para mover cards entre colunas — simples e sem dependências novas.
 
-```text
-+-----------------------------------------------------+
-| [PAINEL FINANCEIRO GERAL - admin only]               |
-| ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ |
-| | HefSys   | | Trafego  | | Automacao| | TOTAL    | |
-| | 5 ativos | | 3 ativos | | 2 ativos | | 10 ativos| |
-| | R$ 8.500 | | R$ 4.200 | | R$ 3.000 | | R$15.700 | |
-| └──────────┘ └──────────┘ └──────────┘ └──────────┘ |
-+-----------------------------------------------------+
-| [DASHBOARD DO PRODUTO SELECIONADO - existente]       |
-| StatCards...                                         |
-| ...                                                  |
-+-----------------------------------------------------+
-| [STATUS CHECKLISTS HOJE - admin only, HefSys]        |
-| ┌──────────────────────────────────────────────────┐ |
-| | Cliente A  ████████░░ 8/10  João · 14:32         | |
-| | Cliente B  ██████████ 10/10 Maria · 09:15   OK   | |
-| | Cliente C  ░░░░░░░░░░ 0/10  Pendente        !!   | |
-| | Cliente D  — Sem execução hoje                    | |
-| └──────────────────────────────────────────────────┘ |
-+-----------------------------------------------------+
-```
+### Vídeos (Thumbnail automática)
 
+Para URLs do YouTube (`youtube.com/watch?v=ID` ou `youtu.be/ID`), a thumbnail é extraída automaticamente via `https://img.youtube.com/vi/{ID}/mqdefault.jpg`. Para outros links, exibir ícone de link genérico.
