@@ -163,6 +163,42 @@ export type Database = {
         }
         Relationships: []
       }
+      materials: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          product_id: string | null
+          tipo: string
+          titulo: string
+          url: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          product_id?: string | null
+          tipo?: string
+          titulo: string
+          url: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          product_id?: string | null
+          tipo?: string
+          titulo?: string
+          url?: string
+        }
+        Relationships: []
+      }
       melhorias: {
         Row: {
           created_at: string
@@ -244,6 +280,57 @@ export type Database = {
           id?: string
           updated_at?: string
           username?: string
+        }
+        Relationships: []
+      }
+      prospects: {
+        Row: {
+          contato: string | null
+          created_at: string
+          data_contato: string | null
+          data_followup: string | null
+          email: string | null
+          id: string
+          nome: string
+          notas: string | null
+          origem: string | null
+          product_id: string | null
+          status: string
+          updated_at: string
+          valor_estimado: number | null
+          whatsapp: string | null
+        }
+        Insert: {
+          contato?: string | null
+          created_at?: string
+          data_contato?: string | null
+          data_followup?: string | null
+          email?: string | null
+          id?: string
+          nome: string
+          notas?: string | null
+          origem?: string | null
+          product_id?: string | null
+          status?: string
+          updated_at?: string
+          valor_estimado?: number | null
+          whatsapp?: string | null
+        }
+        Update: {
+          contato?: string | null
+          created_at?: string
+          data_contato?: string | null
+          data_followup?: string | null
+          email?: string | null
+          id?: string
+          nome?: string
+          notas?: string | null
+          origem?: string | null
+          product_id?: string | null
+          status?: string
+          updated_at?: string
+          valor_estimado?: number | null
+          whatsapp?: string | null
         }
         Relationships: []
       }

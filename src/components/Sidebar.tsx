@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import logoWhite from "@/assets/logo-white.png";
 import { type ProductId } from "@/data/constants";
@@ -21,6 +21,8 @@ const NAV_ITEMS = [
   { id: "clients", label: "Clientes", icon: Users },
   { id: "calendar", label: "Calendário", icon: Calendar },
   { id: "workflow", label: "Workflow", icon: Activity },
+  { id: "materials", label: "Materiais", icon: BookOpen },
+  { id: "crm", label: "CRM", icon: TrendingUp },
   { id: "melhorias", label: "Melhorias", icon: Rocket },
 ];
 
