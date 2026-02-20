@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type ProductId, type AnyClient, type GenericClient, type ScheduleConfig, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
+import { type ProductId, type AnyClient, type GenericClient, type ScheduleConfig, type ConsultaExtra, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
 import ScheduleInput from "@/components/ScheduleInput";
 
 const baseSchema = z.object({
@@ -56,6 +56,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
   const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
   const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
   const [rotinaConferencia, setRotinaConferencia] = useState<ScheduleConfig>({});
+  const [consultasExtras, setConsultasExtras] = useState<ConsultaExtra[]>([]);
 
   const hefsysForm = useForm<z.infer<typeof hefsysSchema>>({
     resolver: zodResolver(hefsysSchema),
@@ -91,6 +92,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
         });
         setAgendaCertidoes(client.agendaCertidoes || {});
         setAgendaCaixasPostais(client.agendaCaixasPostais || {});
+        setConsultasExtras(client.consultasExtras || []);
       } else if (isTrafego && !isHefSysClient(client)) {
         const gc = client as GenericClient;
         trafegoForm.reset({
@@ -125,7 +127,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
 
   const onSubmit = (data: any) => {
     if (isHefsys) {
-      onEditClient(client.id, { ...data, agendaCertidoes, agendaCaixasPostais });
+      onEditClient(client.id, { ...data, agendaCertidoes, agendaCaixasPostais, consultasExtras });
     } else if (isTrafego) {
       onEditClient(client.id, {
         ...data,
@@ -300,6 +302,40 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                   </div>
                 </div>
                 {errors.consultas && <p className="text-[11px] text-clix-danger mt-1">{(errors.consultas as any).message}</p>}
+              </div>
+
+              {/* Consultas Extras */}
+              <div className="space-y-3 p-3 bg-clix-success/5 border border-clix-success/20 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase tracking-wider text-clix-success font-semibold">Consultas Extras</p>
+                  <button type="button" onClick={() => setConsultasExtras([...consultasExtras, { id: `custom_${Date.now()}`, nome: "", agenda: {} }])} className="text-[11px] px-2 py-1 rounded-md font-semibold bg-clix-success/10 text-clix-success hover:bg-clix-success/20 transition-colors flex items-center gap-1">
+                    <Plus size={12} /> Adicionar
+                  </button>
+                </div>
+                {consultasExtras.map((extra) => (
+                  <div key={extra.id} className="space-y-2 p-2 bg-secondary/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={extra.nome}
+                        onChange={(e) => setConsultasExtras(consultasExtras.map((c) => c.id === extra.id ? { ...c, nome: e.target.value } : c))}
+                        placeholder="Nome da consulta (ex: Credenciamento)"
+                        className="h-8 text-xs bg-secondary border-border flex-1"
+                      />
+                      <button type="button" onClick={() => setConsultasExtras(consultasExtras.filter((c) => c.id !== extra.id))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <ScheduleInput
+                      label={`Agenda: ${extra.nome || "Nova Consulta"}`}
+                      value={extra.agenda}
+                      onChange={(agenda) => setConsultasExtras(consultasExtras.map((c) => c.id === extra.id ? { ...c, agenda } : c))}
+                      colorClass="text-clix-success"
+                    />
+                  </div>
+                ))}
+                {consultasExtras.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">Nenhuma consulta extra adicionada.</p>
+                )}
               </div>
             </>
           )}

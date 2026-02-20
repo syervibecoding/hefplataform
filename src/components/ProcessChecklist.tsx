@@ -40,9 +40,10 @@ interface Props {
   clientId: string;
   tipo: ChecklistTipo;
   schedule: ScheduleConfig;
+  label?: string;
 }
 
-export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
+export default function ProcessChecklist({ clientId, tipo, schedule, label }: Props) {
   const { user, profile, isAdmin } = useAuth();
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -186,7 +187,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule }: Props) {
     <div className="space-y-1">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-          {tipo === "certidoes" ? "Checklist Certidões" : "Checklist Caixas Postais"}
+          {label || (tipo === "certidoes" ? "Checklist Certidões" : tipo === "caixas_postais" ? "Checklist Caixas Postais" : `Checklist ${tipo.replace(/^custom_/, "").replace(/_/g, " ")}`)}
         </span>
         <span className={`text-[11px] font-semibold flex items-center gap-1 ${allDone ? "text-clix-success" : "text-muted-foreground"}`}>
           {allDone ? <CheckCircle2 size={12} /> : <Circle size={12} />}

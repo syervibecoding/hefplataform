@@ -48,7 +48,14 @@ export interface ScheduleConfig {
   diaSemana?: number;     // 0=Dom..6=Sáb (repeats every week)
   primeiroDiaUtil?: boolean; // first business day of month
   ultimoDiaUtil?: boolean;   // last business day of month
+  todosOsDiasUteis?: boolean; // every business day (Mon-Fri)
   overrides?: Record<string, Record<string, number>>; // "YYYY-MM": { "originalDay": newDay }
+}
+
+export interface ConsultaExtra {
+  id: string;
+  nome: string;
+  agenda: ScheduleConfig;
 }
 
 export const DIAS_SEMANA_LABELS: Record<number, string> = {
@@ -64,6 +71,7 @@ export interface HefSysClient extends BaseClient {
   agendaCaixasPostais: ScheduleConfig;
   faturamento: number;
   custoAPI: number;
+  consultasExtras: ConsultaExtra[];
 }
 
 export interface GenericClient extends BaseClient {
