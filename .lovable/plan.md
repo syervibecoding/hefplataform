@@ -1,118 +1,100 @@
 
-# Materiais + CRM de Prospecção
 
-Duas novas funcionalidades independentes, bem integradas à estrutura atual do sistema.
+# Consultas Customizadas por Cliente (HefSys)
 
----
+## Problema
 
-## 1. Aba de Materiais
+Atualmente, os tipos de consulta do HefSys sao fixos (Certidoes e Caixas Postais). Alguns clientes precisam de consultas exclusivas (ex: "Credenciamento" para AGR) com agenda propria e checklist diario.
 
-Uma biblioteca central de links e vídeos organizados por produto ou tema. Qualquer membro da equipe pode acessar; admins podem adicionar, editar e excluir materiais.
+## Solucao
 
-### Nova tabela `materials`
+Criar um sistema de **consultas extras** por cliente, onde cada consulta extra tem seu proprio nome, agenda e checklist independente.
 
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| id | uuid (PK) | Auto |
-| titulo | text | Nome/título do material |
-| descricao | text | Descrição opcional |
-| tipo | text | `"link"` ou `"video"` |
-| url | text | URL do link ou vídeo (YouTube, Loom, etc.) |
-| product_id | text | Produto relacionado (ou `null` = geral) |
-| categoria | text | Tag livre (ex: "Tutorial", "Processo", "Template") |
-| created_by | uuid | Referência ao user_id de quem criou |
-| created_at | timestamptz | Auto |
+### Como funciona
 
-**RLS:**
-- Leitura: todos autenticados
-- Escrita (INSERT/UPDATE/DELETE): apenas admins
+1. No formulario de adicionar/editar cliente HefSys, o admin pode adicionar "Consultas Extras" com nome customizado e agenda propria
+2. Na pagina de detalhe do cliente, cada consulta extra aparece como um checklist separado (igual aos de Certidoes e Caixas Postais)
+3. Os checklists das consultas extras reutilizam toda a infraestrutura existente (`client_checklists`, `ProcessChecklist`), usando um `tipo` dinamico (ex: `custom_credenciamento_agr`)
+4. Para o caso do Credenciamento diario, basta configurar a agenda com `diaSemana` para cada dia util, ou `dias: [1,2,3,...,31]`
 
-### Comportamento
+### Exemplo pratico (AGR - Credenciamento)
 
-- **Sidebar**: novo item "Materiais" no menu de navegação (ícone `BookOpen`)
-- **Página `MaterialsPage`**:
-  - Grid de cards com título, descrição, tipo (badge Link/Vídeo), produto relacionado e botão de acesso
-  - Vídeos do YouTube/Loom exibem thumbnail automaticamente a partir da URL
-  - Filtro por produto e por categoria (tabs ou pills)
-  - Botão "Adicionar Material" (admin only)
-  - Dialog para adicionar/editar: título, descrição, tipo, URL, produto, categoria
+- Admin edita o cliente AGR
+- Na secao "Consultas Extras", clica "Adicionar Consulta"
+- Nome: "Credenciamento"
+- Agenda: configura como "Todos os dias uteis" (segunda a sexta)
+- Salva. Agora na pagina de detalhe do AGR aparece um terceiro checklist "Credenciamento" com navegacao por dia, igual aos outros
 
----
+## Mudancas no banco de dados
 
-## 2. CRM de Prospecção
+Nova coluna `consultas_extras` (JSONB) na tabela `clients`:
 
-Painel para rastrear leads e prospects dos produtos do hub, separado dos clientes ativos. Permite acompanhar em qual etapa do funil cada prospect se encontra.
+```text
+consultas_extras: [
+  {
+    "id": "custom_1234",
+    "nome": "Credenciamento",
+    "agenda": { "diaSemana": 1 }  // ou dias especificos
+  }
+]
+```
 
-### Nova tabela `prospects`
+Tambem precisamos expandir o tipo `ChecklistTipo` no codigo para aceitar strings dinamicas (ja que `client_checklists.tipo` e TEXT no banco).
 
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| id | uuid (PK) | Auto |
-| nome | text | Nome do prospect/empresa |
-| contato | text | Nome do responsável |
-| whatsapp | text | Contato |
-| email | text | Email |
-| product_id | text | Produto de interesse |
-| status | text | Etapa do funil (ver abaixo) |
-| origem | text | Como chegou (Indicação, Instagram, etc.) |
-| valor_estimado | numeric | Valor estimado do contrato |
-| notas | text | Anotações livres |
-| data_contato | date | Data do primeiro contato |
-| data_followup | date | Data do próximo follow-up |
-| created_at | timestamptz | Auto |
-| updated_at | timestamptz | Auto |
+## Mudancas na agenda
 
-**Etapas do funil (status):**
-1. `novo_lead` — Lead identificado
-2. `contato_feito` — Primeiro contato realizado
-3. `reuniao_agendada` — Reunião marcada
-4. `proposta_enviada` — Proposta enviada
-5. `negociacao` — Em negociação
-6. `ganho` — Convertido (vira cliente ativo)
-7. `perdido` — Perdido/desistiu
-
-**RLS:** Todos autenticados podem ler e escrever.
-
-### Comportamento
-
-- **Sidebar**: novo item "CRM" no menu de navegação (ícone `TrendingUp`)
-- **Página `CRMPage`**:
-  - Visão em **Kanban** — colunas por etapa do funil, cards arrastáveis para mover entre etapas
-  - Visão em **tabela** — listagem com filtro por produto
-  - Header com mini-métricas: total de prospects, valor potencial do pipeline
-  - Ao clicar em um card/linha: drawer lateral com detalhes completos e histórico de anotações
-  - Botão "Adicionar Prospect" com form: nome, contato, produto, origem, valor estimado, notas, datas
-
----
+Adicionar uma nova opcao de agenda: **"Todos os dias uteis (Seg-Sex)"** no componente `ScheduleInput`, que gera a config `{ todosOsDiasUteis: true }`. O `getScheduleDays` sera atualizado para gerar todos os dias uteis do mes quando essa flag estiver ativa.
 
 ## Arquivos impactados
 
-| Arquivo | Mudança |
+| Arquivo | Mudanca |
 |---------|---------|
-| `supabase/migrations/...` | **Nova** — Tabelas `materials` e `prospects` com RLS |
-| `src/pages/MaterialsPage.tsx` | **Novo** — Página de materiais |
-| `src/pages/CRMPage.tsx` | **Novo** — Página de CRM com kanban + tabela |
-| `src/components/Sidebar.tsx` | Adicionar itens "Materiais" e "CRM" ao menu |
-| `src/pages/Index.tsx` | Rotas para as novas páginas |
-| `src/hooks/useMaterials.ts` | **Novo** — Hook CRUD de materiais |
-| `src/hooks/useProspects.ts` | **Novo** — Hook CRUD de prospects |
+| `supabase/migrations/...` | Adicionar coluna `consultas_extras` (JSONB, default `'[]'`) na tabela `clients` |
+| `src/data/constants.ts` | Adicionar campo `consultasExtras` ao tipo `HefSysClient` |
+| `src/hooks/useClients.ts` | Mapear `consultas_extras` no cliente |
+| `src/hooks/useClientChecklist.ts` | Aceitar tipo dinamico (string ao inves de union restrita) |
+| `src/lib/schedule-utils.ts` | Suporte a `todosOsDiasUteis` no `getScheduleDays` |
+| `src/components/ScheduleInput.tsx` | Nova opcao "Todos os dias uteis" |
+| `src/components/AddClientDialog.tsx` | Secao para adicionar consultas extras com nome + agenda |
+| `src/components/EditClientDialog.tsx` | Mesma secao de consultas extras |
+| `src/pages/ClientDetailPage.tsx` | Renderizar um `ProcessChecklist` para cada consulta extra |
+| `src/pages/CalendarPage.tsx` | Exibir datas das consultas extras no calendario |
 
----
+## Detalhes Tecnicos
 
-## Detalhes Técnicos
+### Estrutura da consulta extra
 
-### Ordem de implementação
+```text
+interface ConsultaExtra {
+  id: string;          // "custom_" + timestamp
+  nome: string;        // Ex: "Credenciamento"
+  agenda: ScheduleConfig;  // Mesma estrutura de agenda existente
+}
+```
 
-1. Migração SQL (`materials` + `prospects` + RLS)
-2. Hooks `useMaterials` e `useProspects` com React Query
-3. Página de Materiais com grid, filtros e dialog de adição (admin)
-4. Página de CRM com visão kanban (colunas por status) + tabela
-5. Integrar rotas e sidebar
+### ChecklistTipo expandido
 
-### Kanban do CRM
+O tipo `ChecklistTipo` passa de `"certidoes" | "caixas_postais"` para `string`, permitindo valores como `"custom_credenciamento_1234"`. A coluna `tipo` na tabela `client_checklists` ja e TEXT, entao nao precisa de mudanca no banco para isso.
 
-O kanban será implementado com CSS/Tailwind (sem biblioteca externa de drag-and-drop), usando o evento `onDragStart` / `onDrop` nativo do HTML5 para mover cards entre colunas — simples e sem dependências novas.
+### Checklist steps para consultas extras
 
-### Vídeos (Thumbnail automática)
+Como as consultas extras sao especificas por cliente, nao usam os `checklist_steps` globais (templates). O admin adiciona steps customizados diretamente via o botao "Adicionar processo" que ja existe no `ProcessChecklist`. Alternativamente, podemos permitir definir steps default na propria consulta extra.
 
-Para URLs do YouTube (`youtube.com/watch?v=ID` ou `youtu.be/ID`), a thumbnail é extraída automaticamente via `https://img.youtube.com/vi/{ID}/mqdefault.jpg`. Para outros links, exibir ícone de link genérico.
+### ScheduleInput - nova opcao
+
+Adicionar um toggle/checkbox "Todos os dias uteis (Seg-Sex)" que quando ativado, gera todos os dias uteis do mes automaticamente no `getScheduleDays`.
+
+### Fluxo do usuario
+
+```text
+1. Admin vai em Clientes > AGR > Editar
+2. Rola ate "Consultas Extras"
+3. Clica "+ Adicionar Consulta Extra"
+4. Preenche: Nome = "Credenciamento", Agenda = "Todos os dias uteis"
+5. Salva
+6. Volta ao detalhe do AGR
+7. Agora aparece: Checklist Certidoes | Checklist Caixas | Checklist Credenciamento
+8. O checklist Credenciamento aparece todo dia util com navegacao por data
+9. Admin adiciona os steps especificos desse processo via "Adicionar processo"
+```
+
