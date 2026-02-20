@@ -64,6 +64,8 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [showAddStep, setShowAddStep] = useState(false);
   const [newStepLabel, setNewStepLabel] = useState("");
+  const [showAddFixedStep, setShowAddFixedStep] = useState(false);
+  const [newFixedStepLabel, setNewFixedStepLabel] = useState("");
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -77,7 +79,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
   const isFutureDate = selectedDate > todayStr;
 
   const { checklist, isLoading, toggleStep, addCustomStep, removeCustomStep, editCustomStep, isAddingCustom } = useClientChecklist(clientId, tipo, selectedDate);
-  const { steps: templateSteps, isLoading: stepsLoading, updateStepLabel, reorderSteps } = useChecklistSteps(tipo);
+  const { steps: templateSteps, isLoading: stepsLoading, addStep: addFixedStep, removeStep: removeFixedStep, updateStepLabel, reorderSteps, isAdding: isAddingFixed } = useChecklistSteps(tipo);
 
   const stepsState = (checklist?.steps || {}) as Record<string, any>;
   const customSteps = getCustomSteps(stepsState);
@@ -99,6 +101,14 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
     addCustomStep(trimmed);
     setNewStepLabel("");
     setShowAddStep(false);
+  };
+
+  const handleAddFixedStep = () => {
+    const trimmed = newFixedStepLabel.trim();
+    if (!trimmed) return;
+    addFixedStep(trimmed);
+    setNewFixedStepLabel("");
+    setShowAddFixedStep(false);
   };
 
   const handleStartEdit = (stepId: string, label: string) => {
@@ -279,9 +289,13 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
                     <span className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
                       <span className="text-muted-foreground font-mono text-[11px] mr-1.5">{i + 1}.</span>
                       {step.label}
-                      {step.isCustom && (
+                     {step.isCustom ? (
                         <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-clix-warning/10 text-clix-warning font-semibold">
-                          local
+                          só este dia
+                        </span>
+                      ) : (
+                        <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-clix-info/10 text-clix-info font-semibold">
+                          fixo
                         </span>
                       )}
                     </span>
@@ -305,18 +319,20 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
                   >
                     <Pencil size={13} />
                   </button>
-                  {step.isCustom && (
-                    <button
+                   <button
                       className="text-muted-foreground hover:text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeCustomStep(step.id);
+                        if (step.isCustom) {
+                          removeCustomStep(step.id);
+                        } else {
+                          removeFixedStep(step.id);
+                        }
                       }}
-                      title="Remover processo"
+                      title={step.isCustom ? "Remover processo local" : "Remover processo fixo"}
                     >
                       <Trash2 size={13} />
                     </button>
-                  )}
                 </div>
               )}
             </li>
@@ -324,9 +340,42 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
         })}
       </ol>
 
-      {/* Add custom step for this day */}
+      {/* Add steps */}
       {isAdmin && (
-        <div className="pt-2">
+        <div className="pt-2 space-y-1">
+          {/* Add fixed step */}
+          {showAddFixedStep ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={newFixedStepLabel}
+                onChange={(e) => setNewFixedStepLabel(e.target.value)}
+                placeholder="Processo fixo (aparece em todos os dias)..."
+                className="h-8 text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddFixedStep();
+                  if (e.key === "Escape") { setShowAddFixedStep(false); setNewFixedStepLabel(""); }
+                }}
+              />
+              <Button size="sm" className="h-8 px-3" onClick={handleAddFixedStep} disabled={isAddingFixed || !newFixedStepLabel.trim()}>
+                {isAddingFixed ? <Loader2 size={14} className="animate-spin" /> : "Adicionar"}
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setShowAddFixedStep(false); setNewFixedStepLabel(""); }}>
+                <X size={14} />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-start gap-1"
+              onClick={() => setShowAddFixedStep(true)}
+            >
+              <Plus size={12} /> Adicionar processo fixo
+            </Button>
+          )}
+
+          {/* Add custom step for this day */}
           {showAddStep ? (
             <div className="flex items-center gap-2">
               <Input
