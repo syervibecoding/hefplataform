@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type ChecklistTipo = "certidoes" | "caixas_postais";
+export type ChecklistTipo = string;
 
 export interface StepInfo {
   done: boolean;

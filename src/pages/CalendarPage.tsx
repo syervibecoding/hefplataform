@@ -31,7 +31,7 @@ interface CalendarEvent {
   color: string;
   eventKey: string;
   originalDay: number;
-  tipo: "certidoes" | "caixas" | "conferencia" | "alerta_saldo" | "automacao";
+  tipo: "certidoes" | "caixas" | "conferencia" | "alerta_saldo" | "automacao" | "custom";
   label?: string;
 }
 
@@ -151,6 +151,26 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
             map[day].push({ clientName: client.nome, clientId: client.id, consultas: [...caixas], color, eventKey, originalDay: ruleDay, tipo: "caixas" });
           });
         }
+
+        // Consultas extras
+        const extras = (client as any).consultasExtras || [];
+        extras.forEach((extra: any) => {
+          const schedule = extra.agenda || {};
+          const days = getScheduleDays(schedule, currentYear, currentMonth);
+          days.forEach((day: number) => {
+            if (!map[day]) map[day] = [];
+            map[day].push({
+              clientName: client.nome,
+              clientId: client.id,
+              consultas: [],
+              color: "bg-clix-success/20 text-clix-success border-clix-success/30",
+              eventKey: `${client.id}-${extra.id}-${day}`,
+              originalDay: day,
+              tipo: "custom",
+              label: extra.nome,
+            });
+          });
+        });
       });
     }
 

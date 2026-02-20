@@ -18,6 +18,7 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
       agendaCaixasPostais: row.agenda_caixas_postais || {},
       faturamento: Number(row.faturamento) || 0,
       custoAPI: Number(row.custo_api) || 0,
+      consultasExtras: Array.isArray(row.consultas_extras) ? row.consultas_extras : [],
     } as HefSysClient;
   }
   return {
@@ -74,6 +75,7 @@ export function useClients(productId: ProductId) {
         row.agenda_caixas_postais = clientData.agendaCaixasPostais;
         row.faturamento = clientData.faturamento;
         row.custo_api = clientData.custoAPI;
+        row.consultas_extras = clientData.consultasExtras || [];
       } else {
         row.valor_contrato = clientData.valorContrato;
         row.rotina_conferencia = clientData.rotinaConferencia;
@@ -109,6 +111,7 @@ export function useClients(productId: ProductId) {
         row.agenda_caixas_postais = data.agendaCaixasPostais;
         row.faturamento = data.faturamento;
         row.custo_api = data.custoAPI;
+        row.consultas_extras = data.consultasExtras || [];
       } else {
         row.valor_contrato = data.valorContrato;
         row.rotina_conferencia = data.rotinaConferencia;

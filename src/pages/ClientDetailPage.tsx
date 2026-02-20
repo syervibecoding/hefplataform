@@ -3,7 +3,7 @@ import StatusTag from "@/components/StatusTag";
 import EditClientDialog from "@/components/EditClientDialog";
 import DeleteClientDialog from "@/components/DeleteClientDialog";
 import ProcessChecklist from "@/components/ProcessChecklist";
-import { type AnyClient, type ProductId, type GenericClient, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS } from "@/data/constants";
+import { type AnyClient, type ProductId, type GenericClient, type ConsultaExtra, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS } from "@/data/constants";
 import { scheduleLabel } from "@/lib/schedule-utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -118,7 +118,8 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
               {(() => {
                 const hasCertidoes = client.consultas.some((c) => CONSULTAS_CERTIDOES.some((x) => x.id === c));
                 const hasCaixas = client.consultas.some((c) => CONSULTAS_CAIXAS.some((x) => x.id === c));
-                if (!hasCertidoes && !hasCaixas) return null;
+                const extras: ConsultaExtra[] = client.consultasExtras || [];
+                if (!hasCertidoes && !hasCaixas && extras.length === 0) return null;
                 return (
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     {hasCertidoes && (
@@ -131,6 +132,11 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                         <ProcessChecklist clientId={client.id} tipo="caixas_postais" schedule={client.agendaCaixasPostais || {}} />
                       </div>
                     )}
+                    {extras.map((extra) => (
+                      <div key={extra.id} className="bg-muted/30 border border-border rounded-lg p-4">
+                        <ProcessChecklist clientId={client.id} tipo={extra.id} schedule={extra.agenda} label={`Checklist ${extra.nome}`} />
+                      </div>
+                    ))}
                   </div>
                 );
               })()}

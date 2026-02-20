@@ -1,0 +1,1 @@
+ALTER TABLE public.clients ADD COLUMN consultas_extras jsonb DEFAULT '[]'::jsonb;

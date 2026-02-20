@@ -82,6 +82,7 @@ export type Database = {
           agenda_certidoes: Json | null
           cnpjs: number | null
           consultas: string[] | null
+          consultas_extras: Json | null
           contato: string
           created_at: string
           custo_api: number | null
@@ -110,6 +111,7 @@ export type Database = {
           agenda_certidoes?: Json | null
           cnpjs?: number | null
           consultas?: string[] | null
+          consultas_extras?: Json | null
           contato?: string
           created_at?: string
           custo_api?: number | null
@@ -138,6 +140,7 @@ export type Database = {
           agenda_certidoes?: Json | null
           cnpjs?: number | null
           consultas?: string[] | null
+          consultas_extras?: Json | null
           contato?: string
           created_at?: string
           custo_api?: number | null

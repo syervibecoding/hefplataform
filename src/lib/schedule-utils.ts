@@ -41,6 +41,17 @@ export function getScheduleDays(
     result.add(getLastBusinessDay(year, month));
   }
 
+  // Every business day (Mon-Fri)
+  if (config.todosOsDiasUteis) {
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    for (let d = 1; d <= totalDays; d++) {
+      const dow = new Date(year, month, d).getDay();
+      if (dow !== 0 && dow !== 6) {
+        result.add(d);
+      }
+    }
+  }
+
   // Apply month-specific overrides
   const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
   const overrides = config.overrides?.[monthKey];
@@ -91,6 +102,7 @@ function getLastBusinessDay(year: number, month: number): number {
 /** Human-readable label for a schedule config */
 export function scheduleLabel(config: ScheduleConfig): string {
   const parts: string[] = [];
+  if (config.todosOsDiasUteis) parts.push("Todos os dias úteis (Seg-Sex)");
   if (config.primeiroDiaUtil) parts.push("1º dia útil");
   if (config.ultimoDiaUtil) parts.push("Último dia útil");
   if (config.dias && config.dias.length > 0) parts.push(`dias ${config.dias.join(", ")}`);

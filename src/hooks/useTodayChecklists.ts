@@ -64,7 +64,7 @@ export function useTodayChecklists(clients: ClientInfo[], enabled: boolean) {
 
         for (const cl of clientChecklists) {
           const steps = (cl.steps as Record<string, any>) || {};
-          const templateSteps = cl.tipo === "certidoes" ? certidoesSteps : caixasSteps;
+          const templateSteps = cl.tipo === "certidoes" ? certidoesSteps : cl.tipo === "caixas_postais" ? caixasSteps : [];
           const customSteps = getCustomSteps(steps);
 
           const allStepIds = [
