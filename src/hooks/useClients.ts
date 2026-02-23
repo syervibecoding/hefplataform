@@ -34,7 +34,9 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
     saldoAnuncio: Number(row.saldo_anuncio) || 0,
     gastoDiarioMedio: Number(row.gasto_diario_medio) || 0,
     dataDeposito: row.data_deposito || null,
+    dataKickoff: row.data_kickoff || null,
     dataGoLive: row.data_golive || null,
+    nivelDificuldade: row.nivel_dificuldade || null,
     notasAutomacao: row.notas_automacao || null,
     nomePlataforma: row.nome_plataforma || null,
     tipoPlataforma: row.tipo_plataforma || null,
@@ -83,7 +85,9 @@ export function useClients(productId: ProductId) {
         row.saldo_anuncio = clientData.saldoAnuncio;
         row.gasto_diario_medio = clientData.gastoDiarioMedio;
         row.data_deposito = clientData.dataDeposito;
+        row.data_kickoff = clientData.dataKickoff || null;
         row.data_golive = clientData.dataGoLive || null;
+        row.nivel_dificuldade = clientData.nivelDificuldade || null;
         row.notas_automacao = clientData.notasAutomacao || null;
         row.nome_plataforma = clientData.nomePlataforma || null;
         row.tipo_plataforma = clientData.tipoPlataforma || null;
@@ -119,7 +123,9 @@ export function useClients(productId: ProductId) {
         row.saldo_anuncio = data.saldoAnuncio;
         row.gasto_diario_medio = data.gastoDiarioMedio;
         row.data_deposito = data.dataDeposito;
+        row.data_kickoff = data.dataKickoff || null;
         row.data_golive = data.dataGoLive || null;
+        row.nivel_dificuldade = data.nivelDificuldade || null;
         row.notas_automacao = data.notasAutomacao || null;
         row.nome_plataforma = data.nomePlataforma || null;
         row.tipo_plataforma = data.tipoPlataforma || null;

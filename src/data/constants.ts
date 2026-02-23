@@ -82,7 +82,9 @@ export interface GenericClient extends BaseClient {
   gastoDiarioMedio?: number;
   dataDeposito?: string | null;
   // Automação IA
+  dataKickoff?: string | null;
   dataGoLive?: string | null;
+  nivelDificuldade?: "facil" | "medio" | "dificil" | null;
   notasAutomacao?: string | null;
   // Plataformas IA
   nomePlataforma?: string | null;

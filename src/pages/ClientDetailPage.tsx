@@ -188,23 +188,40 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
               {/* Automação IA Timeline */}
               {isAutomacao && (() => {
                 const gc = client as GenericClient;
-                if (!gc.dataGoLive) return null;
-                const goLive = new Date(gc.dataGoLive + "T00:00:00");
+                const kickoff = gc.dataKickoff;
+                const nivel = gc.nivelDificuldade;
+                const goLive = gc.dataGoLive;
+                if (!kickoff) return null;
+                const kickoffDate = new Date(kickoff + "T00:00:00");
+                const daysToGoLive = nivel === "facil" ? 7 : nivel === "medio" ? 15 : nivel === "dificil" ? 21 : 7;
+                const goLiveDate = goLive ? new Date(goLive + "T00:00:00") : new Date(kickoffDate.getTime() + daysToGoLive * 86400000);
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
+                const nivelLabel = nivel === "facil" ? "Fácil" : nivel === "medio" ? "Médio" : nivel === "dificil" ? "Difícil" : "—";
+
                 const stages = [
-                  { label: "Onboarding", desc: "Kick-off / Discovery + Parametrização", date: new Date(goLive.getTime() - 7 * 86400000), endDate: goLive },
-                  { label: "Teste e Acompanhamento", desc: "Período de 7 dias de testes", date: goLive, endDate: new Date(goLive.getTime() + 7 * 86400000) },
-                  { label: "Revisão 1", desc: "15–30 dias após go-live", date: new Date(goLive.getTime() + 15 * 86400000), endDate: new Date(goLive.getTime() + 30 * 86400000) },
-                  { label: "Revisão 2", desc: "60 dias após go-live", date: new Date(goLive.getTime() + 60 * 86400000), endDate: new Date(goLive.getTime() + 60 * 86400000) },
-                  { label: "Revisão 3", desc: "90 dias após go-live", date: new Date(goLive.getTime() + 90 * 86400000), endDate: new Date(goLive.getTime() + 90 * 86400000) },
-                  { label: "Revisão 4", desc: "120 dias / Semestral", date: new Date(goLive.getTime() + 120 * 86400000), endDate: new Date(goLive.getTime() + 120 * 86400000) },
+                  { label: "Kickoff", desc: "Início do projeto", date: kickoffDate, endDate: kickoffDate },
+                  { label: "Desenvolvimento", desc: `${daysToGoLive} dias (${nivelLabel})`, date: kickoffDate, endDate: goLiveDate },
+                  { label: "Go-Live", desc: "Lançamento", date: goLiveDate, endDate: goLiveDate },
+                  { label: "Teste e Acompanhamento", desc: "7 dias após go-live", date: goLiveDate, endDate: new Date(goLiveDate.getTime() + 7 * 86400000) },
+                  { label: "Revisão 1", desc: "15–30 dias após go-live", date: new Date(goLiveDate.getTime() + 15 * 86400000), endDate: new Date(goLiveDate.getTime() + 30 * 86400000) },
+                  { label: "Revisão 2", desc: "60 dias após go-live", date: new Date(goLiveDate.getTime() + 60 * 86400000), endDate: new Date(goLiveDate.getTime() + 60 * 86400000) },
+                  { label: "Revisão 3", desc: "90 dias após go-live", date: new Date(goLiveDate.getTime() + 90 * 86400000), endDate: new Date(goLiveDate.getTime() + 90 * 86400000) },
+                  { label: "Revisão 4", desc: "120 dias / Semestral", date: new Date(goLiveDate.getTime() + 120 * 86400000), endDate: new Date(goLiveDate.getTime() + 120 * 86400000) },
                 ];
 
                 return (
                   <div className="mb-6">
-                    <p className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-3">Timeline de Automação</p>
+                    <div className="flex items-center gap-3 mb-3">
+                      <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Timeline de Automação</p>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                        nivel === "facil" ? "bg-clix-success/10 text-clix-success" :
+                        nivel === "medio" ? "bg-clix-warning/10 text-clix-warning" :
+                        nivel === "dificil" ? "bg-destructive/10 text-destructive" :
+                        "bg-muted text-muted-foreground"
+                      }`}>{nivelLabel}</span>
+                    </div>
                     <div className="space-y-0">
                       {stages.map((stage, idx) => {
                         const status = today >= stage.endDate ? "concluido" : today >= stage.date ? "atual" : "pendente";
