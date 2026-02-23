@@ -27,7 +27,8 @@ const hefsysSchema = baseSchema.extend({
 
 const genericSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
-  dataGoLive: z.string().optional(),
+  dataKickoff: z.string().optional(),
+  nivelDificuldade: z.string().optional(),
   notasAutomacao: z.string().optional(),
   nomePlataforma: z.string().optional(),
   tipoPlataforma: z.string().optional(),
@@ -68,7 +69,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
 
   const genericForm = useForm<GenericForm>({
     resolver: zodResolver(genericSchema),
-    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, dataGoLive: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "" },
+    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "" },
   });
 
   const trafegoForm = useForm<TrafegoForm>({
@@ -94,9 +95,21 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
         dataDeposito: data.formaPagamento === "pix" ? data.dataDeposito || null : null,
       });
     } else {
+      // Compute goLive from kickoff + difficulty
+      const kickoff = data.dataKickoff || null;
+      const nivel = data.nivelDificuldade || null;
+      let goLive: string | null = null;
+      if (kickoff && nivel) {
+        const days = nivel === "facil" ? 7 : nivel === "medio" ? 15 : nivel === "dificil" ? 21 : 0;
+        const d = new Date(kickoff + "T00:00:00");
+        d.setDate(d.getDate() + days);
+        goLive = d.toISOString().split("T")[0];
+      }
       onAddClient({
         ...data,
-        dataGoLive: data.dataGoLive || null,
+        dataKickoff: kickoff,
+        dataGoLive: goLive,
+        nivelDificuldade: nivel,
         notasAutomacao: data.notasAutomacao || null,
         nomePlataforma: data.nomePlataforma || null,
         tipoPlataforma: data.tipoPlataforma || null,
@@ -367,9 +380,20 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
               {isAutomacao && (
                 <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
                   <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Automação IA</p>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Data do Go-Live</Label>
-                    <Input {...register("dataGoLive")} type="date" className="mt-1 bg-secondary border-border" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Data do Kickoff</Label>
+                      <Input {...register("dataKickoff")} type="date" className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Nível de Dificuldade</Label>
+                      <select {...register("nivelDificuldade")} className="w-full mt-1 h-10 rounded-md border border-border bg-secondary px-3 text-sm">
+                        <option value="">Selecione</option>
+                        <option value="facil">Fácil (7 dias)</option>
+                        <option value="medio">Médio (15 dias)</option>
+                        <option value="dificil">Difícil (21 dias)</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Notas / Regras / Entregáveis</Label>

@@ -88,12 +88,14 @@ export type Database = {
           custo_api: number | null
           data_deposito: string | null
           data_golive: string | null
+          data_kickoff: string | null
           email: string
           faturamento: number | null
           forma_pagamento: string | null
           frequencia: string | null
           gasto_diario_medio: number | null
           id: string
+          nivel_dificuldade: string | null
           nome: string
           nome_plataforma: string | null
           notas_automacao: string | null
@@ -117,12 +119,14 @@ export type Database = {
           custo_api?: number | null
           data_deposito?: string | null
           data_golive?: string | null
+          data_kickoff?: string | null
           email?: string
           faturamento?: number | null
           forma_pagamento?: string | null
           frequencia?: string | null
           gasto_diario_medio?: number | null
           id?: string
+          nivel_dificuldade?: string | null
           nome: string
           nome_plataforma?: string | null
           notas_automacao?: string | null
@@ -146,12 +150,14 @@ export type Database = {
           custo_api?: number | null
           data_deposito?: string | null
           data_golive?: string | null
+          data_kickoff?: string | null
           email?: string
           faturamento?: number | null
           forma_pagamento?: string | null
           frequencia?: string | null
           gasto_diario_medio?: number | null
           id?: string
+          nivel_dificuldade?: string | null
           nome?: string
           nome_plataforma?: string | null
           notas_automacao?: string | null
