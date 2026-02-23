@@ -172,6 +172,30 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          label: string
+          position: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id: string
+          label: string
+          position?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+        }
+        Relationships: []
+      }
       materials: {
         Row: {
           categoria: string | null

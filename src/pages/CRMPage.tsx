@@ -12,8 +12,11 @@ import {
   Calendar,
   DollarSign,
   ChevronRight,
+  GripVertical,
+  Settings2,
 } from "lucide-react";
-import { useProspects, FUNNEL_STAGES, type Prospect, type ProspectInsert } from "@/hooks/useProspects";
+import { useProspects, type Prospect, type ProspectInsert } from "@/hooks/useProspects";
+import { useCRMStages } from "@/hooks/useCRMStages";
 import { useProducts } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,8 +72,8 @@ const EMPTY_FORM: ProspectInsert = {
   data_followup: null,
 };
 
-function StageColor({ status }: { status: string }) {
-  const stage = FUNNEL_STAGES.find((s) => s.id === status);
+function StageColor({ status, stages }: { status: string; stages: { id: string; label: string; color: string }[] }) {
+  const stage = stages.find((s) => s.id === status);
   return (
     <Badge variant="outline" className={`text-[10px] ${stage?.color ?? ""}`}>
       {stage?.label ?? status}
@@ -115,6 +118,7 @@ function KanbanCard({
 
 export default function CRMPage() {
   const { products } = useProducts();
+  const { stages, addStage, deleteStage, reorderStages } = useCRMStages();
   const [productFilter, setProductFilter] = useState<string | null>(null);
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -124,9 +128,14 @@ export default function CRMPage() {
   const [form, setForm] = useState<ProspectInsert>(EMPTY_FORM);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
+  const [stageManageOpen, setStageManageOpen] = useState(false);
+  const [newStageLabel, setNewStageLabel] = useState("");
+  const [dragColumnId, setDragColumnId] = useState<string | null>(null);
+  const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
 
   const { prospects, isLoading, addProspect, editProspect, deleteProspect, moveProspect } =
     useProspects(productFilter);
+
 
   const totalPipeline = prospects
     .filter((p) => p.status !== "perdido")
@@ -264,26 +273,32 @@ export default function CRMPage() {
           ))}
         </div>
 
-        <div className="ml-auto flex items-center gap-1 bg-secondary rounded-lg p-0.5">
-          <button
-            onClick={() => setView("kanban")}
-            className={`p-1.5 rounded-md transition-all ${view === "kanban" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
-          >
-            <LayoutGrid size={15} />
-          </button>
-          <button
-            onClick={() => setView("table")}
-            className={`p-1.5 rounded-md transition-all ${view === "table" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
-          >
-            <List size={15} />
-          </button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setStageManageOpen(true)}>
+            <Settings2 size={14} />
+            Etapas
+          </Button>
+          <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+            <button
+              onClick={() => setView("kanban")}
+              className={`p-1.5 rounded-md transition-all ${view === "kanban" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              onClick={() => setView("table")}
+              className={`p-1.5 rounded-md transition-all ${view === "table" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+            >
+              <List size={15} />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Kanban View */}
       {view === "kanban" && (
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
-          {FUNNEL_STAGES.map((stage) => {
+          {stages.map((stage) => {
             const stageProspects = prospects.filter((p) => p.status === stage.id);
             const isOver = dragOverStage === stage.id;
             return (
@@ -346,7 +361,7 @@ export default function CRMPage() {
                       {p.contato && <p className="text-xs text-muted-foreground">{p.contato}</p>}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{prod?.nome ?? "—"}</td>
-                    <td className="px-4 py-3"><StageColor status={p.status} /></td>
+                    <td className="px-4 py-3"><StageColor status={p.status} stages={stages} /></td>
                     <td className="px-4 py-3 text-xs font-medium">{formatCurrency(p.valor_estimado)}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {p.data_followup
@@ -378,7 +393,7 @@ export default function CRMPage() {
             <>
               <SheetHeader className="pb-4 border-b border-border">
                 <SheetTitle className="text-base font-bold">{selectedProspect.nome}</SheetTitle>
-                <StageColor status={selectedProspect.status} />
+                <StageColor status={selectedProspect.status} stages={stages} />
               </SheetHeader>
               <div className="py-4 space-y-4">
                 {selectedProspect.contato && (
@@ -450,7 +465,7 @@ export default function CRMPage() {
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Mover para etapa</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {FUNNEL_STAGES.map((s) => (
+                    {stages.map((s) => (
                       <button
                         key={s.id}
                         disabled={s.id === selectedProspect.status}
@@ -535,7 +550,7 @@ export default function CRMPage() {
                 <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
                   <SelectTrigger className="mt-1 bg-secondary border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {FUNNEL_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                    {stages.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -594,6 +609,72 @@ export default function CRMPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Stage Management Dialog */}
+      <Dialog open={stageManageOpen} onOpenChange={setStageManageOpen}>
+        <DialogContent className="max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Etapas do Funil</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground mb-3">Arraste para reordenar. Clique no X para remover.</p>
+          <div className="space-y-1.5 mb-4">
+            {stages.map((stage) => (
+              <div
+                key={stage.id}
+                draggable
+                onDragStart={() => setDragColumnId(stage.id)}
+                onDragOver={(e) => { e.preventDefault(); setDragOverColumnId(stage.id); }}
+                onDragEnd={() => { setDragColumnId(null); setDragOverColumnId(null); }}
+                onDrop={() => {
+                  if (dragColumnId && dragColumnId !== stage.id) {
+                    const ids = stages.map((s) => s.id);
+                    const fromIdx = ids.indexOf(dragColumnId);
+                    const toIdx = ids.indexOf(stage.id);
+                    ids.splice(fromIdx, 1);
+                    ids.splice(toIdx, 0, dragColumnId);
+                    reorderStages.mutate(ids);
+                  }
+                  setDragColumnId(null);
+                  setDragOverColumnId(null);
+                }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all cursor-grab active:cursor-grabbing ${
+                  dragOverColumnId === stage.id ? "border-primary/40 bg-primary/5" : "border-border bg-secondary/40"
+                }`}
+              >
+                <GripVertical size={14} className="text-muted-foreground shrink-0" />
+                <Badge variant="outline" className={`text-xs ${stage.color}`}>{stage.label}</Badge>
+                <span className="flex-1" />
+                <button
+                  onClick={() => deleteStage.mutate(stage.id)}
+                  className="text-muted-foreground hover:text-destructive transition-colors p-0.5"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nome da nova etapa..."
+              value={newStageLabel}
+              onChange={(e) => setNewStageLabel(e.target.value)}
+              className="bg-secondary border-border"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newStageLabel.trim()) {
+                  addStage.mutate(newStageLabel.trim(), { onSuccess: () => setNewStageLabel("") });
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              disabled={!newStageLabel.trim() || addStage.isPending}
+              onClick={() => addStage.mutate(newStageLabel.trim(), { onSuccess: () => setNewStageLabel("") })}
+            >
+              <Plus size={14} />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
