@@ -227,22 +227,40 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
     if (isAutomacaoView) {
       const automacaoClients = activeClients.filter((c) => !isHefSysClient(c)) as GenericClient[];
       automacaoClients.forEach((client, idx) => {
-        if (!client.dataGoLive) return;
-        const goLive = new Date(client.dataGoLive + "T00:00:00");
+        const kickoff = client.dataKickoff;
+        const goLive = client.dataGoLive;
+        if (!kickoff && !goLive) return;
+
+        // Calculate goLive from kickoff + difficulty if not explicitly set
+        let goLiveDate: Date;
+        if (goLive) {
+          goLiveDate = new Date(goLive + "T00:00:00");
+        } else if (kickoff) {
+          const diffDays = client.nivelDificuldade === "facil" ? 7 : client.nivelDificuldade === "medio" ? 15 : 21;
+          goLiveDate = new Date(new Date(kickoff + "T00:00:00").getTime() + diffDays * 86400000);
+        } else {
+          return;
+        }
+
+        const kickoffDate = kickoff ? new Date(kickoff + "T00:00:00") : null;
         const color = COLORS[idx % COLORS.length];
 
-        const stages = [
-          { label: "Onboarding", offset: -7 },
-          { label: "Go-Live", offset: 0 },
-          { label: "Fim Testes (7d)", offset: 7 },
-          { label: "Revisão 1", offset: 15 },
-          { label: "Revisão 2", offset: 60 },
-          { label: "Revisão 3", offset: 90 },
-          { label: "Revisão 4", offset: 120 },
-        ];
+        // Build stages from kickoff
+        const stages: { label: string; date: Date }[] = [];
+        if (kickoffDate) {
+          stages.push({ label: "Kickoff", date: kickoffDate });
+        }
+        stages.push(
+          { label: "Go-Live", date: goLiveDate },
+          { label: "Fim Testes (7d)", date: new Date(goLiveDate.getTime() + 7 * 86400000) },
+          { label: "Revisão 15-30d", date: new Date(goLiveDate.getTime() + 15 * 86400000) },
+          { label: "Revisão 60d", date: new Date(goLiveDate.getTime() + 60 * 86400000) },
+          { label: "Revisão 90d", date: new Date(goLiveDate.getTime() + 90 * 86400000) },
+          { label: "Revisão 120d", date: new Date(goLiveDate.getTime() + 120 * 86400000) },
+        );
 
         stages.forEach((stage) => {
-          const stageDate = new Date(goLive.getTime() + stage.offset * 86400000);
+          const stageDate = stage.date;
           if (stageDate.getFullYear() === currentYear && stageDate.getMonth() === currentMonth) {
             const day = stageDate.getDate();
             if (!map[day]) map[day] = [];
@@ -251,7 +269,7 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
               clientId: client.id,
               consultas: [],
               color,
-              eventKey: `${client.id}-auto-${stage.offset}`,
+              eventKey: `${client.id}-auto-${stage.label}`,
               originalDay: day,
               tipo: "automacao",
               label: stage.label,
