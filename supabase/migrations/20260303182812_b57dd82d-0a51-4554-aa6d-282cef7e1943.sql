@@ -1,0 +1,1 @@
+ALTER TABLE public.client_checklists DROP CONSTRAINT client_checklists_tipo_check;
