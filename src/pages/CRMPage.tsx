@@ -330,7 +330,7 @@ export default function CRMPage() {
             <div className="bg-card border border-border rounded-xl p-4">
               <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
               <p className="text-2xl font-bold mt-0.5 text-primary">{taxaConversao}%</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Base: prospects ativos</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Base: todos os prospects</p>
             </div>
           </div>
 
