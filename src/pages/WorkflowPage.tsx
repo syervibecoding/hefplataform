@@ -97,6 +97,8 @@ export default function WorkflowPage() {
         priority: editingTask.priority,
         due_date: editingTask.due_date,
         labels: editingTask.labels,
+        assigned_to: editingTask.assigned_to,
+        column_id: editingTask.column_id,
       },
     });
     setEditTaskDialogOpen(false);
