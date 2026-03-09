@@ -9,6 +9,7 @@ import CalendarPage from "./CalendarPage";
 import UsersPage from "./UsersPage";
 import MaterialsPage from "./MaterialsPage";
 import CRMPage from "./CRMPage";
+import WorkflowPage from "./WorkflowPage";
 import { useClients } from "@/hooks/useClients";
 import { useMelhorias } from "@/hooks/useMelhorias";
 import { useProducts } from "@/hooks/useProducts";
