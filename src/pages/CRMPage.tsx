@@ -240,6 +240,15 @@ export default function CRMPage() {
     setDragOverStage(null);
   };
 
+  // Client metrics
+  const totalMRR = allClients
+    .filter((c) => c.status === "ativo")
+    .reduce((s, c) => s + (c.valor_contrato || c.faturamento || 0), 0);
+  
+  const saudavel = allClients.filter((c) => calculateHealthScore(c).status === "saudavel").length;
+  const atencao = allClients.filter((c) => calculateHealthScore(c).status === "atencao").length;
+  const critico = allClients.filter((c) => calculateHealthScore(c).status === "critico").length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -249,15 +258,32 @@ export default function CRMPage() {
             <TrendingUp size={18} className="text-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-bold">CRM de Prospecção</h1>
-            <p className="text-xs text-muted-foreground">Acompanhe o funil de vendas</p>
+            <h1 className="text-lg font-bold">CRM</h1>
+            <p className="text-xs text-muted-foreground">Gestão de prospecção e carteira de clientes</p>
           </div>
         </div>
-        <Button onClick={openAdd} size="sm" className="gap-1.5">
-          <Plus size={15} />
-          Adicionar Prospect
-        </Button>
       </div>
+
+      <Tabs defaultValue="prospeccao" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="prospeccao" className="gap-2">
+            <TrendingUp size={14} />
+            Prospecção
+          </TabsTrigger>
+          <TabsTrigger value="carteira" className="gap-2">
+            <Users size={14} />
+            Carteira
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Prospecção Tab */}
+        <TabsContent value="prospeccao" className="space-y-6">
+          <div className="flex items-center justify-end">
+            <Button onClick={openAdd} size="sm" className="gap-1.5">
+              <Plus size={15} />
+              Adicionar Prospect
+            </Button>
+          </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
