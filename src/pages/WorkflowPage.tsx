@@ -1,8 +1,10 @@
 import { useState, useRef } from "react";
-import { Plus, GripVertical, MoreHorizontal, Trash2, Edit2, Calendar as CalendarIcon, Flag, X, Settings2 } from "lucide-react";
+import { Plus, GripVertical, MoreHorizontal, Trash2, Edit2, Calendar as CalendarIcon, Flag, X, Settings2, User } from "lucide-react";
 import { usePlanningColumns, type PlanningColumn } from "@/hooks/usePlanningColumns";
 import { usePlanningTasks, type PlanningTask } from "@/hooks/usePlanningTasks";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
