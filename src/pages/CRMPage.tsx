@@ -153,6 +153,9 @@ export default function CRMPage() {
 
   const { prospects, isLoading, addProspect, editProspect, deleteProspect, moveProspect } =
     useProspects(productFilter);
+  
+  const { data: allClients = [], isLoading: isLoadingClients } = useAllClients(productFilter);
+  const navigate = useNavigate();
 
 
   // First stage (position 0) = leads frios
