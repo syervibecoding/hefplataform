@@ -63,7 +63,7 @@ export default function WorkflowPage() {
   const [manageColumnsOpen, setManageColumnsOpen] = useState(false);
   const [targetColumnId, setTargetColumnId] = useState("");
   const [editingTask, setEditingTask] = useState<PlanningTask | null>(null);
-  const [newTask, setNewTask] = useState({ title: "", description: "", priority: "media", due_date: "", labels: "" });
+  const [newTask, setNewTask] = useState({ title: "", description: "", priority: "media", due_date: "", labels: "", assigned_to: "" });
   const [newColumn, setNewColumn] = useState({ label: "", color: COLUMN_COLORS[0] });
 
   // Drag state
