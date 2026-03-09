@@ -137,9 +137,22 @@ export default function CRMPage() {
     useProspects(productFilter);
 
 
+  // First stage (position 0) = leads frios
+  const firstStageId = stages.length > 0 ? stages[0]?.id : null;
+  const lastStageId = stages.length > 0 ? stages[stages.length - 1]?.id : null;
+
+  const leadsFrios = prospects.filter((p) => p.status === firstStageId);
+  const convertidos = prospects.filter((p) => p.status === "ganho" || p.status === lastStageId);
+  const perdidos = prospects.filter((p) => p.status === "perdido");
+
   const totalPipeline = prospects
-    .filter((p) => p.status !== "perdido")
+    .filter((p) => p.status !== "perdido" && p.status !== firstStageId)
     .reduce((s, p) => s + (p.valor_estimado ?? 0), 0);
+
+  const prospectsAtivos = prospects.filter((p) => p.status !== firstStageId && p.status !== "perdido");
+  const taxaConversao = prospectsAtivos.length > 0
+    ? Math.round((convertidos.length / prospectsAtivos.length) * 100)
+    : 0;
 
   const openAdd = () => {
     setEditingProspect(null);
@@ -221,26 +234,27 @@ export default function CRMPage() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Total de Prospects</p>
           <p className="text-2xl font-bold mt-0.5">{prospects.length}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground">Leads Frios</p>
+          <p className="text-2xl font-bold mt-0.5 text-blue-500">{leadsFrios.length}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Valor do Pipeline</p>
           <p className="text-2xl font-bold mt-0.5 text-green-600">{formatCurrency(totalPipeline)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Exclui leads frios e perdidos</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Convertidos</p>
-          <p className="text-2xl font-bold mt-0.5 text-green-500">
-            {prospects.filter((p) => p.status === "ganho").length}
-          </p>
+          <p className="text-2xl font-bold mt-0.5 text-green-500">{convertidos.length}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Perdidos</p>
-          <p className="text-2xl font-bold mt-0.5 text-red-500">
-            {prospects.filter((p) => p.status === "perdido").length}
-          </p>
+          <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
+          <p className="text-2xl font-bold mt-0.5 text-primary">{taxaConversao}%</p>
         </div>
       </div>
 
@@ -311,11 +325,18 @@ export default function CRMPage() {
                 onDragLeave={() => setDragOverStage(null)}
                 onDrop={(e) => handleDrop(e, stage.id)}
               >
-                <div className="p-3 border-b border-border flex items-center justify-between">
-                  <span className="text-xs font-semibold truncate">{stage.label}</span>
-                  <Badge variant="secondary" className="text-[10px] ml-1 shrink-0">
-                    {stageProspects.length}
-                  </Badge>
+                <div className="p-3 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold truncate">{stage.label}</span>
+                    <Badge variant="secondary" className="text-[10px] ml-1 shrink-0">
+                      {stageProspects.length}
+                    </Badge>
+                  </div>
+                  {stageProspects.reduce((s, p) => s + (p.valor_estimado ?? 0), 0) > 0 && (
+                    <p className="text-[10px] text-green-600 font-medium mt-1">
+                      {formatCurrency(stageProspects.reduce((s, p) => s + (p.valor_estimado ?? 0), 0))}
+                    </p>
+                  )}
                 </div>
                 <div className="p-2 space-y-2 min-h-[120px]">
                   {stageProspects.map((p) => (
