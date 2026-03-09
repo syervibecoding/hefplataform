@@ -22,6 +22,7 @@ import { useCRMStages } from "@/hooks/useCRMStages";
 import { useProducts } from "@/hooks/useProducts";
 import { useAllClients, calculateHealthScore, type ClientRow } from "@/hooks/useAllClients";
 import { useNavigate } from "react-router-dom";
+import RenewalPipelineBoard from "@/components/RenewalPipelineBoard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
