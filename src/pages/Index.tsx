@@ -132,6 +132,7 @@ export default function Index() {
       case "crm":
         return <CRMPage />;
       case "workflow":
+        return <WorkflowPage />;
       case "settings":
         return (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
