@@ -76,6 +76,50 @@ export type Database = {
           },
         ]
       }
+      client_interactions: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          data: string
+          descricao: string | null
+          id: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          data: string
+          descricao?: string | null
+          id?: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          descricao?: string | null
+          id?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_interactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           agenda_caixas_postais: Json | null
@@ -443,6 +487,47 @@ export type Database = {
           whatsapp?: string | null
         }
         Relationships: []
+      }
+      renewal_pipeline: {
+        Row: {
+          client_id: string
+          created_at: string
+          data_vencimento: string | null
+          id: string
+          notas: string | null
+          status: string
+          updated_at: string
+          valor_renovacao: number | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data_vencimento?: string | null
+          id?: string
+          notas?: string | null
+          status?: string
+          updated_at?: string
+          valor_renovacao?: number | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data_vencimento?: string | null
+          id?: string
+          notas?: string | null
+          status?: string
+          updated_at?: string
+          valor_renovacao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renewal_pipeline_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
