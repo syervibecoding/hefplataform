@@ -336,6 +336,9 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
               <div className="text-sm font-medium mt-1">{client.email}</div>
             </div>
           </div>
+
+          {/* Interaction Timeline */}
+          <InteractionTimeline clientId={client.id} />
         </div>
       </div>
     </div>

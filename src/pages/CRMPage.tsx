@@ -545,6 +545,9 @@ export default function CRMPage() {
             ))}
           </div>
 
+          {/* Renewal Pipeline */}
+          <RenewalPipelineBoard clients={allClients} />
+
           {/* Client Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {allClients.map((client) => (
