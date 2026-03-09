@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "clients", label: "Clientes", icon: Users },
   { id: "calendar", label: "Calendário", icon: Calendar },
-  { id: "workflow", label: "Workflow", icon: Activity },
+  { id: "workflow", label: "Planning", icon: Activity },
   { id: "materials", label: "Materiais", icon: BookOpen },
   { id: "crm", label: "CRM", icon: TrendingUp },
   { id: "melhorias", label: "Melhorias", icon: Rocket },

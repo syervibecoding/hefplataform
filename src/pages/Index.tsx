@@ -9,6 +9,7 @@ import CalendarPage from "./CalendarPage";
 import UsersPage from "./UsersPage";
 import MaterialsPage from "./MaterialsPage";
 import CRMPage from "./CRMPage";
+import WorkflowPage from "./WorkflowPage";
 import { useClients } from "@/hooks/useClients";
 import { useMelhorias } from "@/hooks/useMelhorias";
 import { useProducts } from "@/hooks/useProducts";
@@ -131,6 +132,7 @@ export default function Index() {
       case "crm":
         return <CRMPage />;
       case "workflow":
+        return <WorkflowPage />;
       case "settings":
         return (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
