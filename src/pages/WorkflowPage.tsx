@@ -81,8 +81,9 @@ export default function WorkflowPage() {
       priority: newTask.priority,
       due_date: newTask.due_date || undefined,
       labels: newTask.labels ? newTask.labels.split(",").map(l => l.trim()).filter(Boolean) : undefined,
+      assigned_to: newTask.assigned_to || undefined,
     });
-    setNewTask({ title: "", description: "", priority: "media", due_date: "", labels: "" });
+    setNewTask({ title: "", description: "", priority: "media", due_date: "", labels: "", assigned_to: "" });
     setAddTaskDialogOpen(false);
   };
 
