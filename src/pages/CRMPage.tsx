@@ -22,6 +22,7 @@ import { useCRMStages } from "@/hooks/useCRMStages";
 import { useProducts } from "@/hooks/useProducts";
 import { useAllClients, calculateHealthScore, type ClientRow } from "@/hooks/useAllClients";
 import { useNavigate } from "react-router-dom";
+import RenewalPipelineBoard from "@/components/RenewalPipelineBoard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -543,6 +544,9 @@ export default function CRMPage() {
               </button>
             ))}
           </div>
+
+          {/* Renewal Pipeline */}
+          <RenewalPipelineBoard clients={allClients} />
 
           {/* Client Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
