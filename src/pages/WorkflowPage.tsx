@@ -286,22 +286,29 @@ export default function WorkflowPage() {
                       <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
                     )}
 
-                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                      {task.priority && task.priority !== "media" && (
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${PRIORITY_MAP[task.priority]?.color || ""}`}>
-                          <Flag size={8} />
-                          {PRIORITY_MAP[task.priority]?.label}
-                        </span>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {task.priority && task.priority !== "media" && (
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${PRIORITY_MAP[task.priority]?.color || ""}`}>
+                            <Flag size={8} />
+                            {PRIORITY_MAP[task.priority]?.label}
+                          </span>
+                        )}
+                        {task.due_date && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
+                            <CalendarIcon size={8} />
+                            {new Date(task.due_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                          </span>
+                        )}
+                        {task.labels?.map((label) => (
+                          <Badge key={label} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{label}</Badge>
+                        ))}
+                      </div>
+                      {task.assigned_to && (
+                        <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold flex-shrink-0" title={getProfileName(task.assigned_to) || ""}>
+                          {getProfileInitials(task.assigned_to)}
+                        </div>
                       )}
-                      {task.due_date && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
-                          <CalendarIcon size={8} />
-                          {new Date(task.due_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                        </span>
-                      )}
-                      {task.labels?.map((label) => (
-                        <Badge key={label} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{label}</Badge>
-                      ))}
                     </div>
                   </div>
                 ))}
