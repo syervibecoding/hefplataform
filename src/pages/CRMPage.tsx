@@ -137,9 +137,22 @@ export default function CRMPage() {
     useProspects(productFilter);
 
 
+  // First stage (position 0) = leads frios
+  const firstStageId = stages.length > 0 ? stages[0]?.id : null;
+  const lastStageId = stages.length > 0 ? stages[stages.length - 1]?.id : null;
+
+  const leadsFrios = prospects.filter((p) => p.status === firstStageId);
+  const convertidos = prospects.filter((p) => p.status === "ganho" || p.status === lastStageId);
+  const perdidos = prospects.filter((p) => p.status === "perdido");
+
   const totalPipeline = prospects
-    .filter((p) => p.status !== "perdido")
+    .filter((p) => p.status !== "perdido" && p.status !== firstStageId)
     .reduce((s, p) => s + (p.valor_estimado ?? 0), 0);
+
+  const prospectsAtivos = prospects.filter((p) => p.status !== firstStageId && p.status !== "perdido");
+  const taxaConversao = prospectsAtivos.length > 0
+    ? Math.round((convertidos.length / prospectsAtivos.length) * 100)
+    : 0;
 
   const openAdd = () => {
     setEditingProspect(null);
