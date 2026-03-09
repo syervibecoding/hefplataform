@@ -234,26 +234,27 @@ export default function CRMPage() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Total de Prospects</p>
           <p className="text-2xl font-bold mt-0.5">{prospects.length}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground">Leads Frios</p>
+          <p className="text-2xl font-bold mt-0.5 text-blue-500">{leadsFrios.length}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Valor do Pipeline</p>
           <p className="text-2xl font-bold mt-0.5 text-green-600">{formatCurrency(totalPipeline)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Exclui leads frios e perdidos</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Convertidos</p>
-          <p className="text-2xl font-bold mt-0.5 text-green-500">
-            {prospects.filter((p) => p.status === "ganho").length}
-          </p>
+          <p className="text-2xl font-bold mt-0.5 text-green-500">{convertidos.length}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Perdidos</p>
-          <p className="text-2xl font-bold mt-0.5 text-red-500">
-            {prospects.filter((p) => p.status === "perdido").length}
-          </p>
+          <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
+          <p className="text-2xl font-bold mt-0.5 text-primary">{taxaConversao}%</p>
         </div>
       </div>
 
