@@ -14,8 +14,26 @@ import {
   ChevronRight,
   GripVertical,
   Settings2,
+  Users,
+  Activity,
 } from "lucide-react";
 import { useProspects, type Prospect, type ProspectInsert } from "@/hooks/useProspects";
+import { useCRMStages } from "@/hooks/useCRMStages";
+import { useProducts } from "@/hooks/useProducts";
+import { useAllClients, calculateHealthScore, type ClientRow } from "@/hooks/useAllClients";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useCRMStages } from "@/hooks/useCRMStages";
 import { useProducts } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
