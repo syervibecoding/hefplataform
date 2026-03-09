@@ -325,11 +325,18 @@ export default function CRMPage() {
                 onDragLeave={() => setDragOverStage(null)}
                 onDrop={(e) => handleDrop(e, stage.id)}
               >
-                <div className="p-3 border-b border-border flex items-center justify-between">
-                  <span className="text-xs font-semibold truncate">{stage.label}</span>
-                  <Badge variant="secondary" className="text-[10px] ml-1 shrink-0">
-                    {stageProspects.length}
-                  </Badge>
+                <div className="p-3 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold truncate">{stage.label}</span>
+                    <Badge variant="secondary" className="text-[10px] ml-1 shrink-0">
+                      {stageProspects.length}
+                    </Badge>
+                  </div>
+                  {stageProspects.reduce((s, p) => s + (p.valor_estimado ?? 0), 0) > 0 && (
+                    <p className="text-[10px] text-green-600 font-medium mt-1">
+                      {formatCurrency(stageProspects.reduce((s, p) => s + (p.valor_estimado ?? 0), 0))}
+                    </p>
+                  )}
                 </div>
                 <div className="p-2 space-y-2 min-h-[120px]">
                   {stageProspects.map((p) => (
