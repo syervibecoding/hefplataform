@@ -6,6 +6,7 @@ import ProcessChecklist from "@/components/ProcessChecklist";
 import { type AnyClient, type ProductId, type GenericClient, type ConsultaExtra, isHefSysClient, TODAS_CONSULTAS, FREQUENCIAS, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS } from "@/data/constants";
 import { scheduleLabel } from "@/lib/schedule-utils";
 import { useAuth } from "@/contexts/AuthContext";
+import InteractionTimeline from "@/components/InteractionTimeline";
 
 interface Props {
   client: AnyClient;
