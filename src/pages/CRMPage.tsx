@@ -34,19 +34,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useCRMStages } from "@/hooks/useCRMStages";
-import { useProducts } from "@/hooks/useProducts";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -134,6 +121,43 @@ function KanbanCard({
   );
 }
 
+function ClientCard({ client, products, onClick }: { client: ClientRow; products: any[]; onClick: () => void }) {
+  const health = calculateHealthScore(client);
+  const product = products.find((p) => p.id === client.product_id);
+
+  return (
+    <div
+      onClick={onClick}
+      className="bg-card border border-border rounded-lg p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
+    >
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm truncate">{client.nome}</p>
+          {product && <p className="text-xs text-muted-foreground">{product.nome}</p>}
+        </div>
+        <Badge variant="outline" className={`text-[10px] shrink-0 ${health.color}`}>
+          {health.label}
+        </Badge>
+      </div>
+      <div className="flex items-center justify-between gap-2 mt-3">
+        <span className="text-xs text-muted-foreground">
+          {client.status === "ativo" ? "Ativo" : "Inativo"}
+        </span>
+        {(client.valor_contrato || client.faturamento) ? (
+          <span className="text-xs font-medium text-green-600">
+            {formatCurrency(client.valor_contrato || client.faturamento)}
+          </span>
+        ) : null}
+      </div>
+      {client.contato && (
+        <p className="text-[10px] text-muted-foreground mt-2 truncate">
+          Contato: {client.contato}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function CRMPage() {
   const { products } = useProducts();
   const { stages, addStage, deleteStage, reorderStages } = useCRMStages();
@@ -157,8 +181,7 @@ export default function CRMPage() {
   const { data: allClients = [], isLoading: isLoadingClients } = useAllClients(productFilter);
   const navigate = useNavigate();
 
-
-  // First stage (position 0) = leads frios
+  // Prospect metrics
   const firstStageId = stages.length > 0 ? stages[0]?.id : null;
   const lastStageId = stages.length > 0 ? stages[stages.length - 1]?.id : null;
 
@@ -179,6 +202,15 @@ export default function CRMPage() {
   const taxaConversao = prospectsAtivos.length > 0
     ? Math.round((convertidos.length / prospectsAtivos.length) * 100)
     : 0;
+
+  // Client metrics
+  const totalMRR = allClients
+    .filter((c) => c.status === "ativo")
+    .reduce((s, c) => s + (c.valor_contrato || c.faturamento || 0), 0);
+  
+  const saudavel = allClients.filter((c) => calculateHealthScore(c).status === "saudavel").length;
+  const atencao = allClients.filter((c) => calculateHealthScore(c).status === "atencao").length;
+  const critico = allClients.filter((c) => calculateHealthScore(c).status === "critico").length;
 
   const openAdd = () => {
     setEditingProspect(null);
@@ -225,7 +257,6 @@ export default function CRMPage() {
     }
   };
 
-  // Drag and drop
   const handleDragStart = (e: React.DragEvent, id: string) => {
     dragId.current = id;
     e.dataTransfer.effectAllowed = "move";
@@ -239,15 +270,6 @@ export default function CRMPage() {
     }
     setDragOverStage(null);
   };
-
-  // Client metrics
-  const totalMRR = allClients
-    .filter((c) => c.status === "ativo")
-    .reduce((s, c) => s + (c.valor_contrato || c.faturamento || 0), 0);
-  
-  const saudavel = allClients.filter((c) => calculateHealthScore(c).status === "saudavel").length;
-  const atencao = allClients.filter((c) => calculateHealthScore(c).status === "atencao").length;
-  const critico = allClients.filter((c) => calculateHealthScore(c).status === "critico").length;
 
   return (
     <div className="space-y-6">
@@ -277,7 +299,7 @@ export default function CRMPage() {
         </TabsList>
 
         {/* Prospecção Tab */}
-        <TabsContent value="prospeccao" className="space-y-6">
+        <TabsContent value="prospeccao" className="space-y-6 mt-6">
           <div className="flex items-center justify-end">
             <Button onClick={openAdd} size="sm" className="gap-1.5">
               <Plus size={15} />
@@ -285,184 +307,261 @@ export default function CRMPage() {
             </Button>
           </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Total de Prospects</p>
-          <p className="text-2xl font-bold mt-0.5">{prospects.length}</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Leads Frios</p>
-          <p className="text-2xl font-bold mt-0.5 text-blue-500">{leadsFrios.length}</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Geladeira</p>
-          <p className="text-2xl font-bold mt-0.5 text-cyan-500">{geladeira.length}</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Valor do Pipeline</p>
-          <p className="text-2xl font-bold mt-0.5 text-green-600">{formatCurrency(totalPipeline)}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Exclui frios, geladeira e perdidos</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Convertidos</p>
-          <p className="text-2xl font-bold mt-0.5 text-green-500">{convertidos.length}</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
-          <p className="text-2xl font-bold mt-0.5 text-primary">{taxaConversao}%</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Base: prospects ativos</p>
-        </div>
-      </div>
+          {/* Prospect Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Total de Prospects</p>
+              <p className="text-2xl font-bold mt-0.5">{prospects.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Leads Frios</p>
+              <p className="text-2xl font-bold mt-0.5 text-blue-500">{leadsFrios.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Geladeira</p>
+              <p className="text-2xl font-bold mt-0.5 text-cyan-500">{geladeira.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Valor do Pipeline</p>
+              <p className="text-2xl font-bold mt-0.5 text-green-600">{formatCurrency(totalPipeline)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Exclui frios, geladeira e perdidos</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Convertidos</p>
+              <p className="text-2xl font-bold mt-0.5 text-green-500">{convertidos.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
+              <p className="text-2xl font-bold mt-0.5 text-primary">{taxaConversao}%</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Base: prospects ativos</p>
+            </div>
+          </div>
 
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Product filter */}
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setProductFilter(null)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-              !productFilter
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Todos
-          </button>
-          {products.map((p) => (
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setProductFilter(null)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  !productFilter
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Todos
+              </button>
+              {products.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setProductFilter(productFilter === p.id ? null : p.id)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                    productFilter === p.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {p.nome}
+                </button>
+              ))}
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setStageManageOpen(true)}>
+                <Settings2 size={14} />
+                Etapas
+              </Button>
+              <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+                <button
+                  onClick={() => setView("kanban")}
+                  className={`p-1.5 rounded-md transition-all ${view === "kanban" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+                >
+                  <LayoutGrid size={15} />
+                </button>
+                <button
+                  onClick={() => setView("table")}
+                  className={`p-1.5 rounded-md transition-all ${view === "table" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+                >
+                  <List size={15} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Kanban View */}
+          {view === "kanban" && (
+            <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
+              {stages.map((stage) => {
+                const stageProspects = prospects.filter((p) => p.status === stage.id);
+                const isOver = dragOverStage === stage.id;
+                return (
+                  <div
+                    key={stage.id}
+                    className={`flex-shrink-0 w-52 rounded-xl border transition-all ${
+                      isOver ? "border-primary/40 bg-primary/5" : "border-border bg-secondary/40"
+                    }`}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverStage(stage.id); }}
+                    onDragLeave={() => setDragOverStage(null)}
+                    onDrop={(e) => handleDrop(e, stage.id)}
+                  >
+                    <div className="p-3 border-b border-border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold truncate">{stage.label}</span>
+                        <Badge variant="secondary" className="text-[10px] ml-1 shrink-0">
+                          {stageProspects.length}
+                        </Badge>
+                      </div>
+                      {stageProspects.reduce((s, p) => s + (p.valor_estimado ?? 0), 0) > 0 && (
+                        <p className="text-[10px] text-green-600 font-medium mt-1">
+                          {formatCurrency(stageProspects.reduce((s, p) => s + (p.valor_estimado ?? 0), 0))}
+                        </p>
+                      )}
+                    </div>
+                    <div className="p-2 space-y-2 min-h-[120px]">
+                      {stageProspects.map((p) => (
+                        <KanbanCard
+                          key={p.id}
+                          prospect={p}
+                          onClick={() => setSelectedProspect(p)}
+                          onDragStart={handleDragStart}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Table View */}
+          {view === "table" && (
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/40">
+                    <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Nome</th>
+                    <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Produto</th>
+                    <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Etapa</th>
+                    <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Valor</th>
+                    <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Follow-up</th>
+                    <th className="w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {prospects.map((p) => {
+                    const prod = products.find((pr) => pr.id === p.product_id);
+                    return (
+                      <tr
+                        key={p.id}
+                        className="border-b border-border last:border-0 hover:bg-secondary/40 cursor-pointer transition-colors"
+                        onClick={() => setSelectedProspect(p)}
+                      >
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-sm">{p.nome}</p>
+                          {p.contato && <p className="text-xs text-muted-foreground">{p.contato}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{prod?.nome ?? "—"}</td>
+                        <td className="px-4 py-3"><StageColor status={p.status} stages={stages} /></td>
+                        <td className="px-4 py-3 text-xs font-medium">{formatCurrency(p.valor_estimado)}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {p.data_followup
+                            ? new Date(p.data_followup + "T00:00:00").toLocaleDateString("pt-BR")
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <ChevronRight size={14} className="text-muted-foreground" />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {prospects.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                        Nenhum prospect encontrado
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Carteira Tab */}
+        <TabsContent value="carteira" className="space-y-6 mt-6">
+          {/* Client Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">Total de Clientes</p>
+              <p className="text-2xl font-bold mt-0.5">{allClients.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground">MRR Total</p>
+              <p className="text-2xl font-bold mt-0.5 text-green-600">{formatCurrency(totalMRR)}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center gap-1.5">
+                <Activity size={12} className="text-green-500" />
+                <p className="text-xs text-muted-foreground">Saudável</p>
+              </div>
+              <p className="text-2xl font-bold mt-0.5 text-green-500">{saudavel}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center gap-1.5">
+                <Activity size={12} className="text-yellow-500" />
+                <p className="text-xs text-muted-foreground">Atenção</p>
+              </div>
+              <p className="text-2xl font-bold mt-0.5 text-yellow-500">{atencao}</p>
+              {critico > 0 && (
+                <p className="text-[10px] text-red-500 font-medium mt-0.5">{critico} crítico(s)</p>
+              )}
+            </div>
+          </div>
+
+          {/* Product Filter */}
+          <div className="flex flex-wrap gap-1.5">
             <button
-              key={p.id}
-              onClick={() => setProductFilter(productFilter === p.id ? null : p.id)}
+              onClick={() => setProductFilter(null)}
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                productFilter === p.id
+                !productFilter
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-secondary border-border text-muted-foreground hover:text-foreground"
               }`}
             >
-              {p.nome}
+              Todos
             </button>
-          ))}
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setStageManageOpen(true)}>
-            <Settings2 size={14} />
-            Etapas
-          </Button>
-          <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
-            <button
-              onClick={() => setView("kanban")}
-              className={`p-1.5 rounded-md transition-all ${view === "kanban" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
-            >
-              <LayoutGrid size={15} />
-            </button>
-            <button
-              onClick={() => setView("table")}
-              className={`p-1.5 rounded-md transition-all ${view === "table" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
-            >
-              <List size={15} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Kanban View */}
-      {view === "kanban" && (
-        <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
-          {stages.map((stage) => {
-            const stageProspects = prospects.filter((p) => p.status === stage.id);
-            const isOver = dragOverStage === stage.id;
-            return (
-              <div
-                key={stage.id}
-                className={`flex-shrink-0 w-52 rounded-xl border transition-all ${
-                  isOver ? "border-primary/40 bg-primary/5" : "border-border bg-secondary/40"
+            {products.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setProductFilter(productFilter === p.id ? null : p.id)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  productFilter === p.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary border-border text-muted-foreground hover:text-foreground"
                 }`}
-                onDragOver={(e) => { e.preventDefault(); setDragOverStage(stage.id); }}
-                onDragLeave={() => setDragOverStage(null)}
-                onDrop={(e) => handleDrop(e, stage.id)}
               >
-                <div className="p-3 border-b border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold truncate">{stage.label}</span>
-                    <Badge variant="secondary" className="text-[10px] ml-1 shrink-0">
-                      {stageProspects.length}
-                    </Badge>
-                  </div>
-                  {stageProspects.reduce((s, p) => s + (p.valor_estimado ?? 0), 0) > 0 && (
-                    <p className="text-[10px] text-green-600 font-medium mt-1">
-                      {formatCurrency(stageProspects.reduce((s, p) => s + (p.valor_estimado ?? 0), 0))}
-                    </p>
-                  )}
-                </div>
-                <div className="p-2 space-y-2 min-h-[120px]">
-                  {stageProspects.map((p) => (
-                    <KanbanCard
-                      key={p.id}
-                      prospect={p}
-                      onClick={() => setSelectedProspect(p)}
-                      onDragStart={handleDragStart}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                {p.nome}
+              </button>
+            ))}
+          </div>
 
-      {/* Table View */}
-      {view === "table" && (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-secondary/40">
-                <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Nome</th>
-                <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Produto</th>
-                <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Etapa</th>
-                <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Valor</th>
-                <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Follow-up</th>
-                <th className="w-8" />
-              </tr>
-            </thead>
-            <tbody>
-              {prospects.map((p) => {
-                const prod = products.find((pr) => pr.id === p.product_id);
-                return (
-                  <tr
-                    key={p.id}
-                    className="border-b border-border last:border-0 hover:bg-secondary/40 cursor-pointer transition-colors"
-                    onClick={() => setSelectedProspect(p)}
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-sm">{p.nome}</p>
-                      {p.contato && <p className="text-xs text-muted-foreground">{p.contato}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{prod?.nome ?? "—"}</td>
-                    <td className="px-4 py-3"><StageColor status={p.status} stages={stages} /></td>
-                    <td className="px-4 py-3 text-xs font-medium">{formatCurrency(p.valor_estimado)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {p.data_followup
-                        ? new Date(p.data_followup + "T00:00:00").toLocaleDateString("pt-BR")
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <ChevronRight size={14} className="text-muted-foreground" />
-                    </td>
-                  </tr>
-                );
-              })}
-              {prospects.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    Nenhum prospect encontrado
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+          {/* Client Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {allClients.map((client) => (
+              <ClientCard
+                key={client.id}
+                client={client}
+                products={products}
+                onClick={() => navigate(`/clients/${client.product_id}/${client.id}`)}
+              />
+            ))}
+            {allClients.length === 0 && (
+              <div className="col-span-full text-center py-12 text-sm text-muted-foreground">
+                Nenhum cliente encontrado
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Detail Drawer */}
       <Sheet open={!!selectedProspect} onOpenChange={(o) => !o && setSelectedProspect(null)}>
