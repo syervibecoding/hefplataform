@@ -36,6 +36,27 @@ export default function WorkflowPage() {
   const { columns, addColumn, updateColumn, deleteColumn, reorderColumns } = usePlanningColumns();
   const { tasks, addTask, updateTask, deleteTask, moveTask } = usePlanningTasks();
 
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, username, display_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const getProfileName = (userId: string | null) => {
+    if (!userId) return null;
+    const p = profiles.find(p => p.id === userId);
+    return p?.display_name || p?.username || null;
+  };
+
+  const getProfileInitials = (userId: string | null) => {
+    const name = getProfileName(userId);
+    if (!name) return "?";
+    return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  };
+
   const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
   const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false);
   const [addColumnDialogOpen, setAddColumnDialogOpen] = useState(false);
