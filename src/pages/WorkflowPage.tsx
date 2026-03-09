@@ -357,9 +357,21 @@ export default function WorkflowPage() {
                 <Input type="date" value={newTask.due_date} onChange={(e) => setNewTask(p => ({ ...p, due_date: e.target.value }))} className="mt-1 bg-secondary border-border" />
               </div>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Labels (separadas por vírgula)</Label>
-              <Input value={newTask.labels} onChange={(e) => setNewTask(p => ({ ...p, labels: e.target.value }))} className="mt-1 bg-secondary border-border" placeholder="frontend, bug, review" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">Responsável</Label>
+                <Select value={newTask.assigned_to} onValueChange={(v) => setNewTask(p => ({ ...p, assigned_to: v === "_none" ? "" : v }))}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border"><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="_none">Nenhum</SelectItem>
+                    {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.display_name || p.username}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Labels</Label>
+                <Input value={newTask.labels} onChange={(e) => setNewTask(p => ({ ...p, labels: e.target.value }))} className="mt-1 bg-secondary border-border" placeholder="frontend, bug" />
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setAddTaskDialogOpen(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground">Cancelar</button>
