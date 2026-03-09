@@ -33,7 +33,7 @@ export function usePlanningTasks() {
   });
 
   const addTask = useMutation({
-    mutationFn: async (task: { title: string; column_id: string; description?: string; priority?: string; due_date?: string; labels?: string[] }) => {
+    mutationFn: async (task: { title: string; column_id: string; description?: string; priority?: string; due_date?: string; labels?: string[]; assigned_to?: string }) => {
       const tasksInColumn = tasks.filter(t => t.column_id === task.column_id);
       const { error } = await supabase.from("planning_tasks").insert({
         ...task,

@@ -1,8 +1,10 @@
 import { useState, useRef } from "react";
-import { Plus, GripVertical, MoreHorizontal, Trash2, Edit2, Calendar as CalendarIcon, Flag, X, Settings2 } from "lucide-react";
+import { Plus, GripVertical, MoreHorizontal, Trash2, Edit2, Calendar as CalendarIcon, Flag, X, Settings2, User } from "lucide-react";
 import { usePlanningColumns, type PlanningColumn } from "@/hooks/usePlanningColumns";
 import { usePlanningTasks, type PlanningTask } from "@/hooks/usePlanningTasks";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,13 +36,34 @@ export default function WorkflowPage() {
   const { columns, addColumn, updateColumn, deleteColumn, reorderColumns } = usePlanningColumns();
   const { tasks, addTask, updateTask, deleteTask, moveTask } = usePlanningTasks();
 
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, username, display_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const getProfileName = (userId: string | null) => {
+    if (!userId) return null;
+    const p = profiles.find(p => p.id === userId);
+    return p?.display_name || p?.username || null;
+  };
+
+  const getProfileInitials = (userId: string | null) => {
+    const name = getProfileName(userId);
+    if (!name) return "?";
+    return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  };
+
   const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
   const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false);
   const [addColumnDialogOpen, setAddColumnDialogOpen] = useState(false);
   const [manageColumnsOpen, setManageColumnsOpen] = useState(false);
   const [targetColumnId, setTargetColumnId] = useState("");
   const [editingTask, setEditingTask] = useState<PlanningTask | null>(null);
-  const [newTask, setNewTask] = useState({ title: "", description: "", priority: "media", due_date: "", labels: "" });
+  const [newTask, setNewTask] = useState({ title: "", description: "", priority: "media", due_date: "", labels: "", assigned_to: "" });
   const [newColumn, setNewColumn] = useState({ label: "", color: COLUMN_COLORS[0] });
 
   // Drag state
@@ -58,8 +81,9 @@ export default function WorkflowPage() {
       priority: newTask.priority,
       due_date: newTask.due_date || undefined,
       labels: newTask.labels ? newTask.labels.split(",").map(l => l.trim()).filter(Boolean) : undefined,
+      assigned_to: newTask.assigned_to || undefined,
     });
-    setNewTask({ title: "", description: "", priority: "media", due_date: "", labels: "" });
+    setNewTask({ title: "", description: "", priority: "media", due_date: "", labels: "", assigned_to: "" });
     setAddTaskDialogOpen(false);
   };
 
@@ -73,6 +97,8 @@ export default function WorkflowPage() {
         priority: editingTask.priority,
         due_date: editingTask.due_date,
         labels: editingTask.labels,
+        assigned_to: editingTask.assigned_to,
+        column_id: editingTask.column_id,
       },
     });
     setEditTaskDialogOpen(false);
@@ -260,22 +286,29 @@ export default function WorkflowPage() {
                       <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
                     )}
 
-                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                      {task.priority && task.priority !== "media" && (
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${PRIORITY_MAP[task.priority]?.color || ""}`}>
-                          <Flag size={8} />
-                          {PRIORITY_MAP[task.priority]?.label}
-                        </span>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {task.priority && task.priority !== "media" && (
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${PRIORITY_MAP[task.priority]?.color || ""}`}>
+                            <Flag size={8} />
+                            {PRIORITY_MAP[task.priority]?.label}
+                          </span>
+                        )}
+                        {task.due_date && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
+                            <CalendarIcon size={8} />
+                            {new Date(task.due_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                          </span>
+                        )}
+                        {task.labels?.map((label) => (
+                          <Badge key={label} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{label}</Badge>
+                        ))}
+                      </div>
+                      {task.assigned_to && (
+                        <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold flex-shrink-0" title={getProfileName(task.assigned_to) || ""}>
+                          {getProfileInitials(task.assigned_to)}
+                        </div>
                       )}
-                      {task.due_date && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
-                          <CalendarIcon size={8} />
-                          {new Date(task.due_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                        </span>
-                      )}
-                      {task.labels?.map((label) => (
-                        <Badge key={label} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{label}</Badge>
-                      ))}
                     </div>
                   </div>
                 ))}
@@ -324,9 +357,21 @@ export default function WorkflowPage() {
                 <Input type="date" value={newTask.due_date} onChange={(e) => setNewTask(p => ({ ...p, due_date: e.target.value }))} className="mt-1 bg-secondary border-border" />
               </div>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Labels (separadas por vírgula)</Label>
-              <Input value={newTask.labels} onChange={(e) => setNewTask(p => ({ ...p, labels: e.target.value }))} className="mt-1 bg-secondary border-border" placeholder="frontend, bug, review" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">Responsável</Label>
+                <Select value={newTask.assigned_to} onValueChange={(v) => setNewTask(p => ({ ...p, assigned_to: v === "_none" ? "" : v }))}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border"><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="_none">Nenhum</SelectItem>
+                    {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.display_name || p.username}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Labels</Label>
+                <Input value={newTask.labels} onChange={(e) => setNewTask(p => ({ ...p, labels: e.target.value }))} className="mt-1 bg-secondary border-border" placeholder="frontend, bug" />
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setAddTaskDialogOpen(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground">Cancelar</button>
@@ -370,9 +415,21 @@ export default function WorkflowPage() {
                   <Input type="date" value={editingTask.due_date || ""} onChange={(e) => setEditingTask(p => p ? { ...p, due_date: e.target.value || null } : p)} className="mt-1 bg-secondary border-border" />
                 </div>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Labels (separadas por vírgula)</Label>
-                <Input value={editingTask.labels?.join(", ") || ""} onChange={(e) => setEditingTask(p => p ? { ...p, labels: e.target.value.split(",").map(l => l.trim()).filter(Boolean) } : p)} className="mt-1 bg-secondary border-border" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Responsável</Label>
+                  <Select value={editingTask.assigned_to || "_none"} onValueChange={(v) => setEditingTask(p => p ? { ...p, assigned_to: v === "_none" ? null : v } : p)}>
+                    <SelectTrigger className="mt-1 bg-secondary border-border"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="_none">Nenhum</SelectItem>
+                      {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.display_name || p.username}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Labels</Label>
+                  <Input value={editingTask.labels?.join(", ") || ""} onChange={(e) => setEditingTask(p => p ? { ...p, labels: e.target.value.split(",").map(l => l.trim()).filter(Boolean) } : p)} className="mt-1 bg-secondary border-border" />
+                </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Mover para</Label>
