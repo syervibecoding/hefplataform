@@ -144,12 +144,17 @@ export default function CRMPage() {
   const leadsFrios = prospects.filter((p) => p.status === firstStageId);
   const convertidos = prospects.filter((p) => p.status === "ganho" || p.status === lastStageId);
   const perdidos = prospects.filter((p) => p.status === "perdido");
+  const geladeira = prospects.filter((p) => p.status === "geladeira");
 
   const totalPipeline = prospects
-    .filter((p) => p.status !== "perdido" && p.status !== firstStageId)
+    .filter((p) => p.status !== "perdido" && p.status !== firstStageId && p.status !== "geladeira")
     .reduce((s, p) => s + (p.valor_estimado ?? 0), 0);
 
-  const prospectsAtivos = prospects.filter((p) => p.status !== firstStageId && p.status !== "perdido");
+  const prospectsAtivos = prospects.filter((p) => 
+    p.status !== firstStageId && 
+    p.status !== "perdido" && 
+    p.status !== "geladeira"
+  );
   const taxaConversao = prospectsAtivos.length > 0
     ? Math.round((convertidos.length / prospectsAtivos.length) * 100)
     : 0;
