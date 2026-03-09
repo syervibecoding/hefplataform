@@ -195,13 +195,9 @@ export default function CRMPage() {
     .filter((p) => p.status !== "perdido" && p.status !== firstStageId && p.status !== "geladeira")
     .reduce((s, p) => s + (p.valor_estimado ?? 0), 0);
 
-  const prospectsAtivos = prospects.filter((p) => 
-    p.status !== firstStageId && 
-    p.status !== "perdido" && 
-    p.status !== "geladeira"
-  );
-  const taxaConversao = prospectsAtivos.length > 0
-    ? Math.round((convertidos.length / prospectsAtivos.length) * 100)
+  const totalProspects = prospects.length;
+  const taxaConversao = totalProspects > 0
+    ? Math.round((convertidos.length / totalProspects) * 100)
     : 0;
 
   // Client metrics
@@ -334,7 +330,7 @@ export default function CRMPage() {
             <div className="bg-card border border-border rounded-xl p-4">
               <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
               <p className="text-2xl font-bold mt-0.5 text-primary">{taxaConversao}%</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Base: prospects ativos</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Base: todos os prospects</p>
             </div>
           </div>
 
