@@ -195,13 +195,9 @@ export default function CRMPage() {
     .filter((p) => p.status !== "perdido" && p.status !== firstStageId && p.status !== "geladeira")
     .reduce((s, p) => s + (p.valor_estimado ?? 0), 0);
 
-  const prospectsAtivos = prospects.filter((p) => 
-    p.status !== firstStageId && 
-    p.status !== "perdido" && 
-    p.status !== "geladeira"
-  );
-  const taxaConversao = prospectsAtivos.length > 0
-    ? Math.round((convertidos.length / prospectsAtivos.length) * 100)
+  const totalProspects = prospects.length;
+  const taxaConversao = totalProspects > 0
+    ? Math.round((convertidos.length / totalProspects) * 100)
     : 0;
 
   // Client metrics
