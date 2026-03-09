@@ -415,9 +415,21 @@ export default function WorkflowPage() {
                   <Input type="date" value={editingTask.due_date || ""} onChange={(e) => setEditingTask(p => p ? { ...p, due_date: e.target.value || null } : p)} className="mt-1 bg-secondary border-border" />
                 </div>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Labels (separadas por vírgula)</Label>
-                <Input value={editingTask.labels?.join(", ") || ""} onChange={(e) => setEditingTask(p => p ? { ...p, labels: e.target.value.split(",").map(l => l.trim()).filter(Boolean) } : p)} className="mt-1 bg-secondary border-border" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Responsável</Label>
+                  <Select value={editingTask.assigned_to || "_none"} onValueChange={(v) => setEditingTask(p => p ? { ...p, assigned_to: v === "_none" ? null : v } : p)}>
+                    <SelectTrigger className="mt-1 bg-secondary border-border"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="_none">Nenhum</SelectItem>
+                      {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.display_name || p.username}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Labels</Label>
+                  <Input value={editingTask.labels?.join(", ") || ""} onChange={(e) => setEditingTask(p => p ? { ...p, labels: e.target.value.split(",").map(l => l.trim()).filter(Boolean) } : p)} className="mt-1 bg-secondary border-border" />
+                </div>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Mover para</Label>
