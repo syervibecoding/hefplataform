@@ -144,12 +144,17 @@ export default function CRMPage() {
   const leadsFrios = prospects.filter((p) => p.status === firstStageId);
   const convertidos = prospects.filter((p) => p.status === "ganho" || p.status === lastStageId);
   const perdidos = prospects.filter((p) => p.status === "perdido");
+  const geladeira = prospects.filter((p) => p.status === "geladeira");
 
   const totalPipeline = prospects
-    .filter((p) => p.status !== "perdido" && p.status !== firstStageId)
+    .filter((p) => p.status !== "perdido" && p.status !== firstStageId && p.status !== "geladeira")
     .reduce((s, p) => s + (p.valor_estimado ?? 0), 0);
 
-  const prospectsAtivos = prospects.filter((p) => p.status !== firstStageId && p.status !== "perdido");
+  const prospectsAtivos = prospects.filter((p) => 
+    p.status !== firstStageId && 
+    p.status !== "perdido" && 
+    p.status !== "geladeira"
+  );
   const taxaConversao = prospectsAtivos.length > 0
     ? Math.round((convertidos.length / prospectsAtivos.length) * 100)
     : 0;
@@ -234,7 +239,7 @@ export default function CRMPage() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Total de Prospects</p>
           <p className="text-2xl font-bold mt-0.5">{prospects.length}</p>
@@ -244,9 +249,13 @@ export default function CRMPage() {
           <p className="text-2xl font-bold mt-0.5 text-blue-500">{leadsFrios.length}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground">Geladeira</p>
+          <p className="text-2xl font-bold mt-0.5 text-cyan-500">{geladeira.length}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Valor do Pipeline</p>
           <p className="text-2xl font-bold mt-0.5 text-green-600">{formatCurrency(totalPipeline)}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Exclui leads frios e perdidos</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Exclui frios, geladeira e perdidos</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Convertidos</p>
@@ -255,6 +264,7 @@ export default function CRMPage() {
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
           <p className="text-2xl font-bold mt-0.5 text-primary">{taxaConversao}%</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Base: prospects ativos</p>
         </div>
       </div>
 
