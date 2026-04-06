@@ -1,100 +1,83 @@
 
 
-# Consultas Customizadas por Cliente (HefSys)
+# Plano: Nova Identidade Visual (HefSys) + CRUD completo de Produtos
 
-## Problema
+## Resumo
 
-Atualmente, os tipos de consulta do HefSys sao fixos (Certidoes e Caixas Postais). Alguns clientes precisam de consultas exclusivas (ex: "Credenciamento" para AGR) com agenda propria e checklist diario.
+Duas frentes: (1) trocar a identidade visual da plataforma para o design system "Neon Monolith" do DESIGN.md com a logo HefSys, e (2) adicionar edição e exclusão de produtos no seletor da sidebar.
 
-## Solucao
+---
 
-Criar um sistema de **consultas extras** por cliente, onde cada consulta extra tem seu proprio nome, agenda e checklist independente.
+## 1. Nova Identidade Visual
 
-### Como funciona
+### 1.1 Logo
+- Copiar `user-uploads://Logotipo_hefsys_-_fundo_transparente.png` para `src/assets/logo-hefsys.png`
+- Substituir importações de `logo-white.png` e `logo-vivid-violet.png` nos dois lugares:
+  - **Sidebar.tsx** (linha 3, 56): trocar logo e alt text para "HefSys"
+  - **LoginPage.tsx** (linha 6, 29): trocar logo e alt text
 
-1. No formulario de adicionar/editar cliente HefSys, o admin pode adicionar "Consultas Extras" com nome customizado e agenda propria
-2. Na pagina de detalhe do cliente, cada consulta extra aparece como um checklist separado (igual aos de Certidoes e Caixas Postais)
-3. Os checklists das consultas extras reutilizam toda a infraestrutura existente (`client_checklists`, `ProcessChecklist`), usando um `tipo` dinamico (ex: `custom_credenciamento_agr`)
-4. Para o caso do Credenciamento diario, basta configurar a agenda com `diaSemana` para cada dia util, ou `dias: [1,2,3,...,31]`
+### 1.2 Paleta de Cores (index.css)
+Migrar do violeta para o design system "Neon Monolith":
+- **Background**: `#0e0e0e` → HSL `0 0% 5.5%`
+- **Primary**: lime `#b4f78d` → HSL `100 88% 76%`
+- **Primary-foreground**: dark green `#266003` → HSL `100 95% 19%`
+- **Card/Surface**: `#191919` → HSL `0 0% 10%`
+- **Secondary/Muted**: `#1f1f1f` → HSL `0 0% 12%`
+- **Border**: ghost border sutil `#484848` 15% opacity → HSL `0 0% 18%`
+- **Foreground**: `#e0e0e0` → HSL `0 0% 88%`
+- **Muted-foreground**: `#ababab` → HSL `0 0% 67%`
+- **Sidebar**: mesma hierarquia tonal mas levemente mais escuro
+- **Accent**: usar lime como accent
+- Remover/atualizar tokens `--clix-*` para `--hef-*` com a nova paleta
+- Atualizar `--ring` para lime
 
-### Exemplo pratico (AGR - Credenciamento)
+### 1.3 Tipografia
+- Instalar `@fontsource/space-grotesk` e `@fontsource/manrope`
+- **Space Grotesk**: headlines, display, títulos (font-bold, tracking-tight)
+- **Manrope**: body text, labels
+- Atualizar `tailwind.config.ts` font families
+- Atualizar `body` font-family para Manrope
+- Manter JetBrains Mono para dados numéricos
 
-- Admin edita o cliente AGR
-- Na secao "Consultas Extras", clica "Adicionar Consulta"
-- Nome: "Credenciamento"
-- Agenda: configura como "Todos os dias uteis" (segunda a sexta)
-- Salva. Agora na pagina de detalhe do AGR aparece um terceiro checklist "Credenciamento" com navegacao por dia, igual aos outros
+### 1.4 Tailwind Config
+- Atualizar cores em `tailwind.config.ts` (renomear `clix` → `hef`)
+- Atualizar animação `pulse-violet` → `pulse-lime`
+- Ajustar keyframes para nova cor
 
-## Mudancas no banco de dados
+### 1.5 Textos de branding
+- Trocar "Clix Company" → "HefSys" e "Plataforma Interna" (manter ou ajustar) em Sidebar e LoginPage
 
-Nova coluna `consultas_extras` (JSONB) na tabela `clients`:
+---
 
-```text
-consultas_extras: [
-  {
-    "id": "custom_1234",
-    "nome": "Credenciamento",
-    "agenda": { "diaSemana": 1 }  // ou dias especificos
-  }
-]
-```
+## 2. CRUD Completo de Produtos (Editar + Excluir)
 
-Tambem precisamos expandir o tipo `ChecklistTipo` no codigo para aceitar strings dinamicas (ja que `client_checklists.tipo` e TEXT no banco).
+### 2.1 Sidebar.tsx — Botões de ação no dropdown
+- Ao lado de cada produto no dropdown, adicionar ícones de **editar** (Pencil) e **excluir** (Trash2), visíveis apenas para admins
+- Ícones pequenos no canto direito de cada item do dropdown
 
-## Mudancas na agenda
+### 2.2 Dialog de Edição
+- Reutilizar a mesma estrutura do dialog de criação
+- Pré-preencher campos (nome, descrição, ícone)
+- Chamar `editProduct.mutate` ao salvar
 
-Adicionar uma nova opcao de agenda: **"Todos os dias uteis (Seg-Sex)"** no componente `ScheduleInput`, que gera a config `{ todosOsDiasUteis: true }`. O `getScheduleDays` sera atualizado para gerar todos os dias uteis do mes quando essa flag estiver ativa.
+### 2.3 Dialog de Exclusão
+- Confirmação simples com nome do produto
+- Chamar `deleteProduct.mutate` ao confirmar
+- Se o produto ativo for excluído, trocar para o primeiro produto disponível
 
-## Arquivos impactados
+### 2.4 Hook useProducts
+- Já possui `editProduct` e `deleteProduct` — nenhuma mudança necessária no hook
 
-| Arquivo | Mudanca |
-|---------|---------|
-| `supabase/migrations/...` | Adicionar coluna `consultas_extras` (JSONB, default `'[]'`) na tabela `clients` |
-| `src/data/constants.ts` | Adicionar campo `consultasExtras` ao tipo `HefSysClient` |
-| `src/hooks/useClients.ts` | Mapear `consultas_extras` no cliente |
-| `src/hooks/useClientChecklist.ts` | Aceitar tipo dinamico (string ao inves de union restrita) |
-| `src/lib/schedule-utils.ts` | Suporte a `todosOsDiasUteis` no `getScheduleDays` |
-| `src/components/ScheduleInput.tsx` | Nova opcao "Todos os dias uteis" |
-| `src/components/AddClientDialog.tsx` | Secao para adicionar consultas extras com nome + agenda |
-| `src/components/EditClientDialog.tsx` | Mesma secao de consultas extras |
-| `src/pages/ClientDetailPage.tsx` | Renderizar um `ProcessChecklist` para cada consulta extra |
-| `src/pages/CalendarPage.tsx` | Exibir datas das consultas extras no calendario |
+---
 
-## Detalhes Tecnicos
+## Arquivos Modificados
 
-### Estrutura da consulta extra
-
-```text
-interface ConsultaExtra {
-  id: string;          // "custom_" + timestamp
-  nome: string;        // Ex: "Credenciamento"
-  agenda: ScheduleConfig;  // Mesma estrutura de agenda existente
-}
-```
-
-### ChecklistTipo expandido
-
-O tipo `ChecklistTipo` passa de `"certidoes" | "caixas_postais"` para `string`, permitindo valores como `"custom_credenciamento_1234"`. A coluna `tipo` na tabela `client_checklists` ja e TEXT, entao nao precisa de mudanca no banco para isso.
-
-### Checklist steps para consultas extras
-
-Como as consultas extras sao especificas por cliente, nao usam os `checklist_steps` globais (templates). O admin adiciona steps customizados diretamente via o botao "Adicionar processo" que ja existe no `ProcessChecklist`. Alternativamente, podemos permitir definir steps default na propria consulta extra.
-
-### ScheduleInput - nova opcao
-
-Adicionar um toggle/checkbox "Todos os dias uteis (Seg-Sex)" que quando ativado, gera todos os dias uteis do mes automaticamente no `getScheduleDays`.
-
-### Fluxo do usuario
-
-```text
-1. Admin vai em Clientes > AGR > Editar
-2. Rola ate "Consultas Extras"
-3. Clica "+ Adicionar Consulta Extra"
-4. Preenche: Nome = "Credenciamento", Agenda = "Todos os dias uteis"
-5. Salva
-6. Volta ao detalhe do AGR
-7. Agora aparece: Checklist Certidoes | Checklist Caixas | Checklist Credenciamento
-8. O checklist Credenciamento aparece todo dia util com navegacao por data
-9. Admin adiciona os steps especificos desse processo via "Adicionar processo"
-```
+| Arquivo | Mudança |
+|---|---|
+| `src/assets/logo-hefsys.png` | Novo (copiar upload) |
+| `src/index.css` | Nova paleta, novas fontes |
+| `tailwind.config.ts` | Fontes, cores, animações |
+| `package.json` | Adicionar `@fontsource/space-grotesk`, `@fontsource/manrope` |
+| `src/components/Sidebar.tsx` | Logo, branding, edit/delete dialogs |
+| `src/pages/LoginPage.tsx` | Logo e branding |
 
