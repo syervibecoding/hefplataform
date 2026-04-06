@@ -16,8 +16,8 @@ interface Props {
 
 const STATUS_COLUMNS: { status: MelhoriaStatus; label: string; color: string }[] = [
   { status: "backlog", label: "Backlog", color: "bg-muted-foreground/12" },
-  { status: "em_desenvolvimento", label: "Em Desenvolvimento", color: "bg-clix-info/12" },
-  { status: "concluido", label: "Concluído", color: "bg-clix-success/12" },
+  { status: "em_desenvolvimento", label: "Em Desenvolvimento", color: "bg-hef-info/12" },
+  { status: "concluido", label: "Concluído", color: "bg-hef-success/12" },
 ];
 
 function MelhoriaForm({ onSubmit, initial, buttonLabel }: {
@@ -118,7 +118,7 @@ export default function MelhoriasPage({ melhorias, onAddMelhoria, onEditMelhoria
                         <div className="text-sm font-semibold">{m.titulo}</div>
                         <div className="flex items-center gap-2 mt-1.5">
                           <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                            m.prioridade === "alta" ? "bg-clix-danger" : m.prioridade === "media" ? "bg-clix-warning" : "bg-clix-info"
+                            m.prioridade === "alta" ? "bg-hef-danger" : m.prioridade === "media" ? "bg-hef-warning" : "bg-hef-info"
                           }`} />
                           <span className="text-[10px] text-muted-foreground capitalize">{m.prioridade} · {m.tipo}</span>
                         </div>

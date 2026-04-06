@@ -1,10 +1,10 @@
 const COLOR_MAP: Record<string, string> = {
-  concluido: "bg-clix-success/12 text-clix-success",
-  ativo: "bg-clix-success/12 text-clix-success",
-  em_andamento: "bg-clix-info/12 text-clix-info",
-  em_desenvolvimento: "bg-clix-info/12 text-clix-info",
-  pendente: "bg-clix-warning/12 text-clix-warning",
-  erro: "bg-clix-danger/12 text-clix-danger",
+  concluido: "bg-hef-success/12 text-hef-success",
+  ativo: "bg-hef-success/12 text-hef-success",
+  em_andamento: "bg-hef-info/12 text-hef-info",
+  em_desenvolvimento: "bg-hef-info/12 text-hef-info",
+  pendente: "bg-hef-warning/12 text-hef-warning",
+  erro: "bg-hef-danger/12 text-hef-danger",
   nao_executado: "bg-muted-foreground/12 text-muted-foreground",
   backlog: "bg-muted-foreground/12 text-muted-foreground",
 };
