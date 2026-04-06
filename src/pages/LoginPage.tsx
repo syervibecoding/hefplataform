@@ -26,7 +26,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <img src={logoHef} alt="HefSys" className="h-10 w-auto mx-auto mb-3" />
+          <img src={logoHef} alt="HefSys" className="h-14 w-auto mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Plataforma Interna</p>
         </div>
 
