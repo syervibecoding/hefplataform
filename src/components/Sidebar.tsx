@@ -97,7 +97,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border flex flex-col z-50">
       <div className="px-5 py-6 border-b border-sidebar-border">
-        <img src={logoHef} alt="HefSys" className="h-10 w-auto" />
+        <img src={logoHef} alt="HefSys" className="h-14 w-auto" />
         <p className="text-[10px] uppercase tracking-[1.5px] font-semibold text-primary mt-1.5">
           Plataforma Interna
         </p>
