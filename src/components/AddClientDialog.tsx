@@ -164,12 +164,12 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Nome da Empresa</Label>
               <Input {...register("nome")} className="mt-1 bg-secondary border-border" />
-              {errors.nome && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.nome as any).message}</p>}
+              {errors.nome && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.nome as any).message}</p>}
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Contato</Label>
               <Input {...register("contato")} className="mt-1 bg-secondary border-border" />
-              {errors.contato && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.contato as any).message}</p>}
+              {errors.contato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.contato as any).message}</p>}
             </div>
           </div>
 
@@ -177,12 +177,12 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">WhatsApp</Label>
               <Input {...register("whatsapp")} placeholder="(81) 99999-0000" className="mt-1 bg-secondary border-border" />
-              {errors.whatsapp && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.whatsapp as any).message}</p>}
+              {errors.whatsapp && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.whatsapp as any).message}</p>}
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Email</Label>
               <Input {...register("email")} type="email" className="mt-1 bg-secondary border-border" />
-              {errors.email && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.email as any).message}</p>}
+              {errors.email && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.email as any).message}</p>}
             </div>
           </div>
 
@@ -200,7 +200,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                 <div>
                   <Label className="text-xs text-muted-foreground">Quantidade de CNPJs</Label>
                   <Input {...register("cnpjs")} type="number" min={1} className="mt-1 bg-secondary border-border" />
-                  {errors.cnpjs && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.cnpjs as any).message}</p>}
+                  {errors.cnpjs && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.cnpjs as any).message}</p>}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Frequência</Label>
@@ -217,7 +217,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                   label="Agenda das Certidões"
                   value={agendaCertidoes}
                   onChange={setAgendaCertidoes}
-                  colorClass="text-clix-info"
+                  colorClass="text-hef-info"
                 />
               )}
               {hasCaixas && (
@@ -225,7 +225,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                   label="Agenda das Caixas Postais"
                   value={agendaCaixasPostais}
                   onChange={setAgendaCaixasPostais}
-                  colorClass="text-clix-magenta"
+                  colorClass="text-hef-info"
                 />
               )}
 
@@ -233,12 +233,12 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                 <div>
                   <Label className="text-xs text-muted-foreground">Faturamento Mensal (R$)</Label>
                   <Input {...register("faturamento")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
-                  {errors.faturamento && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.faturamento as any).message}</p>}
+                  {errors.faturamento && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.faturamento as any).message}</p>}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Custo API Mensal (R$)</Label>
                   <Input {...register("custoAPI")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
-                  {errors.custoAPI && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.custoAPI as any).message}</p>}
+                  {errors.custoAPI && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.custoAPI as any).message}</p>}
                 </div>
               </div>
 
@@ -255,8 +255,8 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                           onClick={() => toggleConsulta(c.id)}
                           className={`text-[11px] px-2.5 py-1 rounded-md font-semibold transition-colors ${
                             selectedConsultas.includes(c.id)
-                              ? "bg-clix-info/20 text-clix-info border border-clix-info/30"
-                              : "bg-secondary text-muted-foreground border border-border hover:border-clix-info/30"
+                              ? "bg-hef-info/20 text-hef-info border border-hef-info/30"
+                              : "bg-secondary text-muted-foreground border border-border hover:border-hef-info/30"
                           }`}
                         >
                           {c.nome}
@@ -274,8 +274,8 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                           onClick={() => toggleConsulta(c.id)}
                           className={`text-[11px] px-2.5 py-1 rounded-md font-semibold transition-colors ${
                             selectedConsultas.includes(c.id)
-                              ? "bg-clix-magenta/20 text-clix-magenta border border-clix-magenta/30"
-                              : "bg-secondary text-muted-foreground border border-border hover:border-clix-magenta/30"
+                              ? "bg-hef-info/20 text-hef-info border border-hef-info/30"
+                              : "bg-secondary text-muted-foreground border border-border hover:border-hef-info/30"
                           }`}
                         >
                           {c.nome}
@@ -284,14 +284,14 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                     </div>
                   </div>
                 </div>
-                {errors.consultas && <p className="text-[11px] text-clix-danger mt-1">{(errors.consultas as any).message}</p>}
+                {errors.consultas && <p className="text-[11px] text-hef-danger mt-1">{(errors.consultas as any).message}</p>}
               </div>
 
               {/* Consultas Extras */}
-              <div className="space-y-3 p-3 bg-clix-success/5 border border-clix-success/20 rounded-lg">
+              <div className="space-y-3 p-3 bg-hef-success/5 border border-hef-success/20 rounded-lg">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] uppercase tracking-wider text-clix-success font-semibold">Consultas Extras</p>
-                  <button type="button" onClick={addConsultaExtra} className="text-[11px] px-2 py-1 rounded-md font-semibold bg-clix-success/10 text-clix-success hover:bg-clix-success/20 transition-colors flex items-center gap-1">
+                  <p className="text-[10px] uppercase tracking-wider text-hef-success font-semibold">Consultas Extras</p>
+                  <button type="button" onClick={addConsultaExtra} className="text-[11px] px-2 py-1 rounded-md font-semibold bg-hef-success/10 text-hef-success hover:bg-hef-success/20 transition-colors flex items-center gap-1">
                     <Plus size={12} /> Adicionar
                   </button>
                 </div>
@@ -312,7 +312,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                       label={`Agenda: ${extra.nome || "Nova Consulta"}`}
                       value={extra.agenda}
                       onChange={(agenda) => updateConsultaExtra(extra.id, "agenda", agenda)}
-                      colorClass="text-clix-success"
+                      colorClass="text-hef-success"
                     />
                   </div>
                 ))}
@@ -328,14 +328,14 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
               <div>
                 <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
                 <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
-                {errors.valorContrato && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
+                {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
               </div>
 
               <ScheduleInput
                 label="Rotina de Conferência de Anúncios"
                 value={rotinaConferencia}
                 onChange={setRotinaConferencia}
-                colorClass="text-clix-warning"
+                colorClass="text-hef-warning"
               />
 
               <div>
@@ -348,8 +348,8 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
               </div>
 
               {formaPagamento === "pix" && (
-                <div className="space-y-3 p-3 bg-clix-warning/5 border border-clix-warning/20 rounded-lg">
-                  <p className="text-[10px] uppercase tracking-wider text-clix-warning font-semibold">Controle de Saldo PIX</p>
+                <div className="space-y-3 p-3 bg-hef-warning/5 border border-hef-warning/20 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-hef-warning font-semibold">Controle de Saldo PIX</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs text-muted-foreground">Saldo Depositado (R$)</Label>
@@ -374,7 +374,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
               <div>
                 <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
                 <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
-                {errors.valorContrato && <p className="text-[11px] text-clix-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
+                {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
               </div>
 
               {isAutomacao && (
@@ -403,8 +403,8 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
               )}
 
               {isPlataformas && (
-                <div className="space-y-3 p-3 bg-clix-magenta/5 border border-clix-magenta/20 rounded-lg">
-                  <p className="text-[10px] uppercase tracking-wider text-clix-magenta font-semibold">Plataforma IA</p>
+                <div className="space-y-3 p-3 bg-hef-info/5 border border-hef-info/20 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-hef-info font-semibold">Plataforma IA</p>
                   <div>
                     <Label className="text-xs text-muted-foreground">Nome da Plataforma</Label>
                     <Input {...register("nomePlataforma")} className="mt-1 bg-secondary border-border" placeholder="Ex: ChatBot de Vendas" />

@@ -37,10 +37,10 @@ interface CalendarEvent {
 
 const COLORS = [
   "bg-primary/20 text-primary border-primary/30",
-  "bg-clix-info/20 text-clix-info border-clix-info/30",
-  "bg-clix-magenta/20 text-clix-magenta border-clix-magenta/30",
-  "bg-clix-success/20 text-clix-success border-clix-success/30",
-  "bg-clix-warning/20 text-clix-warning border-clix-warning/30",
+  "bg-hef-info/20 text-hef-info border-hef-info/30",
+  "bg-hef-info/20 text-hef-info border-hef-info/30",
+  "bg-hef-success/20 text-hef-success border-hef-success/30",
+  "bg-hef-warning/20 text-hef-warning border-hef-warning/30",
 ];
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -163,7 +163,7 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
               clientName: client.nome,
               clientId: client.id,
               consultas: [],
-              color: "bg-clix-success/20 text-clix-success border-clix-success/30",
+              color: "bg-hef-success/20 text-hef-success border-hef-success/30",
               eventKey: `${client.id}-${extra.id}-${day}`,
               originalDay: day,
               tipo: "custom",
@@ -189,7 +189,7 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
               clientName: client.nome,
               clientId: client.id,
               consultas: [],
-              color: "bg-clix-warning/20 text-clix-warning border-clix-warning/30",
+              color: "bg-hef-warning/20 text-hef-warning border-hef-warning/30",
               eventKey: `${client.id}-conf-${day}`,
               originalDay: day,
               tipo: "conferencia",
@@ -436,7 +436,7 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
                   </div>
                 )}
                 {ev.tipo === "conferencia" && (
-                  <div className="flex items-center gap-2 p-3 bg-clix-warning/10 border border-clix-warning/20 rounded-lg text-sm text-clix-warning font-medium">
+                  <div className="flex items-center gap-2 p-3 bg-hef-warning/10 border border-hef-warning/20 rounded-lg text-sm text-hef-warning font-medium">
                     <Eye size={16} />
                     Conferir conta de anúncios deste cliente
                   </div>
@@ -454,7 +454,7 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-1.5">Certidões</p>
                         <div className="space-y-1">
                           {ev.consultas.filter((c) => c.tipo === "certidao").map((c) => (
-                            <div key={c.id} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-clix-info/10 text-clix-info border border-clix-info/20">
+                            <div key={c.id} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-hef-info/10 text-hef-info border border-hef-info/20">
                               {c.nome}
                             </div>
                           ))}
@@ -466,7 +466,7 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-1.5">Caixas Postais</p>
                         <div className="space-y-1">
                           {ev.consultas.filter((c) => c.tipo === "caixa_postal").map((c) => (
-                            <div key={c.id} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-clix-magenta/10 text-clix-magenta border border-clix-magenta/20">
+                            <div key={c.id} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-hef-info/10 text-hef-info border border-hef-info/20">
                               {c.nome}
                             </div>
                           ))}

@@ -67,10 +67,10 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                     </td>
                     {isAdmin && (
                       <>
-                        <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-clix-success">
+                        <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-hef-success">
                           R$ {(c.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </td>
-                        <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-clix-warning">
+                        <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-hef-warning">
                           R$ {(c.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </td>
                       </>

@@ -199,7 +199,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
           {label || (tipo === "certidoes" ? "Checklist Certidões" : tipo === "caixas_postais" ? "Checklist Caixas Postais" : `Checklist ${tipo.replace(/^custom_/, "").replace(/_/g, " ")}`)}
         </span>
-        <span className={`text-[11px] font-semibold flex items-center gap-1 ${allDone ? "text-clix-success" : "text-muted-foreground"}`}>
+        <span className={`text-[11px] font-semibold flex items-center gap-1 ${allDone ? "text-hef-success" : "text-muted-foreground"}`}>
           {allDone ? <CheckCircle2 size={12} /> : <Circle size={12} />}
           {doneCount}/{allSteps.length}
         </span>
@@ -216,7 +216,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
         >
           <ChevronLeft size={14} />
         </Button>
-        <span className={`text-xs font-medium min-w-[150px] text-center ${isFutureDate ? "text-clix-info" : ""}`}>
+        <span className={`text-xs font-medium min-w-[150px] text-center ${isFutureDate ? "text-hef-info" : ""}`}>
           {formatDate(selectedDate)}
           {isFutureDate && <span className="ml-1 text-[9px] opacity-70">(futuro)</span>}
         </span>
@@ -234,7 +234,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
       {/* Progress bar */}
       <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mb-3">
         <div
-          className="h-full bg-clix-success transition-all duration-300 rounded-full"
+          className="h-full bg-hef-success transition-all duration-300 rounded-full"
           style={{ width: allSteps.length > 0 ? `${(doneCount / allSteps.length) * 100}%` : "0%" }}
         />
       </div>
@@ -256,7 +256,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
               onDrop={handleDrop}
               onDragEnd={handleDragEnd}
               className={`flex items-start gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group ${
-                done ? "bg-clix-success/5" : "hover:bg-muted/50"
+                done ? "bg-hef-success/5" : "hover:bg-muted/50"
               } ${isDragOver ? "border-t-2 border-primary" : ""} ${dragIndex === i ? "opacity-40" : ""}`}
               onClick={() => !isEditing && user && toggleStep(step.id, user.id, profile?.username || "desconhecido")}
             >
@@ -290,11 +290,11 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
                       <span className="text-muted-foreground font-mono text-[11px] mr-1.5">{i + 1}.</span>
                       {step.label}
                      {step.isCustom ? (
-                        <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-clix-warning/10 text-clix-warning font-semibold">
+                        <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-hef-warning/10 text-hef-warning font-semibold">
                           só este dia
                         </span>
                       ) : (
-                        <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-clix-info/10 text-clix-info font-semibold">
+                        <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-hef-info/10 text-hef-info font-semibold">
                           fixo
                         </span>
                       )}

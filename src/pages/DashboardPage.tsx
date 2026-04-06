@@ -37,7 +37,7 @@ function FinancialOverview({ products, overview }: { products: Product[]; overvi
                 <span className="text-xs font-semibold truncate">{p.nome}</span>
               </div>
               <div className="text-lg font-bold font-mono text-foreground">{data?.clientCount || 0} <span className="text-xs font-normal text-muted-foreground">ativos</span></div>
-              <div className="text-sm font-semibold font-mono text-clix-success mt-0.5">
+              <div className="text-sm font-semibold font-mono text-hef-success mt-0.5">
                 R$ {(data?.totalRevenue || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </div>
             </div>
@@ -46,7 +46,7 @@ function FinancialOverview({ products, overview }: { products: Product[]; overvi
         <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
           <div className="text-xs font-semibold text-primary mb-2">TOTAL</div>
           <div className="text-lg font-bold font-mono text-foreground">{totalClients} <span className="text-xs font-normal text-muted-foreground">ativos</span></div>
-          <div className="text-sm font-semibold font-mono text-clix-success mt-0.5">
+          <div className="text-sm font-semibold font-mono text-hef-success mt-0.5">
             R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </div>
         </div>
@@ -86,9 +86,9 @@ export default function DashboardPage({ clients, melhorias, activeProduct, produ
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case "completo": return <CheckCircle className="w-4 h-4 text-clix-success" />;
-      case "parcial": return <AlertCircle className="w-4 h-4 text-clix-warning" />;
-      case "pendente": return <Clock className="w-4 h-4 text-clix-danger" />;
+      case "completo": return <CheckCircle className="w-4 h-4 text-hef-success" />;
+      case "parcial": return <AlertCircle className="w-4 h-4 text-hef-warning" />;
+      case "pendente": return <Clock className="w-4 h-4 text-hef-danger" />;
       default: return <Minus className="w-4 h-4 text-muted-foreground" />;
     }
   };
@@ -104,24 +104,24 @@ export default function DashboardPage({ clients, melhorias, activeProduct, produ
         <StatCard label="Clientes Ativos" value={activeClients.length} sub="neste produto" colorClass="text-primary" />
         {isHefsys ? (
           <>
-            <StatCard label="CNPJs Monitorados" value={hefsysMetrics().totalCnpjs} sub="total de empresas" colorClass="text-clix-info" />
+            <StatCard label="CNPJs Monitorados" value={hefsysMetrics().totalCnpjs} sub="total de empresas" colorClass="text-hef-info" />
             {isAdmin && (
               <>
-                <StatCard label="Faturamento/Mês" value={`R$ ${hefsysMetrics().totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-clix-success" />
-                <StatCard label="Custo API/Mês" value={`R$ ${hefsysMetrics().totalCustoAPI.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub={`${emDev} melhorias em dev`} colorClass="text-clix-warning" />
+                <StatCard label="Faturamento/Mês" value={`R$ ${hefsysMetrics().totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-hef-success" />
+                <StatCard label="Custo API/Mês" value={`R$ ${hefsysMetrics().totalCustoAPI.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub={`${emDev} melhorias em dev`} colorClass="text-hef-warning" />
               </>
             )}
             {!isAdmin && (
-              <StatCard label="Em Desenvolvimento" value={emDev} sub="melhorias ativas" colorClass="text-clix-warning" />
+              <StatCard label="Em Desenvolvimento" value={emDev} sub="melhorias ativas" colorClass="text-hef-warning" />
             )}
           </>
         ) : (
           <>
             {isAdmin && (
-              <StatCard label="Receita Mensal" value={`R$ ${genericMetrics().receita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-clix-info" />
+              <StatCard label="Receita Mensal" value={`R$ ${genericMetrics().receita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="contratos ativos" colorClass="text-hef-info" />
             )}
-            <StatCard label="Total Clientes" value={clients.length} sub="cadastrados" colorClass="text-clix-magenta" />
-            <StatCard label="Em Desenvolvimento" value={emDev} sub="melhorias ativas" colorClass="text-clix-warning" />
+            <StatCard label="Total Clientes" value={clients.length} sub="cadastrados" colorClass="text-hef-info" />
+            <StatCard label="Em Desenvolvimento" value={emDev} sub="melhorias ativas" colorClass="text-hef-warning" />
           </>
         )}
       </div>
@@ -168,13 +168,13 @@ export default function DashboardPage({ clients, melhorias, activeProduct, produ
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <h2 className="text-[15px] font-semibold">Melhorias & Desenvolvimento</h2>
-            <span className="text-[11px] bg-clix-info/12 text-clix-info px-2.5 py-0.5 rounded-md font-semibold">{emDev} ativas</span>
+            <span className="text-[11px] bg-hef-info/12 text-hef-info px-2.5 py-0.5 rounded-md font-semibold">{emDev} ativas</span>
           </div>
           <div>
             {melhorias.filter((m) => m.status !== "concluido").slice(0, 5).map((m) => (
               <div key={m.id} className="flex items-center gap-3.5 px-5 py-3.5 border-b border-border/50 last:border-b-0 hover:bg-secondary/50 transition-colors">
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  m.prioridade === "alta" ? "bg-clix-danger" : m.prioridade === "media" ? "bg-clix-warning" : "bg-clix-info"
+                  m.prioridade === "alta" ? "bg-hef-danger" : m.prioridade === "media" ? "bg-hef-warning" : "bg-hef-info"
                 }`} />
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-semibold truncate">{m.titulo}</div>
@@ -193,7 +193,7 @@ export default function DashboardPage({ clients, melhorias, activeProduct, produ
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <h2 className="text-[15px] font-semibold">Status dos Checklists Hoje</h2>
-              <span className="text-[11px] bg-clix-success/12 text-clix-success px-2.5 py-0.5 rounded-md font-semibold">
+              <span className="text-[11px] bg-hef-success/12 text-hef-success px-2.5 py-0.5 rounded-md font-semibold">
                 {format(new Date(), "dd/MM", { locale: ptBR })}
               </span>
             </div>

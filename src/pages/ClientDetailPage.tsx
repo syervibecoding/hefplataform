@@ -67,13 +67,13 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                       <>
                         <div>
                           <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Faturamento/Mês</label>
-                          <div className="text-lg font-bold font-mono mt-1 text-clix-success">
+                          <div className="text-lg font-bold font-mono mt-1 text-hef-success">
                             R$ {(client.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                           </div>
                         </div>
                         <div>
                           <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Custo API/Mês</label>
-                          <div className="text-lg font-bold font-mono mt-1 text-clix-warning">
+                          <div className="text-lg font-bold font-mono mt-1 text-hef-warning">
                             R$ {(client.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                           </div>
                         </div>
@@ -91,7 +91,7 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                     if (!q) return null;
                     return (
                       <span key={cid} className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold ${
-                        q.tipo === "certidao" ? "bg-clix-info/10 text-clix-info" : "bg-clix-magenta/10 text-clix-magenta"
+                        q.tipo === "certidao" ? "bg-hef-info/10 text-hef-info" : "bg-hef-info/10 text-hef-info"
                       }`}>
                         {q.nome}
                       </span>
@@ -103,13 +103,13 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
               <div className="mt-6 grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Agenda das Certidões</label>
-                  <div className="text-sm font-medium mt-1 text-clix-info">
+                  <div className="text-sm font-medium mt-1 text-hef-info">
                     {scheduleLabel(client.agendaCertidoes || {})}
                   </div>
                 </div>
                 <div>
                   <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Agenda das Caixas Postais</label>
-                  <div className="text-sm font-medium mt-1 text-clix-magenta">
+                  <div className="text-sm font-medium mt-1 text-hef-info">
                     {scheduleLabel(client.agendaCaixasPostais || {})}
                   </div>
                 </div>
@@ -170,8 +170,8 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                 const gc = client as GenericClient;
                 if (!gc.nomePlataforma) return null;
                 return (
-                  <div className="mb-6 p-4 bg-clix-magenta/5 border border-clix-magenta/20 rounded-lg">
-                    <p className="text-[10px] uppercase tracking-wider text-clix-magenta font-semibold mb-2">Plataforma</p>
+                  <div className="mb-6 p-4 bg-hef-info/5 border border-hef-info/20 rounded-lg">
+                    <p className="text-[10px] uppercase tracking-wider text-hef-info font-semibold mb-2">Plataforma</p>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[11px] text-muted-foreground">Nome</label>
@@ -217,8 +217,8 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                     <div className="flex items-center gap-3 mb-3">
                       <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Timeline de Automação</p>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                        nivel === "facil" ? "bg-clix-success/10 text-clix-success" :
-                        nivel === "medio" ? "bg-clix-warning/10 text-clix-warning" :
+                        nivel === "facil" ? "bg-hef-success/10 text-hef-success" :
+                        nivel === "medio" ? "bg-hef-warning/10 text-hef-warning" :
                         nivel === "dificil" ? "bg-destructive/10 text-destructive" :
                         "bg-muted text-muted-foreground"
                       }`}>{nivelLabel}</span>
@@ -230,17 +230,17 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                           <div key={idx} className="flex gap-3">
                             <div className="flex flex-col items-center">
                               <div className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${
-                                status === "concluido" ? "bg-clix-success border-clix-success" :
+                                status === "concluido" ? "bg-hef-success border-hef-success" :
                                 status === "atual" ? "bg-primary border-primary" :
                                 "bg-secondary border-border"
                               }`} />
                               {idx < stages.length - 1 && (
-                                <div className={`w-0.5 h-8 ${status === "concluido" ? "bg-clix-success/40" : "bg-border"}`} />
+                                <div className={`w-0.5 h-8 ${status === "concluido" ? "bg-hef-success/40" : "bg-border"}`} />
                               )}
                             </div>
                             <div className="pb-3 -mt-0.5">
                               <div className={`text-sm font-semibold ${
-                                status === "concluido" ? "text-clix-success" : status === "atual" ? "text-primary" : "text-muted-foreground"
+                                status === "concluido" ? "text-hef-success" : status === "atual" ? "text-primary" : "text-muted-foreground"
                               }`}>{stage.label}</div>
                               <div className="text-[11px] text-muted-foreground">{stage.desc}</div>
                               <div className="text-[10px] text-muted-foreground/60 mt-0.5">
@@ -271,15 +271,15 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                     {hasRotina && (
                       <div>
                         <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Rotina de Conferência</label>
-                        <div className="text-sm font-medium mt-1 text-clix-warning">
+                        <div className="text-sm font-medium mt-1 text-hef-warning">
                           {scheduleLabel(gc.rotinaConferencia!)}
                         </div>
                       </div>
                     )}
 
                     {isPix && (
-                      <div className="p-4 bg-clix-warning/5 border border-clix-warning/20 rounded-lg space-y-3">
-                        <p className="text-[10px] uppercase tracking-wider text-clix-warning font-semibold">Controle de Saldo PIX</p>
+                      <div className="p-4 bg-hef-warning/5 border border-hef-warning/20 rounded-lg space-y-3">
+                        <p className="text-[10px] uppercase tracking-wider text-hef-warning font-semibold">Controle de Saldo PIX</p>
                         <div className="grid grid-cols-3 gap-4">
                           <div>
                             <label className="text-[11px] text-muted-foreground">Saldo Depositado</label>
@@ -311,7 +311,7 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
 
                           return (
                             <div className={`flex items-center gap-2 p-2 rounded-lg text-sm font-medium ${
-                              isUrgent ? "bg-destructive/10 text-destructive" : "bg-clix-info/10 text-clix-info"
+                              isUrgent ? "bg-destructive/10 text-destructive" : "bg-hef-info/10 text-hef-info"
                             }`}>
                               {isUrgent ? "⚠️" : "📅"}
                               Saldo esgota em {endDate.toLocaleDateString("pt-BR")} ({daysUntilEnd > 0 ? `${daysUntilEnd} dias` : "esgotado"})
