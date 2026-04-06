@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Lock, User } from "lucide-react";
-import logoVivid from "@/assets/logo-vivid-violet.png";
+import logoHef from "@/assets/logo-hefsys.png";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -26,7 +26,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <img src={logoVivid} alt="Clix Company" className="h-10 w-auto mx-auto mb-3" />
+          <img src={logoHef} alt="HefSys" className="h-10 w-auto mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Plataforma Interna</p>
         </div>
 

@@ -14,7 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["DM Sans", "sans-serif"],
+        sans: ["Manrope", "sans-serif"],
+        heading: ["Space Grotesk", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
@@ -61,13 +62,12 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        clix: {
-          violet: "hsl(var(--clix-violet))",
-          magenta: "hsl(var(--clix-magenta))",
-          success: "hsl(var(--clix-success))",
-          warning: "hsl(var(--clix-warning))",
-          info: "hsl(var(--clix-info))",
-          danger: "hsl(var(--clix-danger))",
+        hef: {
+          lime: "hsl(var(--hef-lime))",
+          success: "hsl(var(--hef-success))",
+          warning: "hsl(var(--hef-warning))",
+          info: "hsl(var(--hef-info))",
+          danger: "hsl(var(--hef-danger))",
         },
       },
       borderRadius: {
@@ -84,15 +84,15 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "pulse-violet": {
-          "0%, 100%": { boxShadow: "0 0 0 0 hsl(263 70% 58% / 0.3)" },
-          "50%": { boxShadow: "0 0 0 6px hsl(263 70% 58% / 0)" },
+        "pulse-lime": {
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(100 88% 76% / 0.3)" },
+          "50%": { boxShadow: "0 0 0 6px hsl(100 88% 76% / 0)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "pulse-violet": "pulse-violet 2s infinite",
+        "pulse-lime": "pulse-lime 2s infinite",
       },
     },
   },

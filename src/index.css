@@ -1,8 +1,12 @@
-@import "@fontsource/dm-sans/300.css";
-@import "@fontsource/dm-sans/400.css";
-@import "@fontsource/dm-sans/500.css";
-@import "@fontsource/dm-sans/600.css";
-@import "@fontsource/dm-sans/700.css";
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/manrope/300.css";
+@import "@fontsource/manrope/400.css";
+@import "@fontsource/manrope/500.css";
+@import "@fontsource/manrope/600.css";
+@import "@fontsource/manrope/700.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
 
@@ -12,56 +16,55 @@
 
 @layer base {
   :root {
-    --background: 228 50% 5%;
-    --foreground: 214 32% 91%;
+    --background: 0 0% 5.5%;
+    --foreground: 0 0% 88%;
 
-    --card: 224 35% 9%;
-    --card-foreground: 214 32% 91%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 88%;
 
-    --popover: 224 35% 9%;
-    --popover-foreground: 214 32% 91%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 88%;
 
-    --primary: 263 70% 58%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 100 88% 76%;
+    --primary-foreground: 100 95% 19%;
 
-    --secondary: 224 30% 14%;
-    --secondary-foreground: 214 32% 91%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 88%;
 
-    --muted: 224 30% 14%;
-    --muted-foreground: 220 20% 55%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 67%;
 
-    --accent: 263 70% 58%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 100 88% 76%;
+    --accent-foreground: 100 95% 19%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 30% 15%;
-    --input: 220 30% 15%;
-    --ring: 263 70% 58%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 100 88% 76%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 224 40% 7%;
-    --sidebar-foreground: 214 20% 70%;
-    --sidebar-primary: 263 70% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 263 70% 58%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 30% 13%;
-    --sidebar-ring: 263 70% 58%;
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 67%;
+    --sidebar-primary: 100 88% 76%;
+    --sidebar-primary-foreground: 100 95% 19%;
+    --sidebar-accent: 100 88% 76%;
+    --sidebar-accent-foreground: 100 95% 19%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 100 88% 76%;
 
-    /* Clix custom tokens */
-    --clix-violet: 263 70% 58%;
-    --clix-violet-dim: 263 70% 58%;
-    --clix-magenta: 300 100% 62%;
-    --clix-success: 160 64% 39%;
-    --clix-warning: 38 92% 50%;
-    --clix-info: 217 91% 60%;
-    --clix-danger: 0 84% 60%;
-    --clix-bg-hover: 224 30% 17%;
-    --clix-text-muted: 220 25% 45%;
-    --clix-mono: 'JetBrains Mono', monospace;
+    /* HefSys custom tokens */
+    --hef-lime: 100 88% 76%;
+    --hef-lime-dim: 100 60% 50%;
+    --hef-success: 160 64% 39%;
+    --hef-warning: 38 92% 50%;
+    --hef-info: 217 91% 60%;
+    --hef-danger: 0 84% 60%;
+    --hef-bg-hover: 0 0% 15%;
+    --hef-text-muted: 0 0% 50%;
+    --hef-mono: 'JetBrains Mono', monospace;
   }
 
   * {
@@ -70,12 +73,15 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Manrope', sans-serif;
   }
 }
 
 @layer utilities {
-  .font-mono-clix {
-    font-family: var(--clix-mono);
+  .font-mono-hef {
+    font-family: var(--hef-mono);
+  }
+  .font-heading {
+    font-family: 'Space Grotesk', sans-serif;
   }
 }

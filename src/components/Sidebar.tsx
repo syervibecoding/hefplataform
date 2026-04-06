@@ -1,11 +1,12 @@
-import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
-import logoWhite from "@/assets/logo-white.png";
+import logoHef from "@/assets/logo-hefsys.png";
 import { type ProductId } from "@/data/constants";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProducts } from "@/hooks/useProducts";
+import { useProducts, type Product } from "@/hooks/useProducts";
 import { getIcon, AVAILABLE_ICONS } from "@/lib/icon-map";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -28,10 +29,18 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ activePage, onNavigate, activeProduct, onChangeProduct }: SidebarProps) {
   const { profile, isAdmin, signOut } = useAuth();
-  const { products, addProduct } = useProducts();
+  const { products, addProduct, editProduct, deleteProduct } = useProducts();
   const [productOpen, setProductOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({ id: "", nome: "", descricao: "", icon: "Box" });
+
+  // Edit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
   const currentProduct = products.find((p) => p.id === activeProduct);
   const CurrentIcon = currentProduct ? getIcon(currentProduct.icon) : LayoutDashboard;
@@ -50,10 +59,45 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
     setAddDialogOpen(false);
   };
 
+  const handleEditProduct = () => {
+    if (!editingProduct) return;
+    editProduct.mutate({
+      id: editingProduct.id,
+      data: { nome: editingProduct.nome, descricao: editingProduct.descricao, icon: editingProduct.icon },
+    });
+    setEditDialogOpen(false);
+    setEditingProduct(null);
+  };
+
+  const handleDeleteProduct = () => {
+    if (!deletingProduct) return;
+    deleteProduct.mutate(deletingProduct.id);
+    if (activeProduct === deletingProduct.id) {
+      const remaining = products.filter((p) => p.id !== deletingProduct.id);
+      if (remaining.length > 0) onChangeProduct(remaining[0].id as ProductId);
+    }
+    setDeleteDialogOpen(false);
+    setDeletingProduct(null);
+  };
+
+  const openEdit = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    setEditingProduct({ ...product });
+    setEditDialogOpen(true);
+    setProductOpen(false);
+  };
+
+  const openDelete = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    setDeletingProduct(product);
+    setDeleteDialogOpen(true);
+    setProductOpen(false);
+  };
+
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border flex flex-col z-50">
       <div className="px-5 py-6 border-b border-sidebar-border">
-        <img src={logoWhite} alt="Clix Company" className="h-7 w-auto" />
+        <img src={logoHef} alt="HefSys" className="h-7 w-auto" />
         <p className="text-[10px] uppercase tracking-[1.5px] font-semibold text-primary mt-1.5">
           Plataforma Interna
         </p>
@@ -88,7 +132,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
                       onChangeProduct(product.id);
                       setProductOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors group ${
                       isActive ? "bg-primary/12 text-primary" : "hover:bg-secondary/80 text-sidebar-foreground"
                     }`}
                   >
@@ -97,10 +141,28 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
                     }`}>
                       <Icon size={14} />
                     </div>
-                    <div>
-                      <div className="text-sm font-semibold">{product.nome}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold truncate">{product.nome}</div>
                       <div className="text-[10px] text-muted-foreground">{product.descricao}</div>
                     </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <span
+                          role="button"
+                          onClick={(e) => openEdit(e, product)}
+                          className="p-1 rounded hover:bg-secondary transition-colors"
+                        >
+                          <Pencil size={12} className="text-muted-foreground hover:text-foreground" />
+                        </span>
+                        <span
+                          role="button"
+                          onClick={(e) => openDelete(e, product)}
+                          className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 size={12} className="text-destructive/70 hover:text-destructive" />
+                        </span>
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -185,7 +247,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="max-w-sm bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Novo Produto</DialogTitle>
+            <DialogTitle className="text-lg font-bold font-heading">Novo Produto</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
             <div>
@@ -228,6 +290,74 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-sm bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold font-heading">Editar Produto</DialogTitle>
+          </DialogHeader>
+          {editingProduct && (
+            <div className="space-y-3 mt-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Nome</Label>
+                <Input value={editingProduct.nome} onChange={(e) => setEditingProduct((p) => p ? { ...p, nome: e.target.value } : p)} className="mt-1 bg-secondary border-border" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Descrição</Label>
+                <Input value={editingProduct.descricao} onChange={(e) => setEditingProduct((p) => p ? { ...p, descricao: e.target.value } : p)} className="mt-1 bg-secondary border-border" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Ícone</Label>
+                <div className="flex flex-wrap gap-1.5 mt-1 max-h-32 overflow-y-auto">
+                  {AVAILABLE_ICONS.map((iconName) => {
+                    const Ic = getIcon(iconName);
+                    return (
+                      <button
+                        key={iconName}
+                        type="button"
+                        onClick={() => setEditingProduct((p) => p ? { ...p, icon: iconName } : p)}
+                        className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
+                          editingProduct.icon === iconName ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary hover:bg-secondary/80 border border-border"
+                        }`}
+                        title={iconName}
+                      >
+                        <Ic size={14} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditDialogOpen(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={handleEditProduct} disabled={!editingProduct.nome} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50">
+                  Salvar
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Product Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-card border-border max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading">Excluir Produto</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deletingProduct?.nome}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }
