@@ -1,93 +1,106 @@
-# Plano: Correção do agendamento + Nova role "Coordenador"
+# Plano: Modelo Plataformas (impl. única + mensalidade opcional) + Dashboard Geral
 
-## 1. Bug: só aceita 1 dia no campo "Dias específicos do mês"
+## 1. Modelo de dados — Plataformas
 
-**Causa identificada** em `src/components/ScheduleInput.tsx`:
+### 1.1 Migration (novas colunas em `clients`)
 
-O componente tem um `useEffect` que reseta o texto local (`diasText`) toda vez que `value.dias` muda:
-```ts
-useEffect(() => {
-  setDiasText((value.dias || []).join(", "));
-}, [value.dias]);
+```sql
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS valor_implementacao numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS data_implementacao date,
+  ADD COLUMN IF NOT EXISTS tem_mensalidade boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS valor_mensalidade numeric DEFAULT 0;
 ```
 
-Fluxo do bug ao digitar "5, 20":
-1. Usuário digita `5` → parse → `dias=[5]` → onChange dispara
-2. Pai atualiza `value.dias=[5]` → useEffect dispara → texto é reescrito como `"5"` (sem vírgula)
-3. Vírgula recém-digitada é apagada, impossibilitando digitar o segundo número
+`valor_contrato` é mantido (usado por outros produtos como Tráfego e Automação). Para clientes de Plataformas, ele deixa de ser preenchido — passa a usar `valor_implementacao` + `valor_mensalidade`.
 
-**Correção**: remover o `useEffect` de sincronização (o estado local já é inicializado a partir de `value.dias` no `useState`). A sincronização externa não é necessária neste formulário — o texto local é a fonte de verdade enquanto o usuário digita. Os valores válidos continuam fluindo para o pai via `onChange`.
+### 1.2 Tipos (`src/data/constants.ts`)
 
-Arquivo: `src/components/ScheduleInput.tsx`
+Em `GenericClient`, adicionar campos opcionais:
+```ts
+valorImplementacao?: number;
+dataImplementacao?: string | null;
+temMensalidade?: boolean;
+valorMensalidade?: number;
+```
+
+### 1.3 Hook `useClients.ts`
+
+- `mapRowToClient`: ler as 4 novas colunas
+- `addClient`/`editClient`: quando `productId === "plataformas"`, gravar `valor_implementacao`, `data_implementacao`, `tem_mensalidade`, `valor_mensalidade` (e não escrever `valor_contrato`)
 
 ---
 
-## 2. Nova role "Coordenador"
+## 2. Formulários — AddClientDialog e EditClientDialog
 
-### 2.1 Banco de dados (migration)
+Para Plataformas (substituindo o atual campo "Valor do Contrato"):
 
-Adicionar `'coordenador'` ao enum `app_role`:
-```sql
-ALTER TYPE public.app_role ADD VALUE 'coordenador';
+- **Valor da Implementação (R$)** — number, obrigatório
+- **Data da Implementação** — date
+- **Nome da Plataforma** — (já existe)
+- **Tipo** — interna/externa (já existe)
+- **Toggle "Tem mensalidade recorrente?"** — Switch
+  - Se ativado, mostra: **Valor Mensal (R$)**
+
+Schema zod para Plataformas separado dos demais produtos genéricos.
+
+---
+
+## 3. Cálculo financeiro — Plataformas
+
+Para Plataformas, a "receita do mês atual" considera:
+- **Valor da implementação**: conta apenas se `data_implementacao` cair no mês corrente
+- **Valor mensal**: conta se `tem_mensalidade = true` E `data_implementacao <= último dia do mês corrente`
+
+### 3.1 `useFinancialOverview.ts`
+
+Atualizar para selecionar também as novas colunas e computar receita de Plataformas pela regra acima. Outros produtos continuam usando `valor_contrato`; HefSys continua usando `faturamento`.
+
+### 3.2 Tela de detalhes do cliente (`ClientDetailPage.tsx`) e listagem (`ClientsPage.tsx`)
+
+Para Plataformas, exibir:
+- Valor Implementação, Data Implementação, e (se mensalidade) Valor Mensal
+- Não exibir mais "Valor do Contrato"
+
+---
+
+## 4. Dashboard Geral (nova página)
+
+### 4.1 Sidebar
+
+Adicionar **antes** do seletor de produto, no topo:
+```
+[Dashboard Geral]  ← novo item destacado
+─────────────────
+[Seletor de produto]
+[Menu do produto: Dashboard, Clientes, ...]
 ```
 
-Nenhuma alteração de tabela necessária — `user_roles` já suporta.
+Quando clicado, navega para `general-dashboard` e desativa a navegação por produto (mostra um indicador "Visão Geral").
 
-### 2.2 Permissões — escopo do Coordenador
+Sidebar exige `isAdmin` para mostrar o item (vê dados financeiros consolidados).
 
-| Capacidade | Admin | Coordenador | Usuário |
-|---|---|---|---|
-| Ver checklists de datas futuras | ✅ | ✅ | ❌ |
-| Navegar para datas futuras (`canNext`) | ✅ | ✅ | ❌ |
-| Editar/reordenar/excluir passos do checklist operacional | ✅ | ✅ | ❌ |
-| Adicionar passos locais ao checklist | ✅ | ✅ | ❌ |
-| Ver dados financeiros (faturamento, contrato, custo API) | ✅ | ❌ | ❌ |
-| Gestão de usuários (UsersPage) | ✅ | ❌ | ❌ |
-| Gestão de produtos (criar/editar/excluir na sidebar) | ✅ | ❌ | ❌ |
-| Gestão de materiais (criar/editar/excluir) | ✅ | ❌ | ❌ |
-| Workflow / colunas de planejamento (admin actions) | ✅ | ❌ | ❌ |
+### 4.2 Nova página `src/pages/GeneralDashboardPage.tsx`
 
-Resumo: **Coordenador = poderes operacionais sobre checklists, sem acesso a finanças, usuários, produtos ou materiais.**
+Conteúdo (admin-only):
 
-### 2.3 AuthContext (`src/contexts/AuthContext.tsx`)
+1. **KPIs consolidados** (4 cards):
+   - Total de clientes ativos (todos os produtos)
+   - Receita mensal total (soma de todos os produtos com regra de Plataformas)
+   - Total de produtos cadastrados
+   - Total de melhorias em desenvolvimento
 
-- Atualizar tipo: `AppRole = "admin" | "coordenador" | "user"`
-- Adicionar derivação: `isCoordenador = role === "coordenador"`
-- Adicionar derivação: `canEditChecklist = isAdmin || isCoordenador` (exposta no contexto para uso fácil)
+2. **Visão Financeira por Produto** — reutiliza o componente `FinancialOverview` já existente
 
-### 2.4 Componentes afetados
+3. **Clientes por Produto** — grid com uma coluna por produto, listando os clientes ativos (nome, contato, receita individual)
 
-**`src/components/ProcessChecklist.tsx`** — trocar `isAdmin` por `canEditChecklist` em:
-- `canNext` (navegação para datas futuras)
-- `draggable` (reordenação)
-- Botões editar/excluir passos
-- Adicionar novo passo
-- Mostrar quem completou (`username`) — manter como `isAdmin || isCoordenador`
+4. **Implementações de Plataformas este mês** — bloco específico listando clientes de Plataformas com `data_implementacao` no mês corrente
 
-**`src/pages/DashboardPage.tsx`** — para `useTodayChecklists` permitir coordenador também:
-- `useTodayChecklists(hefsysActiveClients, (isAdmin || isCoordenador) && isHefsys)`
-- Bloco de checklists pendentes visível para coordenador
-- **Manter `financialOverview` somente para `isAdmin`**
+### 4.3 Roteamento (`src/pages/Index.tsx`)
 
-**Não alterar** (continuam restritos a admin):
-- `UsersPage`, `MaterialsPage`, `WorkflowPage` (admin actions), `ClientsPage` (valores), `ClientDetailPage` (financeiro), `Sidebar` (CRUD de produtos)
-
-### 2.5 UI de gestão de usuários (`src/pages/UsersPage.tsx`)
-
-- Permitir admin selecionar role ao criar usuário: dropdown com opções `user`, `coordenador`, `admin`
-- Mostrar a role atual de cada usuário na listagem
-- Permitir admin alterar role de um usuário existente
-
-### 2.6 Edge function `supabase/functions/create-user/index.ts`
-
-- Aceitar parâmetro opcional `role` (default `'user'`)
-- Inserir em `user_roles` com a role recebida
-
-### 2.7 RLS — revisão
-
-As policies atuais usam `has_role(auth.uid(), 'admin')`. Como coordenador **não** deve ter acesso administrativo a tabelas tipo `products`, `materials`, `crm_stages`, etc., as policies existentes permanecem inalteradas.
-
-Para edição de checklists, as policies de `client_checklists` já permitem qualquer usuário autenticado (`ALL` com `true`), então a restrição é puramente client-side — coordenador poderá editar normalmente via UI.
+- Adicionar case `"general-dashboard"` em `renderPage`
+- Carregar `useAllClients` (já existe) ou criar hook agregador para puxar clientes de todos os produtos de uma vez
+- Topbar mostra "Dashboard Geral" quando ativo
 
 ---
 
@@ -95,10 +108,14 @@ Para edição de checklists, as policies de `client_checklists` já permitem qua
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/ScheduleInput.tsx` | Remover useEffect que reseta o texto |
-| Nova migration | Adicionar `coordenador` ao enum `app_role` |
-| `src/contexts/AuthContext.tsx` | Tipo + `isCoordenador` + `canEditChecklist` |
-| `src/components/ProcessChecklist.tsx` | Trocar `isAdmin` → `canEditChecklist` onde apropriado |
-| `src/pages/DashboardPage.tsx` | Habilitar checklists pendentes para coordenador |
-| `src/pages/UsersPage.tsx` | Dropdown de role na criação + exibição/edição de role |
-| `supabase/functions/create-user/index.ts` | Aceitar `role` no payload |
+| Nova migration | 4 novas colunas em `clients` |
+| `src/data/constants.ts` | Novos campos em `GenericClient` |
+| `src/hooks/useClients.ts` | Mapear/gravar novas colunas para Plataformas |
+| `src/hooks/useFinancialOverview.ts` | Regra de receita de Plataformas (impl. + mensalidade) |
+| `src/components/AddClientDialog.tsx` | Form Plataformas com novos campos + toggle |
+| `src/components/EditClientDialog.tsx` | Form Plataformas idem |
+| `src/pages/ClientsPage.tsx` | Colunas e exibição para Plataformas |
+| `src/pages/ClientDetailPage.tsx` | Painel de detalhes para Plataformas |
+| `src/pages/GeneralDashboardPage.tsx` | **Novo** — Dashboard Geral consolidado |
+| `src/pages/Index.tsx` | Roteamento da nova página |
+| `src/components/Sidebar.tsx` | Item "Dashboard Geral" no topo (admin) |
