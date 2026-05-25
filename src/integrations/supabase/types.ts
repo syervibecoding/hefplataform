@@ -132,6 +132,7 @@ export type Database = {
           custo_api: number | null
           data_deposito: string | null
           data_golive: string | null
+          data_implementacao: string | null
           data_kickoff: string | null
           email: string
           faturamento: number | null
@@ -147,9 +148,12 @@ export type Database = {
           rotina_conferencia: Json | null
           saldo_anuncio: number | null
           status: string
+          tem_mensalidade: boolean | null
           tipo_plataforma: string | null
           updated_at: string
           valor_contrato: number | null
+          valor_implementacao: number | null
+          valor_mensalidade: number | null
           whatsapp: string
         }
         Insert: {
@@ -163,6 +167,7 @@ export type Database = {
           custo_api?: number | null
           data_deposito?: string | null
           data_golive?: string | null
+          data_implementacao?: string | null
           data_kickoff?: string | null
           email?: string
           faturamento?: number | null
@@ -178,9 +183,12 @@ export type Database = {
           rotina_conferencia?: Json | null
           saldo_anuncio?: number | null
           status?: string
+          tem_mensalidade?: boolean | null
           tipo_plataforma?: string | null
           updated_at?: string
           valor_contrato?: number | null
+          valor_implementacao?: number | null
+          valor_mensalidade?: number | null
           whatsapp?: string
         }
         Update: {
@@ -194,6 +202,7 @@ export type Database = {
           custo_api?: number | null
           data_deposito?: string | null
           data_golive?: string | null
+          data_implementacao?: string | null
           data_kickoff?: string | null
           email?: string
           faturamento?: number | null
@@ -209,9 +218,12 @@ export type Database = {
           rotina_conferencia?: Json | null
           saldo_anuncio?: number | null
           status?: string
+          tem_mensalidade?: boolean | null
           tipo_plataforma?: string | null
           updated_at?: string
           valor_contrato?: number | null
+          valor_implementacao?: number | null
+          valor_mensalidade?: number | null
           whatsapp?: string
         }
         Relationships: []

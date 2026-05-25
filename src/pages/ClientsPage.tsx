@@ -26,7 +26,7 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
       : ["Cliente", "CNPJs", "Consultas", "Frequência", "Status", ""]
     : isPlataformas
       ? isAdmin
-        ? ["Cliente", "Plataforma", "Tipo", "Status", "Valor/Mês", ""]
+        ? ["Cliente", "Plataforma", "Tipo", "Status", "Implementação", "Mensal", ""]
         : ["Cliente", "Plataforma", "Tipo", "Status", ""]
       : isAdmin
         ? ["Cliente", "Contato", "WhatsApp", "Status", "Valor/Mês", ""]
@@ -96,9 +96,20 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                     )}
                     <td className="px-4 py-3.5 border-b border-border/50"><StatusTag status={c.status} /></td>
                     {isAdmin && (
-                      <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm">
-                        R$ {(c as GenericClient).valorContrato.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </td>
+                      isPlataformas ? (
+                        <>
+                          <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-hef-info">
+                            R$ {((c as GenericClient).valorImplementacao || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-hef-success">
+                            {(c as GenericClient).temMensalidade ? `R$ ${((c as GenericClient).valorMensalidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                          </td>
+                        </>
+                      ) : (
+                        <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm">
+                          R$ {(c as GenericClient).valorContrato.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </td>
+                      )
                     )}
                   </>
                 ) : null}

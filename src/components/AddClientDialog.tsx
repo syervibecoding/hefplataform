@@ -32,6 +32,10 @@ const genericSchema = baseSchema.extend({
   notasAutomacao: z.string().optional(),
   nomePlataforma: z.string().optional(),
   tipoPlataforma: z.string().optional(),
+  valorImplementacao: z.coerce.number().min(0).optional(),
+  dataImplementacao: z.string().optional(),
+  temMensalidade: z.boolean().optional(),
+  valorMensalidade: z.coerce.number().min(0).optional(),
 });
 
 const trafegoSchema = baseSchema.extend({
@@ -69,7 +73,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
 
   const genericForm = useForm<GenericForm>({
     resolver: zodResolver(genericSchema),
-    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "" },
+    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "", valorImplementacao: 0, dataImplementacao: "", temMensalidade: false, valorMensalidade: 0 },
   });
 
   const trafegoForm = useForm<TrafegoForm>({
@@ -113,6 +117,10 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
         notasAutomacao: data.notasAutomacao || null,
         nomePlataforma: data.nomePlataforma || null,
         tipoPlataforma: data.tipoPlataforma || null,
+        valorImplementacao: Number(data.valorImplementacao) || 0,
+        dataImplementacao: data.dataImplementacao || null,
+        temMensalidade: !!data.temMensalidade,
+        valorMensalidade: data.temMensalidade ? (Number(data.valorMensalidade) || 0) : 0,
       });
     }
     reset();
@@ -371,11 +379,13 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
 
           {!isHefsys && !isTrafego && (
             <>
-              <div>
-                <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
-                <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
-                {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
-              </div>
+              {!isPlataformas && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
+                  <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                  {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
+                </div>
+              )}
 
               {isAutomacao && (
                 <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -417,6 +427,30 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                       <option value="externa">Externa (Cliente)</option>
                     </select>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Valor da Implementação (R$)</Label>
+                      <Input {...register("valorImplementacao")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Data da Implementação</Label>
+                      <Input {...register("dataImplementacao")} type="date" className="mt-1 bg-secondary border-border" />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      {...register("temMensalidade")}
+                      className="h-4 w-4 rounded border-border bg-secondary accent-primary"
+                    />
+                    <span className="text-xs text-muted-foreground">Possui mensalidade recorrente</span>
+                  </label>
+                  {watch("temMensalidade") && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Valor Mensal (R$)</Label>
+                      <Input {...register("valorMensalidade")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                  )}
                 </div>
               )}
             </>

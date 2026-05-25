@@ -89,6 +89,10 @@ export interface GenericClient extends BaseClient {
   // Plataformas IA
   nomePlataforma?: string | null;
   tipoPlataforma?: string | null;
+  valorImplementacao?: number;
+  dataImplementacao?: string | null;
+  temMensalidade?: boolean;
+  valorMensalidade?: number;
 }
 
 // Keep backward compat

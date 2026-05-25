@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import DashboardPage from "./DashboardPage";
+import GeneralDashboardPage from "./GeneralDashboardPage";
 import ClientsPage from "./ClientsPage";
 import ClientDetailPage from "./ClientDetailPage";
 import MelhoriasPage from "./MelhoriasPage";
@@ -100,6 +101,8 @@ export default function Index() {
       );
     }
     switch (activePage) {
+      case "general-dashboard":
+        return <GeneralDashboardPage products={products} melhorias={melhorias} />;
       case "dashboard":
         return <DashboardPage clients={clients} melhorias={melhorias} activeProduct={activeProduct} products={products} />;
       case "clients":
@@ -148,7 +151,10 @@ export default function Index() {
     <div className="min-h-screen bg-background">
       <Sidebar activePage={activePage} onNavigate={handleNavigate} activeProduct={activeProduct} onChangeProduct={handleChangeProduct} />
       <main className="ml-60 min-h-screen">
-        <Topbar title={activePage === "client-detail" ? "clients" : activePage} tag={currentProductInfo?.nome || ""} />
+        <Topbar
+          title={activePage === "client-detail" ? "clients" : activePage}
+          tag={activePage === "general-dashboard" ? "Visão Geral" : currentProductInfo?.nome || ""}
+        />
         <div className="p-7">{renderPage()}</div>
       </main>
     </div>

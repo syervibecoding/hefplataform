@@ -145,7 +145,7 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
           ) : (
             <>
               <div className={`grid ${isTrafego ? 'grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}>
-                {isAdmin && (
+                {isAdmin && !isPlataformas && (
                   <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Valor do Contrato</label>
                     <div className="text-lg font-bold font-mono mt-1 text-primary">
@@ -172,7 +172,7 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                 return (
                   <div className="mb-6 p-4 bg-hef-info/5 border border-hef-info/20 rounded-lg">
                     <p className="text-[10px] uppercase tracking-wider text-hef-info font-semibold mb-2">Plataforma</p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <label className="text-[11px] text-muted-foreground">Nome</label>
                         <div className="text-sm font-bold mt-0.5">{gc.nomePlataforma}</div>
@@ -181,6 +181,27 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
                         <label className="text-[11px] text-muted-foreground">Tipo</label>
                         <div className="text-sm font-bold mt-0.5 capitalize">{gc.tipoPlataforma || "—"}</div>
                       </div>
+                      {isAdmin && (
+                        <>
+                          <div>
+                            <label className="text-[11px] text-muted-foreground">Implementação</label>
+                            <div className="text-sm font-bold mt-0.5 font-mono text-hef-info">
+                              R$ {(gc.valorImplementacao || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </div>
+                            {gc.dataImplementacao && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
+                                {new Date(gc.dataImplementacao + "T00:00:00").toLocaleDateString("pt-BR")}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-muted-foreground">Mensalidade</label>
+                            <div className="text-sm font-bold mt-0.5 font-mono text-hef-success">
+                              {gc.temMensalidade ? `R$ ${(gc.valorMensalidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "Sem recorrência"}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
