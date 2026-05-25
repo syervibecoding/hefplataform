@@ -40,6 +40,10 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
     notasAutomacao: row.notas_automacao || null,
     nomePlataforma: row.nome_plataforma || null,
     tipoPlataforma: row.tipo_plataforma || null,
+    valorImplementacao: Number(row.valor_implementacao) || 0,
+    dataImplementacao: row.data_implementacao || null,
+    temMensalidade: !!row.tem_mensalidade,
+    valorMensalidade: Number(row.valor_mensalidade) || 0,
   } as GenericClient;
 }
 
@@ -91,6 +95,12 @@ export function useClients(productId: ProductId) {
         row.notas_automacao = clientData.notasAutomacao || null;
         row.nome_plataforma = clientData.nomePlataforma || null;
         row.tipo_plataforma = clientData.tipoPlataforma || null;
+        if (productId === "plataformas") {
+          row.valor_implementacao = clientData.valorImplementacao || 0;
+          row.data_implementacao = clientData.dataImplementacao || null;
+          row.tem_mensalidade = !!clientData.temMensalidade;
+          row.valor_mensalidade = clientData.temMensalidade ? (clientData.valorMensalidade || 0) : 0;
+        }
       }
       const { error } = await supabase.from("clients").insert(row);
       if (error) throw error;
@@ -129,6 +139,12 @@ export function useClients(productId: ProductId) {
         row.notas_automacao = data.notasAutomacao || null;
         row.nome_plataforma = data.nomePlataforma || null;
         row.tipo_plataforma = data.tipoPlataforma || null;
+        if (productId === "plataformas") {
+          row.valor_implementacao = data.valorImplementacao || 0;
+          row.data_implementacao = data.dataImplementacao || null;
+          row.tem_mensalidade = !!data.temMensalidade;
+          row.valor_mensalidade = data.temMensalidade ? (data.valorMensalidade || 0) : 0;
+        }
       }
       const { error } = await supabase.from("clients").update(row).eq("id", id);
       if (error) throw error;
