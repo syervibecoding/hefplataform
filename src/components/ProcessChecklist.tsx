@@ -299,7 +299,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
                         </span>
                       )}
                     </span>
-                    {isAdmin && done && info?.username && (
+                    {canEditChecklist && done && info?.username && (
                       <div className="text-[10px] text-muted-foreground mt-0.5">
                         {info.username}{info.at ? ` · ${formatCheckTime(info.at)}` : ""}
                       </div>
@@ -307,7 +307,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
                   </>
                 )}
               </div>
-              {isAdmin && !isEditing && (
+              {canEditChecklist && !isEditing && (
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
                   <button
                     className="text-muted-foreground hover:text-foreground"
