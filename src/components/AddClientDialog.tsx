@@ -32,6 +32,10 @@ const genericSchema = baseSchema.extend({
   notasAutomacao: z.string().optional(),
   nomePlataforma: z.string().optional(),
   tipoPlataforma: z.string().optional(),
+  valorImplementacao: z.coerce.number().min(0).optional(),
+  dataImplementacao: z.string().optional(),
+  temMensalidade: z.boolean().optional(),
+  valorMensalidade: z.coerce.number().min(0).optional(),
 });
 
 const trafegoSchema = baseSchema.extend({
@@ -69,7 +73,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
 
   const genericForm = useForm<GenericForm>({
     resolver: zodResolver(genericSchema),
-    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "" },
+    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "", valorImplementacao: 0, dataImplementacao: "", temMensalidade: false, valorMensalidade: 0 },
   });
 
   const trafegoForm = useForm<TrafegoForm>({
@@ -113,6 +117,10 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
         notasAutomacao: data.notasAutomacao || null,
         nomePlataforma: data.nomePlataforma || null,
         tipoPlataforma: data.tipoPlataforma || null,
+        valorImplementacao: Number(data.valorImplementacao) || 0,
+        dataImplementacao: data.dataImplementacao || null,
+        temMensalidade: !!data.temMensalidade,
+        valorMensalidade: data.temMensalidade ? (Number(data.valorMensalidade) || 0) : 0,
       });
     }
     reset();
