@@ -1,74 +1,60 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface ClientRow {
+export interface AllClientRow {
   id: string;
   nome: string;
   contato: string;
-  whatsapp: string;
   email: string;
   status: string;
   product_id: string;
-  valor_contrato: number | null;
-  faturamento: number | null;
-  nivel_dificuldade: string | null;
-  data_golive: string | null;
-  data_kickoff: string | null;
-  created_at: string;
+  faturamento: number;
+  valor_contrato: number;
+  valor_implementacao: number;
+  valor_mensalidade: number;
+  tem_mensalidade: boolean;
+  data_implementacao: string | null;
 }
 
-export type HealthStatus = "saudavel" | "atencao" | "critico";
-
-export function calculateHealthScore(client: ClientRow): { status: HealthStatus; label: string; color: string } {
-  let score = 100;
-
-  // Status check (most important)
-  if (client.status !== "ativo") {
-    score -= 50;
-  }
-
-  // Difficulty level
-  if (client.nivel_dificuldade === "dificil") {
-    score -= 30;
-  } else if (client.nivel_dificuldade === "medio") {
-    score -= 10;
-  }
-
-  // Contact info completeness
-  if (!client.whatsapp && !client.email) {
-    score -= 15;
-  }
-
-  // Contract value (if 0, might indicate an issue)
-  if (!client.valor_contrato && !client.faturamento) {
-    score -= 5;
-  }
-
-  if (score >= 70) {
-    return { status: "saudavel", label: "Saudável", color: "bg-green-500/15 text-green-600 border-green-500/20" };
-  } else if (score >= 40) {
-    return { status: "atencao", label: "Atenção", color: "bg-yellow-500/15 text-yellow-600 border-yellow-500/20" };
-  } else {
-    return { status: "critico", label: "Crítico", color: "bg-red-500/15 text-red-600 border-red-500/20" };
-  }
-}
-
-export function useAllClients(productFilter?: string | null) {
+export function useAllClients(enabled: boolean) {
   return useQuery({
-    queryKey: ["all_clients", productFilter],
-    queryFn: async () => {
-      let query = supabase
+    queryKey: ["all-clients"],
+    enabled,
+    queryFn: async (): Promise<AllClientRow[]> => {
+      const { data, error } = await supabase
         .from("clients")
-        .select("id, nome, contato, whatsapp, email, status, product_id, valor_contrato, faturamento, nivel_dificuldade, data_golive, data_kickoff, created_at")
-        .order("created_at", { ascending: false });
-
-      if (productFilter) {
-        query = query.eq("product_id", productFilter);
-      }
-
-      const { data, error } = await query;
+        .select("id, nome, contato, email, status, product_id, faturamento, valor_contrato, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao")
+        .order("nome");
       if (error) throw error;
-      return (data || []) as ClientRow[];
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        nome: r.nome,
+        contato: r.contato,
+        email: r.email,
+        status: r.status,
+        product_id: r.product_id,
+        faturamento: Number(r.faturamento) || 0,
+        valor_contrato: Number(r.valor_contrato) || 0,
+        valor_implementacao: Number(r.valor_implementacao) || 0,
+        valor_mensalidade: Number(r.valor_mensalidade) || 0,
+        tem_mensalidade: !!r.tem_mensalidade,
+        data_implementacao: r.data_implementacao || null,
+      }));
     },
+    staleTime: 30000,
   });
+}
+
+export function clientMonthlyRevenue(c: AllClientRow, now = new Date()): number {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  if (c.product_id === "hefsys") return c.faturamento;
+  if (c.product_id === "plataformas") {
+    let v = 0;
+    const di = c.data_implementacao ? new Date(c.data_implementacao + "T00:00:00") : null;
+    if (di && di >= monthStart && di <= monthEnd) v += c.valor_implementacao;
+    if (c.tem_mensalidade && di && di <= monthEnd) v += c.valor_mensalidade;
+    return v;
+  }
+  return c.valor_contrato;
 }
