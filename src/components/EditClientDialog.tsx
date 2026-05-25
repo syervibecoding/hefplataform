@@ -413,11 +413,13 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
 
           {!isHefsys && !isTrafego && (
             <>
-              <div>
-                <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
-                <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
-                {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
-              </div>
+              {!isPlataformas && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
+                  <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                  {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
+                </div>
+              )}
 
               {isAutomacao && (
                 <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -459,6 +461,30 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                       <option value="externa">Externa (Cliente)</option>
                     </select>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Valor da Implementação (R$)</Label>
+                      <Input {...register("valorImplementacao")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Data da Implementação</Label>
+                      <Input {...register("dataImplementacao")} type="date" className="mt-1 bg-secondary border-border" />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      {...register("temMensalidade")}
+                      className="h-4 w-4 rounded border-border bg-secondary accent-primary"
+                    />
+                    <span className="text-xs text-muted-foreground">Possui mensalidade recorrente</span>
+                  </label>
+                  {watch("temMensalidade") && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Valor Mensal (R$)</Label>
+                      <Input {...register("valorMensalidade")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                  )}
                 </div>
               )}
             </>
