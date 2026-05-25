@@ -44,7 +44,7 @@ interface Props {
 }
 
 export default function ProcessChecklist({ clientId, tipo, schedule, label }: Props) {
-  const { user, profile, isAdmin, canEditChecklist } = useAuth();
+  const { user, profile, canEditChecklist } = useAuth();
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
