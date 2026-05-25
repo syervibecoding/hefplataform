@@ -145,7 +145,7 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
           ) : (
             <>
               <div className={`grid ${isTrafego ? 'grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}>
-                {isAdmin && (
+                {isAdmin && !isPlataformas && (
                   <div>
                     <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Valor do Contrato</label>
                     <div className="text-lg font-bold font-mono mt-1 text-primary">
