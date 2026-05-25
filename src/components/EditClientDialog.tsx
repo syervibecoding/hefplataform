@@ -32,6 +32,10 @@ const genericSchema = baseSchema.extend({
   notasAutomacao: z.string().optional(),
   nomePlataforma: z.string().optional(),
   tipoPlataforma: z.string().optional(),
+  valorImplementacao: z.coerce.number().min(0).optional(),
+  dataImplementacao: z.string().optional(),
+  temMensalidade: z.boolean().optional(),
+  valorMensalidade: z.coerce.number().min(0).optional(),
 });
 
 const trafegoSchema = baseSchema.extend({
@@ -122,6 +126,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           notasAutomacao: client.notasAutomacao || "",
           nomePlataforma: client.nomePlataforma || "",
           tipoPlataforma: client.tipoPlataforma || "",
+          valorImplementacao: client.valorImplementacao || 0,
+          dataImplementacao: client.dataImplementacao || "",
+          temMensalidade: !!client.temMensalidade,
+          valorMensalidade: client.valorMensalidade || 0,
         });
       }
     }
@@ -157,6 +165,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
         notasAutomacao: data.notasAutomacao || null,
         nomePlataforma: data.nomePlataforma || null,
         tipoPlataforma: data.tipoPlataforma || null,
+        valorImplementacao: Number(data.valorImplementacao) || 0,
+        dataImplementacao: data.dataImplementacao || null,
+        temMensalidade: !!data.temMensalidade,
+        valorMensalidade: data.temMensalidade ? (Number(data.valorMensalidade) || 0) : 0,
       });
     }
     setOpen(false);
