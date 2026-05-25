@@ -44,7 +44,7 @@ interface Props {
 }
 
 export default function ProcessChecklist({ clientId, tipo, schedule, label }: Props) {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile, canEditChecklist } = useAuth();
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
@@ -74,7 +74,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
   const currentIndex = allDates.indexOf(selectedDate);
   const canPrev = currentIndex > 0;
   // Admin can navigate to future dates, regular users cannot
-  const canNext = currentIndex < allDates.length - 1 && (isAdmin || allDates[currentIndex + 1] <= todayStr);
+  const canNext = currentIndex < allDates.length - 1 && (canEditChecklist || allDates[currentIndex + 1] <= todayStr);
 
   const isFutureDate = selectedDate > todayStr;
 
@@ -250,7 +250,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
           return (
             <li
               key={step.id}
-              draggable={isAdmin}
+              draggable={canEditChecklist}
               onDragStart={() => handleDragStart(i)}
               onDragOver={(e) => handleDragOver(e, i)}
               onDrop={handleDrop}
@@ -260,7 +260,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
               } ${isDragOver ? "border-t-2 border-primary" : ""} ${dragIndex === i ? "opacity-40" : ""}`}
               onClick={() => !isEditing && user && toggleStep(step.id, user.id, profile?.username || "desconhecido")}
             >
-              {isAdmin && (
+              {canEditChecklist && (
                 <div className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground shrink-0" onClick={(e) => e.stopPropagation()}>
                   <GripVertical size={14} />
                 </div>
@@ -299,7 +299,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
                         </span>
                       )}
                     </span>
-                    {isAdmin && done && info?.username && (
+                    {canEditChecklist && done && info?.username && (
                       <div className="text-[10px] text-muted-foreground mt-0.5">
                         {info.username}{info.at ? ` · ${formatCheckTime(info.at)}` : ""}
                       </div>
@@ -307,7 +307,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
                   </>
                 )}
               </div>
-              {isAdmin && !isEditing && (
+              {canEditChecklist && !isEditing && (
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
                   <button
                     className="text-muted-foreground hover:text-foreground"
@@ -341,7 +341,7 @@ export default function ProcessChecklist({ clientId, tipo, schedule, label }: Pr
       </ol>
 
       {/* Add steps */}
-      {isAdmin && (
+      {canEditChecklist && (
         <div className="pt-2 space-y-1">
           {/* Add fixed step */}
           {showAddFixedStep ? (

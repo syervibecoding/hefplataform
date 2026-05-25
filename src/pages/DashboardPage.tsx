@@ -56,7 +56,7 @@ function FinancialOverview({ products, overview }: { products: Product[]; overvi
 }
 
 export default function DashboardPage({ clients, melhorias, activeProduct, products }: Props) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, canEditChecklist } = useAuth();
   const isHefsys = activeProduct === "hefsys";
   const activeClients = clients.filter((c) => c.status === "ativo");
   const emDev = melhorias.filter((m) => m.status === "em_desenvolvimento").length;
@@ -65,7 +65,7 @@ export default function DashboardPage({ clients, melhorias, activeProduct, produ
     ? activeClients.filter(isHefSysClient).map((c) => ({ id: c.id, nome: c.nome }))
     : [];
 
-  const { data: todayChecklists } = useTodayChecklists(hefsysActiveClients, isAdmin && isHefsys);
+  const { data: todayChecklists } = useTodayChecklists(hefsysActiveClients, canEditChecklist && isHefsys);
   const { data: financialOverview } = useFinancialOverview(isAdmin);
 
   const hefsysMetrics = () => {
@@ -188,7 +188,7 @@ export default function DashboardPage({ clients, melhorias, activeProduct, produ
       </div>
 
       {/* Checklist status today - admin only, HefSys */}
-      {isAdmin && isHefsys && todayChecklists && todayChecklists.length > 0 && (
+      {canEditChecklist && isHefsys && todayChecklists && todayChecklists.length > 0 && (
         <div className="mt-7">
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">

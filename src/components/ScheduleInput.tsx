@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type ScheduleConfig, DIAS_SEMANA_LABELS } from "@/data/constants";
@@ -12,10 +12,6 @@ interface Props {
 
 export default function ScheduleInput({ label, value, onChange, colorClass = "text-primary" }: Props) {
   const [diasText, setDiasText] = useState((value.dias || []).join(", "));
-
-  useEffect(() => {
-    setDiasText((value.dias || []).join(", "));
-  }, [value.dias]);
 
   const handleDiasChange = (text: string) => {
     setDiasText(text);

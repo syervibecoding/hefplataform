@@ -1,83 +1,104 @@
+# Plano: Correção do agendamento + Nova role "Coordenador"
 
+## 1. Bug: só aceita 1 dia no campo "Dias específicos do mês"
 
-# Plano: Nova Identidade Visual (HefSys) + CRUD completo de Produtos
+**Causa identificada** em `src/components/ScheduleInput.tsx`:
 
-## Resumo
+O componente tem um `useEffect` que reseta o texto local (`diasText`) toda vez que `value.dias` muda:
+```ts
+useEffect(() => {
+  setDiasText((value.dias || []).join(", "));
+}, [value.dias]);
+```
 
-Duas frentes: (1) trocar a identidade visual da plataforma para o design system "Neon Monolith" do DESIGN.md com a logo HefSys, e (2) adicionar edição e exclusão de produtos no seletor da sidebar.
+Fluxo do bug ao digitar "5, 20":
+1. Usuário digita `5` → parse → `dias=[5]` → onChange dispara
+2. Pai atualiza `value.dias=[5]` → useEffect dispara → texto é reescrito como `"5"` (sem vírgula)
+3. Vírgula recém-digitada é apagada, impossibilitando digitar o segundo número
 
----
+**Correção**: remover o `useEffect` de sincronização (o estado local já é inicializado a partir de `value.dias` no `useState`). A sincronização externa não é necessária neste formulário — o texto local é a fonte de verdade enquanto o usuário digita. Os valores válidos continuam fluindo para o pai via `onChange`.
 
-## 1. Nova Identidade Visual
-
-### 1.1 Logo
-- Copiar `user-uploads://Logotipo_hefsys_-_fundo_transparente.png` para `src/assets/logo-hefsys.png`
-- Substituir importações de `logo-white.png` e `logo-vivid-violet.png` nos dois lugares:
-  - **Sidebar.tsx** (linha 3, 56): trocar logo e alt text para "HefSys"
-  - **LoginPage.tsx** (linha 6, 29): trocar logo e alt text
-
-### 1.2 Paleta de Cores (index.css)
-Migrar do violeta para o design system "Neon Monolith":
-- **Background**: `#0e0e0e` → HSL `0 0% 5.5%`
-- **Primary**: lime `#b4f78d` → HSL `100 88% 76%`
-- **Primary-foreground**: dark green `#266003` → HSL `100 95% 19%`
-- **Card/Surface**: `#191919` → HSL `0 0% 10%`
-- **Secondary/Muted**: `#1f1f1f` → HSL `0 0% 12%`
-- **Border**: ghost border sutil `#484848` 15% opacity → HSL `0 0% 18%`
-- **Foreground**: `#e0e0e0` → HSL `0 0% 88%`
-- **Muted-foreground**: `#ababab` → HSL `0 0% 67%`
-- **Sidebar**: mesma hierarquia tonal mas levemente mais escuro
-- **Accent**: usar lime como accent
-- Remover/atualizar tokens `--clix-*` para `--hef-*` com a nova paleta
-- Atualizar `--ring` para lime
-
-### 1.3 Tipografia
-- Instalar `@fontsource/space-grotesk` e `@fontsource/manrope`
-- **Space Grotesk**: headlines, display, títulos (font-bold, tracking-tight)
-- **Manrope**: body text, labels
-- Atualizar `tailwind.config.ts` font families
-- Atualizar `body` font-family para Manrope
-- Manter JetBrains Mono para dados numéricos
-
-### 1.4 Tailwind Config
-- Atualizar cores em `tailwind.config.ts` (renomear `clix` → `hef`)
-- Atualizar animação `pulse-violet` → `pulse-lime`
-- Ajustar keyframes para nova cor
-
-### 1.5 Textos de branding
-- Trocar "Clix Company" → "HefSys" e "Plataforma Interna" (manter ou ajustar) em Sidebar e LoginPage
+Arquivo: `src/components/ScheduleInput.tsx`
 
 ---
 
-## 2. CRUD Completo de Produtos (Editar + Excluir)
+## 2. Nova role "Coordenador"
 
-### 2.1 Sidebar.tsx — Botões de ação no dropdown
-- Ao lado de cada produto no dropdown, adicionar ícones de **editar** (Pencil) e **excluir** (Trash2), visíveis apenas para admins
-- Ícones pequenos no canto direito de cada item do dropdown
+### 2.1 Banco de dados (migration)
 
-### 2.2 Dialog de Edição
-- Reutilizar a mesma estrutura do dialog de criação
-- Pré-preencher campos (nome, descrição, ícone)
-- Chamar `editProduct.mutate` ao salvar
+Adicionar `'coordenador'` ao enum `app_role`:
+```sql
+ALTER TYPE public.app_role ADD VALUE 'coordenador';
+```
 
-### 2.3 Dialog de Exclusão
-- Confirmação simples com nome do produto
-- Chamar `deleteProduct.mutate` ao confirmar
-- Se o produto ativo for excluído, trocar para o primeiro produto disponível
+Nenhuma alteração de tabela necessária — `user_roles` já suporta.
 
-### 2.4 Hook useProducts
-- Já possui `editProduct` e `deleteProduct` — nenhuma mudança necessária no hook
+### 2.2 Permissões — escopo do Coordenador
+
+| Capacidade | Admin | Coordenador | Usuário |
+|---|---|---|---|
+| Ver checklists de datas futuras | ✅ | ✅ | ❌ |
+| Navegar para datas futuras (`canNext`) | ✅ | ✅ | ❌ |
+| Editar/reordenar/excluir passos do checklist operacional | ✅ | ✅ | ❌ |
+| Adicionar passos locais ao checklist | ✅ | ✅ | ❌ |
+| Ver dados financeiros (faturamento, contrato, custo API) | ✅ | ❌ | ❌ |
+| Gestão de usuários (UsersPage) | ✅ | ❌ | ❌ |
+| Gestão de produtos (criar/editar/excluir na sidebar) | ✅ | ❌ | ❌ |
+| Gestão de materiais (criar/editar/excluir) | ✅ | ❌ | ❌ |
+| Workflow / colunas de planejamento (admin actions) | ✅ | ❌ | ❌ |
+
+Resumo: **Coordenador = poderes operacionais sobre checklists, sem acesso a finanças, usuários, produtos ou materiais.**
+
+### 2.3 AuthContext (`src/contexts/AuthContext.tsx`)
+
+- Atualizar tipo: `AppRole = "admin" | "coordenador" | "user"`
+- Adicionar derivação: `isCoordenador = role === "coordenador"`
+- Adicionar derivação: `canEditChecklist = isAdmin || isCoordenador` (exposta no contexto para uso fácil)
+
+### 2.4 Componentes afetados
+
+**`src/components/ProcessChecklist.tsx`** — trocar `isAdmin` por `canEditChecklist` em:
+- `canNext` (navegação para datas futuras)
+- `draggable` (reordenação)
+- Botões editar/excluir passos
+- Adicionar novo passo
+- Mostrar quem completou (`username`) — manter como `isAdmin || isCoordenador`
+
+**`src/pages/DashboardPage.tsx`** — para `useTodayChecklists` permitir coordenador também:
+- `useTodayChecklists(hefsysActiveClients, (isAdmin || isCoordenador) && isHefsys)`
+- Bloco de checklists pendentes visível para coordenador
+- **Manter `financialOverview` somente para `isAdmin`**
+
+**Não alterar** (continuam restritos a admin):
+- `UsersPage`, `MaterialsPage`, `WorkflowPage` (admin actions), `ClientsPage` (valores), `ClientDetailPage` (financeiro), `Sidebar` (CRUD de produtos)
+
+### 2.5 UI de gestão de usuários (`src/pages/UsersPage.tsx`)
+
+- Permitir admin selecionar role ao criar usuário: dropdown com opções `user`, `coordenador`, `admin`
+- Mostrar a role atual de cada usuário na listagem
+- Permitir admin alterar role de um usuário existente
+
+### 2.6 Edge function `supabase/functions/create-user/index.ts`
+
+- Aceitar parâmetro opcional `role` (default `'user'`)
+- Inserir em `user_roles` com a role recebida
+
+### 2.7 RLS — revisão
+
+As policies atuais usam `has_role(auth.uid(), 'admin')`. Como coordenador **não** deve ter acesso administrativo a tabelas tipo `products`, `materials`, `crm_stages`, etc., as policies existentes permanecem inalteradas.
+
+Para edição de checklists, as policies de `client_checklists` já permitem qualquer usuário autenticado (`ALL` com `true`), então a restrição é puramente client-side — coordenador poderá editar normalmente via UI.
 
 ---
 
-## Arquivos Modificados
+## Arquivos modificados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/assets/logo-hefsys.png` | Novo (copiar upload) |
-| `src/index.css` | Nova paleta, novas fontes |
-| `tailwind.config.ts` | Fontes, cores, animações |
-| `package.json` | Adicionar `@fontsource/space-grotesk`, `@fontsource/manrope` |
-| `src/components/Sidebar.tsx` | Logo, branding, edit/delete dialogs |
-| `src/pages/LoginPage.tsx` | Logo e branding |
-
+| `src/components/ScheduleInput.tsx` | Remover useEffect que reseta o texto |
+| Nova migration | Adicionar `coordenador` ao enum `app_role` |
+| `src/contexts/AuthContext.tsx` | Tipo + `isCoordenador` + `canEditChecklist` |
+| `src/components/ProcessChecklist.tsx` | Trocar `isAdmin` → `canEditChecklist` onde apropriado |
+| `src/pages/DashboardPage.tsx` | Habilitar checklists pendentes para coordenador |
+| `src/pages/UsersPage.tsx` | Dropdown de role na criação + exibição/edição de role |
+| `supabase/functions/create-user/index.ts` | Aceitar `role` no payload |

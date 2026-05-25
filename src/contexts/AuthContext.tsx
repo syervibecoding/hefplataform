@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-export type AppRole = "admin" | "user";
+export type AppRole = "admin" | "coordenador" | "user";
 
 interface Profile {
   username: string;
@@ -14,6 +14,8 @@ interface AuthState {
   profile: Profile | null;
   role: AppRole;
   isAdmin: boolean;
+  isCoordenador: boolean;
+  canEditChecklist: boolean;
   loading: boolean;
   signIn: (username: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -105,7 +107,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, role, isAdmin: role === "admin", loading, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        role,
+        isAdmin: role === "admin",
+        isCoordenador: role === "coordenador",
+        canEditChecklist: role === "admin" || role === "coordenador",
+        loading,
+        signIn,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
