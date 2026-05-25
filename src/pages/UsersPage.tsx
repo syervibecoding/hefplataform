@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Shield, User, Trash2 } from "lucide-react";
+import { UserPlus, Shield, User, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserRow {
@@ -63,6 +63,23 @@ export default function UsersPage() {
       refetch();
     },
     onError: (err: Error) => toast.error(err.message || "Erro ao excluir usuário"),
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      // Remove existing roles for this user, then insert new one
+      const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", userId);
+      if (delErr) throw delErr;
+      const { error: insErr } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role: role as any });
+      if (insErr) throw insErr;
+    },
+    onSuccess: () => {
+      toast.success("Perfil atualizado");
+      refetch();
+    },
+    onError: (err: Error) => toast.error(err.message || "Erro ao atualizar perfil"),
   });
 
   const handleCreate = async () => {
@@ -161,6 +178,7 @@ export default function UsersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">Usuário</SelectItem>
+                    <SelectItem value="coordenador">Coordenador</SelectItem>
                     <SelectItem value="admin">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
@@ -189,10 +207,26 @@ export default function UsersPage() {
                 <td className="px-4 py-3 font-medium">@{u.username}</td>
                 <td className="px-4 py-3 text-muted-foreground">{u.display_name || "—"}</td>
                 <td className="px-4 py-3">
-                  <Badge variant={u.role === "admin" ? "default" : "secondary"} className="gap-1">
-                    {u.role === "admin" ? <Shield size={12} /> : <User size={12} />}
-                    {u.role === "admin" ? "Admin" : "Usuário"}
-                  </Badge>
+                  {u.id === user?.id ? (
+                    <Badge variant={u.role === "admin" ? "default" : "secondary"} className="gap-1">
+                      {u.role === "admin" ? <Shield size={12} /> : u.role === "coordenador" ? <UserCog size={12} /> : <User size={12} />}
+                      {u.role === "admin" ? "Admin" : u.role === "coordenador" ? "Coordenador" : "Usuário"}
+                    </Badge>
+                  ) : (
+                    <Select
+                      value={u.role}
+                      onValueChange={(v) => updateRoleMutation.mutate({ userId: u.id, role: v })}
+                    >
+                      <SelectTrigger className="h-8 w-[150px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="coordenador">Coordenador</SelectItem>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {u.id !== user?.id && (
