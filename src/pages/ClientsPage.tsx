@@ -26,7 +26,7 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
       : ["Cliente", "CNPJs", "Consultas", "Frequência", "Status", ""]
     : isPlataformas
       ? isAdmin
-        ? ["Cliente", "Plataforma", "Tipo", "Status", "Valor/Mês", ""]
+        ? ["Cliente", "Plataforma", "Tipo", "Status", "Implementação", "Mensal", ""]
         : ["Cliente", "Plataforma", "Tipo", "Status", ""]
       : isAdmin
         ? ["Cliente", "Contato", "WhatsApp", "Status", "Valor/Mês", ""]
