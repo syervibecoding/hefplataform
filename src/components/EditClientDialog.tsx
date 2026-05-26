@@ -23,10 +23,12 @@ const hefsysSchema = baseSchema.extend({
   frequencia: z.string().min(1, "Selecione a frequência"),
   faturamento: z.coerce.number().min(0, "Valor inválido"),
   custoAPI: z.coerce.number().min(0, "Valor inválido"),
+  diaPagamento: z.coerce.number().min(1).max(31).optional(),
 });
 
 const genericSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
+  diaPagamento: z.coerce.number().min(1).max(31).optional(),
   dataKickoff: z.string().optional(),
   nivelDificuldade: z.string().optional(),
   notasAutomacao: z.string().optional(),
@@ -40,6 +42,7 @@ const genericSchema = baseSchema.extend({
 
 const trafegoSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
+  diaPagamento: z.coerce.number().min(1).max(31).optional(),
   formaPagamento: z.string().optional(),
   saldoAnuncio: z.coerce.number().min(0).optional(),
   gastoDiarioMedio: z.coerce.number().min(0).optional(),
@@ -94,6 +97,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           frequencia: client.frequencia,
           faturamento: client.faturamento || 0,
           custoAPI: client.custoAPI || 0,
+          diaPagamento: client.diaPagamento || 5,
         });
         setAgendaCertidoes(client.agendaCertidoes || {});
         setAgendaCaixasPostais(client.agendaCaixasPostais || {});
@@ -107,6 +111,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           email: gc.email,
           status: gc.status,
           valorContrato: gc.valorContrato,
+          diaPagamento: gc.diaPagamento || 5,
           formaPagamento: gc.formaPagamento || "",
           saldoAnuncio: gc.saldoAnuncio || 0,
           gastoDiarioMedio: gc.gastoDiarioMedio || 0,
@@ -121,6 +126,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           email: client.email,
           status: client.status,
           valorContrato: client.valorContrato,
+          diaPagamento: client.diaPagamento || 5,
           dataKickoff: client.dataKickoff || "",
           nivelDificuldade: client.nivelDificuldade || "",
           notasAutomacao: client.notasAutomacao || "",
@@ -234,6 +240,11 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
               <option value="ativo">Ativo</option>
               <option value="inativo">Inativo</option>
             </select>
+          </div>
+
+          <div>
+            <Label className="text-xs text-muted-foreground">Dia de pagamento (1–31)</Label>
+            <Input {...register("diaPagamento")} type="number" min={1} max={31} className="mt-1 bg-secondary border-border" />
           </div>
 
           {isHefsys && (

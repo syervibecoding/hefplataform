@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import DashboardPage from "./DashboardPage";
 import GeneralDashboardPage from "./GeneralDashboardPage";
+import CashFlowPage from "./CashFlowPage";
 import ClientsPage from "./ClientsPage";
 import ClientDetailPage from "./ClientDetailPage";
 import MelhoriasPage from "./MelhoriasPage";
@@ -103,6 +104,8 @@ export default function Index() {
     switch (activePage) {
       case "general-dashboard":
         return <GeneralDashboardPage products={products} melhorias={melhorias} />;
+      case "cash-flow":
+        return <CashFlowPage />;
       case "dashboard":
         return <DashboardPage clients={clients} melhorias={melhorias} activeProduct={activeProduct} products={products} />;
       case "clients":
@@ -153,7 +156,11 @@ export default function Index() {
       <main className="ml-60 min-h-screen">
         <Topbar
           title={activePage === "client-detail" ? "clients" : activePage}
-          tag={activePage === "general-dashboard" ? "Visão Geral" : currentProductInfo?.nome || ""}
+          tag={
+            activePage === "general-dashboard" ? "Visão Geral"
+            : activePage === "cash-flow" ? "Financeiro"
+            : currentProductInfo?.nome || ""
+          }
         />
         <div className="p-7">{renderPage()}</div>
       </main>

@@ -23,10 +23,12 @@ const hefsysSchema = baseSchema.extend({
   frequencia: z.string().min(1, "Selecione a frequência"),
   faturamento: z.coerce.number().min(0, "Valor inválido"),
   custoAPI: z.coerce.number().min(0, "Valor inválido"),
+  diaPagamento: z.coerce.number().min(1).max(31).optional(),
 });
 
 const genericSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
+  diaPagamento: z.coerce.number().min(1).max(31).optional(),
   dataKickoff: z.string().optional(),
   nivelDificuldade: z.string().optional(),
   notasAutomacao: z.string().optional(),
@@ -40,6 +42,7 @@ const genericSchema = baseSchema.extend({
 
 const trafegoSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
+  diaPagamento: z.coerce.number().min(1).max(31).optional(),
   formaPagamento: z.string().optional(),
   saldoAnuncio: z.coerce.number().min(0).optional(),
   gastoDiarioMedio: z.coerce.number().min(0).optional(),
@@ -68,17 +71,17 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
 
   const hefsysForm = useForm<HefsysForm>({
     resolver: zodResolver(hefsysSchema),
-    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", cnpjs: 1, consultas: [], frequencia: "1x", faturamento: 0, custoAPI: 0 },
+    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", cnpjs: 1, consultas: [], frequencia: "1x", faturamento: 0, custoAPI: 0, diaPagamento: 5 },
   });
 
   const genericForm = useForm<GenericForm>({
     resolver: zodResolver(genericSchema),
-    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "", valorImplementacao: 0, dataImplementacao: "", temMensalidade: false, valorMensalidade: 0 },
+    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, diaPagamento: 5, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "", valorImplementacao: 0, dataImplementacao: "", temMensalidade: false, valorMensalidade: 0 },
   });
 
   const trafegoForm = useForm<TrafegoForm>({
     resolver: zodResolver(trafegoSchema),
-    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, formaPagamento: "", saldoAnuncio: 0, gastoDiarioMedio: 0, dataDeposito: "" },
+    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, diaPagamento: 5, formaPagamento: "", saldoAnuncio: 0, gastoDiarioMedio: 0, dataDeposito: "" },
   });
 
   const form = isHefsys ? hefsysForm : isTrafego ? trafegoForm : genericForm;
@@ -200,6 +203,11 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
               <option value="ativo">Ativo</option>
               <option value="inativo">Inativo</option>
             </select>
+          </div>
+
+          <div>
+            <Label className="text-xs text-muted-foreground">Dia de pagamento (1–31)</Label>
+            <Input {...register("diaPagamento")} type="number" min={1} max={31} className="mt-1 bg-secondary border-border" />
           </div>
 
           {isHefsys && (

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2, Globe } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2, Globe, Wallet } from "lucide-react";
 import { useState } from "react";
 import logoHef from "@/assets/logo-hefsys.png";
 import { type ProductId } from "@/data/constants";
@@ -120,6 +120,24 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
             <div className="flex-1 text-left min-w-0">
               <div className="text-sm font-semibold">Dashboard Geral</div>
               <div className="text-[10px] text-muted-foreground">Visão consolidada</div>
+            </div>
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            onClick={() => onNavigate("cash-flow")}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all mb-3 ${
+              activePage === "cash-flow"
+                ? "bg-primary/15 text-primary border border-primary/30"
+                : "bg-primary/5 text-foreground border border-primary/15 hover:bg-primary/10"
+            }`}
+          >
+            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <Wallet size={16} className="text-primary" />
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-sm font-semibold">Fluxo de Caixa</div>
+              <div className="text-[10px] text-muted-foreground">Receitas e despesas</div>
             </div>
           </button>
         )}
