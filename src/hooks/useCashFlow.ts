@@ -1,7 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type EntryType = "receita" | "despesa";
+export type EntryType = "receita" | "despesa" | "investimento" | "aporte" | "retirada";
+
+export const ENTRY_TYPE_META: Record<EntryType, { label: string; sign: 1 | -1; bucket: "receita" | "despesa" | "investimento" | "aporte" | "retirada" }> = {
+  receita: { label: "Receita", sign: 1, bucket: "receita" },
+  despesa: { label: "Despesa", sign: -1, bucket: "despesa" },
+  investimento: { label: "Investimento", sign: -1, bucket: "investimento" },
+  aporte: { label: "Aporte de sócio", sign: 1, bucket: "aporte" },
+  retirada: { label: "Retirada de sócio", sign: -1, bucket: "retirada" },
+};
 
 export interface CashEntry {
   id: string;             // synthetic id for the projected entry
@@ -127,8 +135,6 @@ function projectExpenseEntries(expenses: any[], year: number): CashEntry[] {
 }
 
 function applyOverrides(base: CashEntry[], overrides: any[]): CashEntry[] {
-  // overrides com origem_id substituem entradas projetadas (mesmo origem_id + mesmo mês)
-  // overrides avulsos são adicionados como novos lançamentos
   const result: CashEntry[] = [];
   const replacedKeys = new Set<string>();
   const overrideAvulsos: CashEntry[] = [];
@@ -145,7 +151,7 @@ function applyOverrides(base: CashEntry[], overrides: any[]): CashEntry[] {
           tipo: o.tipo,
           date,
           nome: o.nome,
-          categoria: o.categoria || (o.tipo === "receita" ? "outros" : "outros"),
+          categoria: o.categoria || "outros",
           valor: Number(o.valor),
           origemTipo: "avulso",
           origemId: null,
@@ -153,7 +159,7 @@ function applyOverrides(base: CashEntry[], overrides: any[]): CashEntry[] {
         });
       }
     } else {
-      // substituição: criar entrada nova no lugar (se valor > 0)
+      // substituição: criar entrada no lugar (se valor > 0); valor 0 = zera o mês
       if (Number(o.valor || 0) > 0) {
         overrideAvulsos.push({
           id: `ovr-${o.id}`,
@@ -181,10 +187,16 @@ export interface MonthSummary {
   month: number;            // 0-11
   receitas: number;
   despesas: number;
+  investimentos: number;
+  aportes: number;
+  retiradas: number;
+  resultadoOperacional: number;
   resultado: number;
   saldoFinal: number;
   byCategoryReceita: Record<string, number>;
   byCategoryDespesa: Record<string, number>;
+  byCategoryInvest: Record<string, number>;
+  byCategorySocio: Record<string, number>;
   entries: CashEntry[];
 }
 
@@ -194,6 +206,10 @@ export interface CashFlowYearData {
   months: MonthSummary[];
   totalReceitas: number;
   totalDespesas: number;
+  totalInvestimentos: number;
+  totalAportes: number;
+  totalRetiradas: number;
+  totalResultadoOperacional: number;
   totalResultado: number;
   entries: CashEntry[];
 }
@@ -216,40 +232,56 @@ export function useCashFlowYear(year: number, enabled: boolean) {
           const d = new Date(e.date + "T00:00:00");
           return d.getFullYear() === year && d.getMonth() === m;
         });
-        let rec = 0, desp = 0;
+        let rec = 0, desp = 0, inv = 0, ap = 0, ret = 0;
         const byRec: Record<string, number> = {};
         const byDesp: Record<string, number> = {};
+        const byInv: Record<string, number> = {};
+        const bySoc: Record<string, number> = {};
         for (const e of monthEntries) {
-          if (e.tipo === "receita") {
-            rec += e.valor;
-            byRec[e.categoria] = (byRec[e.categoria] || 0) + e.valor;
-          } else {
-            desp += e.valor;
-            byDesp[e.categoria] = (byDesp[e.categoria] || 0) + e.valor;
-          }
+          const cat = e.categoria || "outros";
+          if (e.tipo === "receita") { rec += e.valor; byRec[cat] = (byRec[cat] || 0) + e.valor; }
+          else if (e.tipo === "despesa") { desp += e.valor; byDesp[cat] = (byDesp[cat] || 0) + e.valor; }
+          else if (e.tipo === "investimento") { inv += e.valor; byInv[cat] = (byInv[cat] || 0) + e.valor; }
+          else if (e.tipo === "aporte") { ap += e.valor; bySoc["aporte"] = (bySoc["aporte"] || 0) + e.valor; }
+          else if (e.tipo === "retirada") { ret += e.valor; bySoc["retirada"] = (bySoc["retirada"] || 0) + e.valor; }
         }
-        const result = rec - desp;
+        const resultadoOperacional = rec - desp;
+        const result = resultadoOperacional - inv + ap - ret;
         running += result;
         months.push({
           month: m,
           receitas: rec,
           despesas: desp,
+          investimentos: inv,
+          aportes: ap,
+          retiradas: ret,
+          resultadoOperacional,
           resultado: result,
           saldoFinal: running,
           byCategoryReceita: byRec,
           byCategoryDespesa: byDesp,
+          byCategoryInvest: byInv,
+          byCategorySocio: bySoc,
           entries: monthEntries.sort((a, b) => a.date.localeCompare(b.date)),
         });
       }
       const totalReceitas = months.reduce((s, m) => s + m.receitas, 0);
       const totalDespesas = months.reduce((s, m) => s + m.despesas, 0);
+      const totalInvestimentos = months.reduce((s, m) => s + m.investimentos, 0);
+      const totalAportes = months.reduce((s, m) => s + m.aportes, 0);
+      const totalRetiradas = months.reduce((s, m) => s + m.retiradas, 0);
+      const totalResultadoOperacional = totalReceitas - totalDespesas;
       return {
         year,
         saldoInicial,
         months,
         totalReceitas,
         totalDespesas,
-        totalResultado: totalReceitas - totalDespesas,
+        totalInvestimentos,
+        totalAportes,
+        totalRetiradas,
+        totalResultadoOperacional,
+        totalResultado: totalResultadoOperacional - totalInvestimentos + totalAportes - totalRetiradas,
         entries: allEntries,
       };
     },

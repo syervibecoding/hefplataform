@@ -1,10 +1,11 @@
 import { useState, useMemo, Fragment } from "react";
-import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashFlowYear } from "@/hooks/useCashFlow";
 import { categoryLabel, EXPENSE_CATEGORIES } from "@/hooks/useCashExpenses";
 import CashFlowSettingsDialog from "@/components/CashFlowSettingsDialog";
 import CashFlowDayDetail from "@/components/CashFlowDayDetail";
+import CashEntryDialog from "@/components/CashEntryDialog";
 import { useProducts } from "@/hooks/useProducts";
 
 const MONTH_ABBR = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -25,6 +26,7 @@ export default function CashFlowPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailMonth, setDetailMonth] = useState<number | null>(null);
+  const [newEntryOpen, setNewEntryOpen] = useState(false);
   const { products } = useProducts();
   const { data, isLoading } = useCashFlowYear(year, isAdmin);
 
@@ -32,6 +34,7 @@ export default function CashFlowPage() {
 
   const [expandedRec, setExpandedRec] = useState<Set<string>>(new Set());
   const [expandedDesp, setExpandedDesp] = useState<Set<string>>(new Set());
+  const [expandedInv, setExpandedInv] = useState<Set<string>>(new Set());
 
   // Receitas: produto -> clientes -> 12 meses
   const receitasTree = useMemo(() => {
@@ -87,6 +90,44 @@ export default function CashFlowPage() {
       }));
   }, [data]);
 
+  // Investimentos: categoria -> itens
+  const investTree = useMemo(() => {
+    if (!data) return [] as Array<{ categoria: string; values: number[]; total: number; children: Array<{ key: string; label: string; values: number[]; total: number }> }>;
+    const cats = new Map<string, { values: number[]; items: Map<string, { label: string; values: number[] }> }>();
+    for (const e of data.entries) {
+      if (e.tipo !== "investimento") continue;
+      const m = new Date(e.date + "T00:00:00").getMonth();
+      const cat = e.categoria || "outros";
+      if (!cats.has(cat)) cats.set(cat, { values: new Array(12).fill(0), items: new Map() });
+      const node = cats.get(cat)!;
+      node.values[m] += e.valor;
+      const ikey = e.overrideId || `avulso-${e.nome}`;
+      if (!node.items.has(ikey)) node.items.set(ikey, { label: e.nome, values: new Array(12).fill(0) });
+      node.items.get(ikey)!.values[m] += e.valor;
+    }
+    return Array.from(cats.entries()).map(([categoria, n]) => ({
+      categoria,
+      values: n.values,
+      total: n.values.reduce((a, b) => a + b, 0),
+      children: Array.from(n.items.entries())
+        .map(([key, it]) => ({ key, label: it.label, values: it.values, total: it.values.reduce((a, b) => a + b, 0) }))
+        .sort((a, b) => b.total - a.total),
+    }));
+  }, [data]);
+
+  // Sócios: aportes/retiradas por 12 meses
+  const sociosRows = useMemo(() => {
+    if (!data) return null;
+    const aportes = new Array(12).fill(0);
+    const retiradas = new Array(12).fill(0);
+    for (const e of data.entries) {
+      const m = new Date(e.date + "T00:00:00").getMonth();
+      if (e.tipo === "aporte") aportes[m] += e.valor;
+      if (e.tipo === "retirada") retiradas[m] += e.valor;
+    }
+    return { aportes, retiradas };
+  }, [data]);
+
   const toggle = (set: Set<string>, setter: (s: Set<string>) => void, key: string) => {
     const next = new Set(set);
     next.has(key) ? next.delete(key) : next.add(key);
@@ -106,6 +147,9 @@ export default function CashFlowPage() {
     ? (detailMonth === 0 ? data.saldoInicial : data.months[detailMonth - 1].saldoFinal)
     : 0;
 
+  const hasInvest = (data?.totalInvestimentos || 0) > 0;
+  const hasSocios = (data?.totalAportes || 0) + (data?.totalRetiradas || 0) > 0;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -119,6 +163,9 @@ export default function CashFlowPage() {
             <span className="font-mono text-sm font-semibold px-2 min-w-[3rem] text-center">{year}</span>
             <button onClick={() => setYear((y) => y + 1)} className="p-1 hover:text-primary"><ChevronRight size={14} /></button>
           </div>
+          <button onClick={() => setNewEntryOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all">
+            <Plus size={14} /> Lançamento
+          </button>
           <button onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-secondary border border-border hover:bg-secondary/80 transition-all">
             <Settings size={14} /> Configurações
           </button>
@@ -232,14 +279,94 @@ export default function CashFlowPage() {
                 <td className="px-3 py-1.5 text-right font-mono border-l border-border">{fmt(data.totalDespesas)}</td>
               </tr>
 
-              {/* RESULTADO */}
+              {/* RESULTADO OPERACIONAL */}
               <tr className="border-t-2 border-border bg-secondary/40 font-semibold">
                 <td className="px-3 py-2 sticky left-0 bg-secondary/40">Resultado Operacional</td>
                 {data.months.map((m, i) => (
-                  <td key={i} className={`px-2 py-2 text-right font-mono ${m.resultado < 0 ? "text-hef-danger" : "text-hef-success"}`}>{fmtSigned(m.resultado)}</td>
+                  <td key={i} className={`px-2 py-2 text-right font-mono ${m.resultadoOperacional < 0 ? "text-hef-danger" : "text-hef-success"}`}>{fmtSigned(m.resultadoOperacional)}</td>
                 ))}
-                <td className={`px-3 py-2 text-right font-mono border-l border-border ${data.totalResultado < 0 ? "text-hef-danger" : "text-hef-success"}`}>{fmtSigned(data.totalResultado)}</td>
+                <td className={`px-3 py-2 text-right font-mono border-l border-border ${data.totalResultadoOperacional < 0 ? "text-hef-danger" : "text-hef-success"}`}>{fmtSigned(data.totalResultadoOperacional)}</td>
               </tr>
+
+              {/* INVESTIMENTOS */}
+              {hasInvest && (
+                <>
+                  <tr className="bg-amber-500/5">
+                    <td colSpan={14} className="px-3 py-1.5 text-[10px] uppercase tracking-wider font-bold text-amber-500">Investimentos (CAPEX)</td>
+                  </tr>
+                  {investTree.map((d) => {
+                    const open = expandedInv.has(d.categoria);
+                    return (
+                      <Fragment key={`if-${d.categoria}`}>
+                        <tr className="border-t border-border/60 hover:bg-secondary/30 cursor-pointer" onClick={() => toggle(expandedInv, setExpandedInv, d.categoria)}>
+                          <td className="px-3 py-1.5 sticky left-0 bg-card text-foreground">
+                            <span className="inline-flex items-center gap-1.5">
+                              {open ? <ChevronDown size={12} /> : <ChevronRightIcon size={12} />}
+                              <span className="font-medium">{categoryLabel(d.categoria)}</span>
+                              <span className="text-[10px] text-muted-foreground">({d.children.length})</span>
+                            </span>
+                          </td>
+                          {d.values.map((v, i) => (
+                            <td key={i} className="px-2 py-1.5 text-right font-mono text-muted-foreground">{fmt(v)}</td>
+                          ))}
+                          <td className="px-3 py-1.5 text-right font-mono font-semibold border-l border-border">{fmt(d.total)}</td>
+                        </tr>
+                        {open && d.children.map((it) => (
+                          <tr key={`i-${d.categoria}-${it.key}`} className="border-t border-border/40 bg-secondary/10 text-muted-foreground">
+                            <td className="px-3 py-1 pl-9 sticky left-0 bg-secondary/10 text-[11px]">{it.label}</td>
+                            {it.values.map((v, i) => (
+                              <td key={i} className="px-2 py-1 text-right font-mono text-[11px]">{fmt(v)}</td>
+                            ))}
+                            <td className="px-3 py-1 text-right font-mono text-[11px] border-l border-border">{fmt(it.total)}</td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    );
+                  })}
+                  <tr className="border-t border-border bg-amber-500/10 font-semibold">
+                    <td className="px-3 py-1.5 sticky left-0 bg-amber-500/10">Total Investimentos</td>
+                    {data.months.map((m, i) => (
+                      <td key={i} className="px-2 py-1.5 text-right font-mono">{fmt(m.investimentos)}</td>
+                    ))}
+                    <td className="px-3 py-1.5 text-right font-mono border-l border-border">{fmt(data.totalInvestimentos)}</td>
+                  </tr>
+                </>
+              )}
+
+              {/* SÓCIOS */}
+              {hasSocios && sociosRows && (
+                <>
+                  <tr className="bg-sky-500/5">
+                    <td colSpan={14} className="px-3 py-1.5 text-[10px] uppercase tracking-wider font-bold text-sky-500">Movimentação de Sócios</td>
+                  </tr>
+                  <tr className="border-t border-border/60">
+                    <td className="px-3 py-1.5 sticky left-0 bg-card text-foreground"><span className="text-[11px] pl-4">Aportes</span></td>
+                    {sociosRows.aportes.map((v, i) => (
+                      <td key={i} className="px-2 py-1.5 text-right font-mono text-sky-500">{fmt(v)}</td>
+                    ))}
+                    <td className="px-3 py-1.5 text-right font-mono font-semibold border-l border-border text-sky-500">{fmt(data.totalAportes)}</td>
+                  </tr>
+                  <tr className="border-t border-border/40">
+                    <td className="px-3 py-1.5 sticky left-0 bg-card text-foreground"><span className="text-[11px] pl-4">Retiradas</span></td>
+                    {sociosRows.retiradas.map((v, i) => (
+                      <td key={i} className="px-2 py-1.5 text-right font-mono text-fuchsia-500">{fmt(v)}</td>
+                    ))}
+                    <td className="px-3 py-1.5 text-right font-mono font-semibold border-l border-border text-fuchsia-500">{fmt(data.totalRetiradas)}</td>
+                  </tr>
+                </>
+              )}
+
+              {/* RESULTADO DE CAIXA */}
+              {(hasInvest || hasSocios) && (
+                <tr className="border-t-2 border-border bg-secondary/40 font-semibold">
+                  <td className="px-3 py-2 sticky left-0 bg-secondary/40">Resultado de Caixa</td>
+                  {data.months.map((m, i) => (
+                    <td key={i} className={`px-2 py-2 text-right font-mono ${m.resultado < 0 ? "text-hef-danger" : "text-hef-success"}`}>{fmtSigned(m.resultado)}</td>
+                  ))}
+                  <td className={`px-3 py-2 text-right font-mono border-l border-border ${data.totalResultado < 0 ? "text-hef-danger" : "text-hef-success"}`}>{fmtSigned(data.totalResultado)}</td>
+                </tr>
+              )}
+
               <tr className="border-t border-border bg-primary/5 font-semibold">
                 <td className="px-3 py-2 sticky left-0 bg-primary/5">Saldo Final de Caixa</td>
                 {data.months.map((m, i) => (
@@ -250,12 +377,17 @@ export default function CashFlowPage() {
             </tbody>
           </table>
           <p className="text-[10px] text-muted-foreground p-3 border-t border-border">
-            Clique em um mês para abrir a visão diária. Valores em R$.
+            Clique em um mês para abrir a visão diária, adicionar lançamentos ou ajustar a receita projetada de um cliente. Valores em R$.
           </p>
         </div>
       )}
 
       <CashFlowSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <CashEntryDialog
+        open={newEntryOpen}
+        onOpenChange={setNewEntryOpen}
+        defaultDate={new Date().toISOString().slice(0, 10)}
+      />
       <CashFlowDayDetail
         open={detailMonth !== null}
         onOpenChange={(v) => !v && setDetailMonth(null)}

@@ -1,145 +1,85 @@
-## Objetivo
+## Como alimentar o Fluxo de Caixa
 
-Criar um módulo **Fluxo de Caixa** (admin-only) que projete entradas (a partir dos clientes ativos) e saídas (despesas cadastradas) para qualquer mês/ano, mostrando totais por categoria, resultado operacional e saldo acumulado — com possibilidade de abrir um dia específico e ver cada lançamento.
+Hoje o fluxo se alimenta de duas fontes:
+1. **Receitas automáticas**: clientes ativos de HefSys, Consultoria Clix e Plataformas IA (lidas direto do cadastro do cliente).
+2. **Despesas recorrentes**: tabela `cash_expenses` (já existe CRUD em Configurações).
 
----
+Vou adicionar uma **terceira fonte: lançamentos avulsos** por mês/dia, cobrindo receitas extras, despesas pontuais, investimentos e movimentações de sócio — tudo isso já cabe na tabela `cash_overrides` que existe, só precisa de UI.
 
-## 1. Mudanças no banco
+## O que muda
 
-### 1.1. Clientes — novo campo
-- `clients.dia_pagamento` (int 1–31, default `5`). Usado para projetar a entrada mensal.
-- Para **Plataformas**: a parcela única usa `data_implementacao`; a recorrente (se `tem_mensalidade=true`) usa `dia_pagamento` nos meses seguintes ao da implementação.
+### 1. Novos tipos de lançamento
 
-### 1.2. Nova tabela `cash_expenses` (despesas recorrentes/avulsas)
-Campos:
-- `nome` (texto)
-- `categoria` (enum: `pessoal`, `infraestrutura`, `software`, `marketing`, `educacao`, `administrativo`, `impostos`, `outros`)
-- `valor` (numérico)
-- `dia_pagamento` (int 1–31; ex.: salários = último dia útil → representado como `31` + flag `ultimo_dia_util`)
-- `ultimo_dia_util` (bool, default false)
-- `recorrencia` (enum: `mensal`, `unica`)
-- `data_inicio` (date) e `data_fim` (date, nullable) — define o intervalo em que a despesa aparece
-- `ativo` (bool)
+Expandir o enum de `tipo` em `cash_overrides` para:
+- `receita` — entrada operacional avulsa (cliente extra, projeto pontual)
+- `despesa` — saída operacional pontual
+- `investimento` — saída de CAPEX (equipamento, software à vista)
+- `aporte` — entrada de sócio (não é receita)
+- `retirada` — saída de sócio (não é despesa operacional)
 
-RLS: somente admin lê/escreve.
+Os 5 tipos entram/saem do caixa normalmente, mas aparecem **agrupados separadamente** na tabela anual para você enxergar o que é operacional vs. capital.
 
-### 1.3. Nova tabela `cash_overrides` (exceções pontuais)
-Permite editar/zerar/adicionar um lançamento em um mês específico sem mexer na recorrência.
-- `tipo` (`receita` | `despesa`)
-- `origem_id` (uuid do cliente OU da despesa; nullable se for lançamento manual avulso)
-- `nome` (texto livre — usado quando não há `origem_id`)
-- `categoria` (texto — só para despesas avulsas)
-- `data` (date, dia exato)
-- `valor` (numérico; pode ser zero para "cancelar" aquele mês)
+### 2. Drill-down do mês vira o ponto de entrada
 
-RLS: somente admin.
+No painel diário (`CashFlowDayDetail`):
+- Botão **"+ Lançamento"** no header → abre dialog (tipo, data dentro do mês, valor, descrição, categoria).
+- Em cada dia do mini-calendário, ícone **"+"** ao passar o mouse → abre o mesmo dialog já com a data preenchida.
+- Cada item da lista de transações ganha menu **⋯**:
+  - Para lançamentos de cliente projetados → **"Ajustar este mês"** (cria override que substitui o valor do mês — ex: cliente vai pagar metade).
+  - Para overrides/avulsos → **Editar** e **Excluir**.
 
-### 1.4. Nova tabela `cash_settings`
-- `saldo_inicial` (numérico)
-- `data_saldo_inicial` (date) — a partir de quando esse saldo vale
+### 3. Tabela anual reorganizada
 
-RLS: somente admin.
+Adicionar duas seções abaixo de Despesas:
+- **Investimentos** (CAPEX) — expansível por item.
+- **Movimentação de Sócios** — aportes e retiradas separados.
 
----
+E o **Resultado** vira:
+- *Resultado Operacional* = Receitas − Despesas
+- *Resultado de Caixa* = Operacional − Investimentos + Aportes − Retiradas
+- *Saldo Final* = saldo anterior + Resultado de Caixa
 
-## 2. Lógica de projeção (frontend, em hook React Query)
+### 4. Override de receita de cliente
 
-`useCashFlow(year, month)` devolve, para cada dia do mês:
-- lista de **entradas** (cliente + valor) calculadas assim:
-  - HefSys / Tráfego Pago / Automação IA → `valor_contrato` (ou `faturamento` no caso HefSys) no `dia_pagamento`.
-  - Plataformas → `valor_implementacao` no dia exato de `data_implementacao` (apenas naquele mês) + `valor_mensalidade` no `dia_pagamento` nos meses seguintes, se `tem_mensalidade`.
-- lista de **saídas** (despesa + valor) a partir de `cash_expenses` ativas cuja `data_inicio ≤ mês ≤ data_fim`; quando `ultimo_dia_util=true`, projeta no último dia útil do mês.
-- aplica `cash_overrides` por (`origem_id`, mês) — substitui valor, zera ou adiciona avulsos.
+Quando você clicar "Ajustar este mês" num cliente projetado:
+- Cria um `cash_overrides` com `origem_tipo='cliente'`, `origem_id=<id do cliente>`, `tipo='receita'`, `data` e `valor` que você definir.
+- O projetor já está preparado: ele substitui o valor automático pelo override no mês correspondente.
+- Valor `0` zera a entrada daquele mês (cliente não pagou); valor `X` substitui o valor projetado.
 
-`useCashFlowYear(year)` agrega isso por mês para a tabela anual.
+## Detalhes técnicos
 
----
+### Migração
 
-## 3. UI
+```sql
+-- Permitir os novos tipos em cash_overrides (atualmente só receita/despesa)
+ALTER TABLE cash_overrides
+  ADD CONSTRAINT cash_overrides_tipo_check
+  CHECK (tipo IN ('receita','despesa','investimento','aporte','retirada'));
 
-### 3.1. Nova entrada no Sidebar
-- Item **"Fluxo de Caixa"** dentro da área Admin, ao lado de "Dashboard Geral". Ícone `Wallet` ou `LineChart`. Bloqueado por `isAdmin`.
-
-### 3.2. Página principal — Visão Mensal/Anual (estilo planilha)
-Tabela inspirada na planilha enviada:
-
-```
-                       Jan  Fev  Mar  ...  Dez   Total
-RECEITAS
-  AGR consultas         …    …    …
-  Union                 …
-  (cada cliente)        …
-  TOTAL RECEITAS        …
-  Receita acumulada     …
-
-DESPESAS
-  Pessoal               …
-  Infraestrutura        …
-  Software & Tecnol.    …
-  Administrativo/Imp.   …
-  TOTAL DESPESAS        …
-
-RESULTADO OPERACIONAL   …
-SALDO FINAL DE CAIXA    …
+-- Categorias padrão (texto livre + sugestões)
+-- Nenhuma nova tabela; categorias permanecem como string em `categoria`.
 ```
 
-- Seletor de ano no topo.
-- Linhas de receita agrupadas por produto (colapsável) listando cada cliente.
-- Despesas agrupadas por categoria (colapsável).
-- Coluna de cada mês é clicável → abre o drill-down diário.
+### Arquivos a criar
 
-### 3.3. Drill-down diário
-Modal/painel lateral mostrando:
-- Cabeçalho: nome do mês + ano, totais (Receita, Despesa, Resultado, Saldo final).
-- **Mini-calendário** do mês colorindo cada dia conforme saldo do dia (verde/recebimento, vermelho/pagamento, neutro).
-- Ao selecionar um dia: lista de entradas e saídas daquele dia, com nome, categoria/produto, valor.
-- Botão "Adicionar lançamento avulso" (cria `cash_override` sem `origem_id`).
-- Em cada linha de override existente: editar/excluir.
+- `src/components/CashEntryDialog.tsx` — dialog único para criar/editar qualquer tipo de lançamento (controla campos por tipo).
+- `src/hooks/useCashOverrides.ts` — já existe; estender com helpers `createOverride`, `updateOverride`, `deleteOverride`.
 
-### 3.4. Página de Configurações do Fluxo
-Acessível por um botão "Configurações" no topo do módulo:
-- Campo de Saldo Inicial + data de referência.
-- CRUD de **Despesas** (modal com nome, categoria, valor, dia de pagamento OU "último dia útil", recorrência, data início/fim, ativo).
+### Arquivos a editar
 
-### 3.5. Cadastro de cliente
-- Adicionar campo "Dia de pagamento (1–31)" em `AddClientDialog` e `EditClientDialog`, ao lado dos campos financeiros.
+- `src/hooks/useCashFlow.ts` — agrupar overrides nos 5 buckets (`receita`, `despesa`, `investimento`, `aporte`, `retirada`) e devolver no `MonthSummary`.
+- `src/components/CashFlowDayDetail.tsx` — botão "+ Lançamento", "+" nos dias, menu ⋯ em cada item, integração com `CashEntryDialog`.
+- `src/pages/CashFlowPage.tsx` — adicionar seções Investimentos e Sócios; reformular linha de Resultado.
 
----
+### Fora de escopo (para depois, se quiser)
 
-## 4. Import inicial das despesas de 2026
+- Marcar lançamento como "pago/recebido" (realizado vs. previsto).
+- Importação de extrato bancário.
+- Cenários (otimista/realista) — fica para uma próxima.
 
-Após a migração e cadastro do campo `dia_pagamento` dos clientes, popular `cash_expenses` com as linhas da planilha (Salário Billy 1.518, Salário Pedro 450 a partir de Jun, Salários Sócios 1.600→2.600, Lovable 550, GPT 120, Hostinger 72,59, API 1.300, Impostos variável por mês — esse vira `cash_overrides` por mês, Despesas Administrativas idem).
+## Resumo rápido
 
-Item separado para Impostos/Adm: como variam mês a mês, serão criados como **despesa mensal com valor=0** + um `cash_override` por mês com o valor real da planilha.
-
----
-
-## 5. Segurança e permissões
-
-- Tudo do módulo (rota, sidebar, hooks, RLS das três tabelas novas) gated por `has_role(uid, 'admin')`. Coordenador e usuário comum continuam sem qualquer acesso a dados financeiros.
-
----
-
-## 6. Arquivos previstos
-
-**Novos**
-- `supabase/migrations/<ts>_cash_flow.sql` (campo `dia_pagamento`, tabelas `cash_expenses`, `cash_overrides`, `cash_settings`, RLS)
-- `src/hooks/useCashFlow.ts`, `src/hooks/useCashExpenses.ts`, `src/hooks/useCashSettings.ts`, `src/hooks/useCashOverrides.ts`
-- `src/pages/CashFlowPage.tsx` (visão mensal/anual)
-- `src/components/CashFlowDayDetail.tsx` (drill-down diário)
-- `src/components/CashFlowSettingsDialog.tsx` (saldo + CRUD despesas)
-- `src/components/CashExpenseDialog.tsx`
-
-**Editados**
-- `src/components/Sidebar.tsx` (novo item)
-- `src/pages/Index.tsx` (rota `cash-flow`)
-- `src/components/AddClientDialog.tsx`, `src/components/EditClientDialog.tsx`, `src/hooks/useClients.ts`, `src/data/constants.ts` (campo `diaPagamento`)
-
----
-
-## 7. Fora de escopo desta entrega
-
-- Reconciliação com extrato bancário real.
-- Exportação para Excel/PDF (pode entrar em uma próxima iteração).
-- Múltiplas contas/empresas (tudo agregado em um único caixa).
-- Marcar lançamentos como "pago/recebido" (a planilha é projeção; trataríamos baixas em iteração futura, se quiser).
+Você vai alimentar o fluxo de **três formas**:
+1. Cadastrando cliente → vira receita projetada automática.
+2. Configurações → Despesas recorrentes (já funciona).
+3. **Novo:** clicando no mês ou dia → adiciona receita extra, despesa pontual, investimento, aporte ou retirada; e ajusta valor de cliente quando precisar.

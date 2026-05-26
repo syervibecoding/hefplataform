@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type OverrideTipo = "receita" | "despesa" | "investimento" | "aporte" | "retirada";
+
 export interface CashOverrideInput {
-  tipo: "receita" | "despesa";
+  tipo: OverrideTipo;
   origem_tipo?: "cliente" | "despesa" | "avulso";
   origem_id?: string | null;
   nome: string;
@@ -31,6 +33,14 @@ export function useCashOverrides() {
     onSuccess: invalidate,
   });
 
+  const update = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CashOverrideInput> }) => {
+      const { error } = await supabase.from("cash_overrides").update(data as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("cash_overrides").delete().eq("id", id);
@@ -39,5 +49,5 @@ export function useCashOverrides() {
     onSuccess: invalidate,
   });
 
-  return { add, remove };
+  return { add, update, remove };
 }
