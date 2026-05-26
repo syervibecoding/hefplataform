@@ -29,6 +29,7 @@ const hefsysSchema = baseSchema.extend({
 const genericSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
   diaPagamento: z.coerce.number().min(1).max(31).optional(),
+  dataInicio: z.string().optional(),
   dataKickoff: z.string().optional(),
   nivelDificuldade: z.string().optional(),
   notasAutomacao: z.string().optional(),
