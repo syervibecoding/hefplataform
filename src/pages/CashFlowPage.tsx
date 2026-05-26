@@ -1,7 +1,7 @@
 import { useState, useMemo, Fragment } from "react";
 import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCashFlowYear, ENTRY_TYPE_META } from "@/hooks/useCashFlow";
+import { useCashFlowYear } from "@/hooks/useCashFlow";
 import { categoryLabel, EXPENSE_CATEGORIES } from "@/hooks/useCashExpenses";
 import CashFlowSettingsDialog from "@/components/CashFlowSettingsDialog";
 import CashFlowDayDetail from "@/components/CashFlowDayDetail";
