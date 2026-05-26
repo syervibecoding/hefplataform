@@ -54,12 +54,15 @@ async function fetchAll(year: number) {
   };
 }
 
+const REVENUE_PRODUCTS = new Set(["hefsys", "consultoria-clix", "plataformas"]);
+
 function projectClientEntries(clients: any[], year: number): CashEntry[] {
   const out: CashEntry[] = [];
   for (let m = 0; m < 12; m++) {
     const monthStart = new Date(year, m, 1);
     const monthEnd = new Date(year, m + 1, 0);
     for (const c of clients) {
+      if (!REVENUE_PRODUCTS.has(c.product_id)) continue;
       const dia = Number(c.dia_pagamento) || 5;
       const day = clampDay(year, m, dia);
       const date = toISO(year, m, day);
@@ -84,7 +87,7 @@ function projectClientEntries(clients: any[], year: number): CashEntry[] {
             out.push({ id: `cli-mens-${c.id}-${date}`, tipo: "receita", date, nome: `${c.nome} (mensalidade)`, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id });
           }
         }
-      } else {
+      } else if (c.product_id === "consultoria-clix") {
         const v = Number(c.valor_contrato || 0);
         if (v > 0) out.push({ id: `cli-${c.id}-${date}`, tipo: "receita", date, nome: c.nome, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id });
       }
