@@ -238,6 +238,7 @@ export type Database = {
           data_deposito: string | null
           data_golive: string | null
           data_implementacao: string | null
+          data_inicio: string | null
           data_kickoff: string | null
           dia_pagamento: number
           email: string
@@ -274,6 +275,7 @@ export type Database = {
           data_deposito?: string | null
           data_golive?: string | null
           data_implementacao?: string | null
+          data_inicio?: string | null
           data_kickoff?: string | null
           dia_pagamento?: number
           email?: string
@@ -310,6 +312,7 @@ export type Database = {
           data_deposito?: string | null
           data_golive?: string | null
           data_implementacao?: string | null
+          data_inicio?: string | null
           data_kickoff?: string | null
           dia_pagamento?: number
           email?: string

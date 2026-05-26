@@ -45,7 +45,7 @@ async function fetchAll(year: number) {
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
   const [clientsRes, expensesRes, overridesRes, settingsRes] = await Promise.all([
-    supabase.from("clients").select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento").eq("status", "ativo"),
+    supabase.from("clients").select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio").eq("status", "ativo"),
     supabase.from("cash_expenses").select("*").eq("ativo", true),
     supabase.from("cash_overrides").select("*").gte("data", yearStart).lte("data", yearEnd),
     supabase.from("cash_settings").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
@@ -66,16 +66,16 @@ const REVENUE_PRODUCTS = new Set(["hefsys", "consultoria-clix", "plataformas"]);
 
 function projectClientEntries(clients: any[], year: number): CashEntry[] {
   const out: CashEntry[] = [];
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
   for (let m = 0; m < 12; m++) {
-    // Não projetar receita de cliente em meses passados — usar apenas overrides/lançamentos reais
-    if (year < currentYear || (year === currentYear && m < currentMonth)) continue;
     const monthStart = new Date(year, m, 1);
     const monthEnd = new Date(year, m + 1, 0);
     for (const c of clients) {
       if (!REVENUE_PRODUCTS.has(c.product_id)) continue;
+      // Respeita data_inicio: não projeta antes do mês de início do cliente
+      if (c.data_inicio) {
+        const di = new Date(c.data_inicio + "T00:00:00");
+        if (year < di.getFullYear() || (year === di.getFullYear() && m < di.getMonth())) continue;
+      }
       const dia = Number(c.dia_pagamento) || 5;
       const day = clampDay(year, m, dia);
       const date = toISO(year, m, day);
@@ -111,11 +111,7 @@ function projectClientEntries(clients: any[], year: number): CashEntry[] {
 
 function projectExpenseEntries(expenses: any[], year: number): CashEntry[] {
   const out: CashEntry[] = [];
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
   for (let m = 0; m < 12; m++) {
-    if (year < currentYear || (year === currentYear && m < currentMonth)) continue;
     const monthStartStr = toISO(year, m, 1);
     const monthEndStr = toISO(year, m, new Date(year, m + 1, 0).getDate());
     for (const e of expenses) {

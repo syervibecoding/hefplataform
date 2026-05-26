@@ -24,11 +24,13 @@ const hefsysSchema = baseSchema.extend({
   faturamento: z.coerce.number().min(0, "Valor inválido"),
   custoAPI: z.coerce.number().min(0, "Valor inválido"),
   diaPagamento: z.coerce.number().min(1).max(31).optional(),
+  dataInicio: z.string().optional(),
 });
 
 const genericSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
   diaPagamento: z.coerce.number().min(1).max(31).optional(),
+  dataInicio: z.string().optional(),
   dataKickoff: z.string().optional(),
   nivelDificuldade: z.string().optional(),
   notasAutomacao: z.string().optional(),
@@ -43,6 +45,7 @@ const genericSchema = baseSchema.extend({
 const trafegoSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
   diaPagamento: z.coerce.number().min(1).max(31).optional(),
+  dataInicio: z.string().optional(),
   formaPagamento: z.string().optional(),
   saldoAnuncio: z.coerce.number().min(0).optional(),
   gastoDiarioMedio: z.coerce.number().min(0).optional(),
@@ -98,6 +101,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           faturamento: client.faturamento || 0,
           custoAPI: client.custoAPI || 0,
           diaPagamento: client.diaPagamento || 5,
+          dataInicio: (client as any).dataInicio || "",
         });
         setAgendaCertidoes(client.agendaCertidoes || {});
         setAgendaCaixasPostais(client.agendaCaixasPostais || {});
@@ -112,6 +116,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           status: gc.status,
           valorContrato: gc.valorContrato,
           diaPagamento: gc.diaPagamento || 5,
+          dataInicio: gc.dataInicio || "",
           formaPagamento: gc.formaPagamento || "",
           saldoAnuncio: gc.saldoAnuncio || 0,
           gastoDiarioMedio: gc.gastoDiarioMedio || 0,
@@ -127,6 +132,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           status: client.status,
           valorContrato: client.valorContrato,
           diaPagamento: client.diaPagamento || 5,
+          dataInicio: (client as any).dataInicio || "",
           dataKickoff: client.dataKickoff || "",
           nivelDificuldade: client.nivelDificuldade || "",
           notasAutomacao: client.notasAutomacao || "",
@@ -143,10 +149,11 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
 
   const onSubmit = (data: any) => {
     if (isHefsys) {
-      onEditClient(client.id, { ...data, agendaCertidoes, agendaCaixasPostais, consultasExtras });
+      onEditClient(client.id, { ...data, dataInicio: data.dataInicio || null, agendaCertidoes, agendaCaixasPostais, consultasExtras });
     } else if (isTrafego) {
       onEditClient(client.id, {
         ...data,
+        dataInicio: data.dataInicio || null,
         rotinaConferencia,
         formaPagamento: data.formaPagamento || null,
         saldoAnuncio: data.formaPagamento === "pix" ? data.saldoAnuncio : 0,
@@ -165,6 +172,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
       }
       onEditClient(client.id, {
         ...data,
+        dataInicio: data.dataInicio || null,
         dataKickoff: kickoff,
         dataGoLive: goLive,
         nivelDificuldade: nivel,
@@ -245,6 +253,12 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           <div>
             <Label className="text-xs text-muted-foreground">Dia de pagamento (1–31)</Label>
             <Input {...register("diaPagamento")} type="number" min={1} max={31} className="mt-1 bg-secondary border-border" />
+          </div>
+
+          <div>
+            <Label className="text-xs text-muted-foreground">Data de início (cobrança)</Label>
+            <Input {...register("dataInicio")} type="date" className="mt-1 bg-secondary border-border" />
+            <p className="text-[10px] text-muted-foreground mt-1">Mês em que a receita deste cliente começa a entrar no fluxo de caixa.</p>
           </div>
 
           {isHefsys && (
