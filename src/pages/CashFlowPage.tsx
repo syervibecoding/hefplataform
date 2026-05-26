@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashFlowYear } from "@/hooks/useCashFlow";
