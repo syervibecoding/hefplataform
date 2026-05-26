@@ -66,7 +66,12 @@ const REVENUE_PRODUCTS = new Set(["hefsys", "consultoria-clix", "plataformas"]);
 
 function projectClientEntries(clients: any[], year: number): CashEntry[] {
   const out: CashEntry[] = [];
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
   for (let m = 0; m < 12; m++) {
+    // Não projetar receita de cliente em meses passados — usar apenas overrides/lançamentos reais
+    if (year < currentYear || (year === currentYear && m < currentMonth)) continue;
     const monthStart = new Date(year, m, 1);
     const monthEnd = new Date(year, m + 1, 0);
     for (const c of clients) {
