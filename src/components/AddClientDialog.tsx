@@ -24,6 +24,7 @@ const hefsysSchema = baseSchema.extend({
   faturamento: z.coerce.number().min(0, "Valor inválido"),
   custoAPI: z.coerce.number().min(0, "Valor inválido"),
   diaPagamento: z.coerce.number().min(1).max(31).optional(),
+  dataInicio: z.string().optional(),
 });
 
 const genericSchema = baseSchema.extend({
@@ -44,6 +45,7 @@ const genericSchema = baseSchema.extend({
 const trafegoSchema = baseSchema.extend({
   valorContrato: z.coerce.number().min(0, "Valor inválido"),
   diaPagamento: z.coerce.number().min(1).max(31).optional(),
+  dataInicio: z.string().optional(),
   formaPagamento: z.string().optional(),
   saldoAnuncio: z.coerce.number().min(0).optional(),
   gastoDiarioMedio: z.coerce.number().min(0).optional(),
