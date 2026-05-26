@@ -73,11 +73,13 @@ export interface HefSysClient extends BaseClient {
   custoAPI: number;
   consultasExtras: ConsultaExtra[];
   diaPagamento?: number;
+  dataInicio?: string | null;
 }
 
 export interface GenericClient extends BaseClient {
   valorContrato: number;
   diaPagamento?: number;
+  dataInicio?: string | null;
   rotinaConferencia?: ScheduleConfig;
   formaPagamento?: string | null;
   saldoAnuncio?: number;
