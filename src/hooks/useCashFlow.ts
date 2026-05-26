@@ -111,7 +111,11 @@ function projectClientEntries(clients: any[], year: number): CashEntry[] {
 
 function projectExpenseEntries(expenses: any[], year: number): CashEntry[] {
   const out: CashEntry[] = [];
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
   for (let m = 0; m < 12; m++) {
+    if (year < currentYear || (year === currentYear && m < currentMonth)) continue;
     const monthStartStr = toISO(year, m, 1);
     const monthEndStr = toISO(year, m, new Date(year, m + 1, 0).getDate());
     for (const e of expenses) {
