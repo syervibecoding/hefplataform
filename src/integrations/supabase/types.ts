@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      cash_expenses: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          dia_pagamento: number
+          id: string
+          nome: string
+          recorrencia: string
+          ultimo_dia_util: boolean
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          dia_pagamento?: number
+          id?: string
+          nome: string
+          recorrencia?: string
+          ultimo_dia_util?: boolean
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          dia_pagamento?: number
+          id?: string
+          nome?: string
+          recorrencia?: string
+          ultimo_dia_util?: boolean
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      cash_overrides: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          data: string
+          id: string
+          nome: string
+          origem_id: string | null
+          origem_tipo: string | null
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          data: string
+          id?: string
+          nome: string
+          origem_id?: string | null
+          origem_tipo?: string | null
+          tipo: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          data?: string
+          id?: string
+          nome?: string
+          origem_id?: string | null
+          origem_tipo?: string | null
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      cash_settings: {
+        Row: {
+          data_saldo_inicial: string
+          id: string
+          saldo_inicial: number
+          updated_at: string
+        }
+        Insert: {
+          data_saldo_inicial?: string
+          id?: string
+          saldo_inicial?: number
+          updated_at?: string
+        }
+        Update: {
+          data_saldo_inicial?: string
+          id?: string
+          saldo_inicial?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       checklist_steps: {
         Row: {
           created_at: string
@@ -134,6 +239,7 @@ export type Database = {
           data_golive: string | null
           data_implementacao: string | null
           data_kickoff: string | null
+          dia_pagamento: number
           email: string
           faturamento: number | null
           forma_pagamento: string | null
@@ -169,6 +275,7 @@ export type Database = {
           data_golive?: string | null
           data_implementacao?: string | null
           data_kickoff?: string | null
+          dia_pagamento?: number
           email?: string
           faturamento?: number | null
           forma_pagamento?: string | null
@@ -204,6 +311,7 @@ export type Database = {
           data_golive?: string | null
           data_implementacao?: string | null
           data_kickoff?: string | null
+          dia_pagamento?: number
           email?: string
           faturamento?: number | null
           forma_pagamento?: string | null
