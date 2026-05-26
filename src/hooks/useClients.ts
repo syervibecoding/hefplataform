@@ -19,6 +19,7 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
       faturamento: Number(row.faturamento) || 0,
       custoAPI: Number(row.custo_api) || 0,
       consultasExtras: Array.isArray(row.consultas_extras) ? row.consultas_extras : [],
+      diaPagamento: Number(row.dia_pagamento) || 5,
     } as HefSysClient;
   }
   return {
@@ -29,6 +30,7 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
     email: row.email,
     status: row.status,
     valorContrato: Number(row.valor_contrato) || 0,
+    diaPagamento: Number(row.dia_pagamento) || 5,
     rotinaConferencia: row.rotina_conferencia || {},
     formaPagamento: row.forma_pagamento || null,
     saldoAnuncio: Number(row.saldo_anuncio) || 0,
@@ -82,8 +84,10 @@ export function useClients(productId: ProductId) {
         row.faturamento = clientData.faturamento;
         row.custo_api = clientData.custoAPI;
         row.consultas_extras = clientData.consultasExtras || [];
+        row.dia_pagamento = Number(clientData.diaPagamento) || 5;
       } else {
         row.valor_contrato = clientData.valorContrato;
+        row.dia_pagamento = Number(clientData.diaPagamento) || 5;
         row.rotina_conferencia = clientData.rotinaConferencia;
         row.forma_pagamento = clientData.formaPagamento;
         row.saldo_anuncio = clientData.saldoAnuncio;
@@ -126,8 +130,10 @@ export function useClients(productId: ProductId) {
         row.faturamento = data.faturamento;
         row.custo_api = data.custoAPI;
         row.consultas_extras = data.consultasExtras || [];
+        row.dia_pagamento = Number(data.diaPagamento) || 5;
       } else {
         row.valor_contrato = data.valorContrato;
+        row.dia_pagamento = Number(data.diaPagamento) || 5;
         row.rotina_conferencia = data.rotinaConferencia;
         row.forma_pagamento = data.formaPagamento;
         row.saldo_anuncio = data.saldoAnuncio;
