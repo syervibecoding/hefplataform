@@ -255,6 +255,12 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
             <Input {...register("diaPagamento")} type="number" min={1} max={31} className="mt-1 bg-secondary border-border" />
           </div>
 
+          <div>
+            <Label className="text-xs text-muted-foreground">Data de início (cobrança)</Label>
+            <Input {...register("dataInicio")} type="date" className="mt-1 bg-secondary border-border" />
+            <p className="text-[10px] text-muted-foreground mt-1">Mês em que a receita deste cliente começa a entrar no fluxo de caixa.</p>
+          </div>
+
           {isHefsys && (
             <>
               <div className="grid grid-cols-2 gap-3">
