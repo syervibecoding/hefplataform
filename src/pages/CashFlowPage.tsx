@@ -157,8 +157,8 @@ export default function CashFlowPage() {
               {receitasTree.map((r) => {
                 const open = expandedRec.has(r.product);
                 return (
-                  <>
-                    <tr key={`r-${r.product}`} className="border-t border-border/60 hover:bg-secondary/30 cursor-pointer" onClick={() => toggle(expandedRec, setExpandedRec, r.product)}>
+                  <Fragment key={`rf-${r.product}`}>
+                    <tr className="border-t border-border/60 hover:bg-secondary/30 cursor-pointer" onClick={() => toggle(expandedRec, setExpandedRec, r.product)}>
                       <td className="px-3 py-1.5 sticky left-0 bg-card text-foreground">
                         <span className="inline-flex items-center gap-1.5">
                           {open ? <ChevronDown size={12} /> : <ChevronRightIcon size={12} />}
@@ -180,7 +180,7 @@ export default function CashFlowPage() {
                         <td className="px-3 py-1 text-right font-mono text-[11px] border-l border-border">{fmt(c.total)}</td>
                       </tr>
                     ))}
-                  </>
+                  </Fragment>
                 );
               })}
               <tr className="border-t border-border bg-hef-success/10 font-semibold">
@@ -198,8 +198,8 @@ export default function CashFlowPage() {
               {despesasTree.map((d) => {
                 const open = expandedDesp.has(d.categoria);
                 return (
-                  <>
-                    <tr key={`d-${d.categoria}`} className="border-t border-border/60 hover:bg-secondary/30 cursor-pointer" onClick={() => toggle(expandedDesp, setExpandedDesp, d.categoria)}>
+                  <Fragment key={`df-${d.categoria}`}>
+                    <tr className="border-t border-border/60 hover:bg-secondary/30 cursor-pointer" onClick={() => toggle(expandedDesp, setExpandedDesp, d.categoria)}>
                       <td className="px-3 py-1.5 sticky left-0 bg-card text-foreground">
                         <span className="inline-flex items-center gap-1.5">
                           {open ? <ChevronDown size={12} /> : <ChevronRightIcon size={12} />}
@@ -221,7 +221,7 @@ export default function CashFlowPage() {
                         <td className="px-3 py-1 text-right font-mono text-[11px] border-l border-border">{fmt(it.total)}</td>
                       </tr>
                     ))}
-                  </>
+                  </Fragment>
                 );
               })}
               <tr className="border-t border-border bg-hef-danger/10 font-semibold">
