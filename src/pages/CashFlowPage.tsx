@@ -302,9 +302,30 @@ export default function CashFlowPage() {
                     {open && r.children.map((c) => (
                       <tr key={`r-${r.product}-${c.key}`} className="border-t border-border/40 bg-secondary/10 text-muted-foreground">
                         <td className="px-3 py-1 pl-9 sticky left-0 bg-secondary/10 text-[11px]">{c.label}</td>
-                        {c.values.map((v, i) => (
-                          <td key={i} className="px-2 py-1 text-right font-mono text-[11px]">{fmt(v)}</td>
-                        ))}
+                        {c.values.map((v: number, i: number) => {
+                          const defaultDay = c.days.find((d: number | null) => d != null) ?? 5;
+                          return (
+                            <EditableCashCell
+                              key={i}
+                              value={v}
+                              isOverride={!!c.overrideIds[i]}
+                              onSave={async (valor) => {
+                                await upsertCell.mutateAsync({
+                                  tipo: "receita",
+                                  rowOrigemTipo: c.origemTipo,
+                                  rowOrigemId: c.origemId,
+                                  monthOverrideId: c.overrideIds[i],
+                                  nome: c.nome,
+                                  categoria: c.categoria,
+                                  year,
+                                  month: i,
+                                  day: c.days[i] ?? defaultDay,
+                                  valor,
+                                });
+                              }}
+                            />
+                          );
+                        })}
                         <td className="px-3 py-1 text-right font-mono text-[11px] border-l border-border">{fmt(c.total)}</td>
                       </tr>
                     ))}
@@ -343,9 +364,30 @@ export default function CashFlowPage() {
                     {open && d.children.map((it) => (
                       <tr key={`d-${d.categoria}-${it.key}`} className="border-t border-border/40 bg-secondary/10 text-muted-foreground">
                         <td className="px-3 py-1 pl-9 sticky left-0 bg-secondary/10 text-[11px]">{it.label}</td>
-                        {it.values.map((v, i) => (
-                          <td key={i} className="px-2 py-1 text-right font-mono text-[11px]">{fmt(v)}</td>
-                        ))}
+                        {it.values.map((v: number, i: number) => {
+                          const defaultDay = it.days.find((d: number | null) => d != null) ?? 5;
+                          return (
+                            <EditableCashCell
+                              key={i}
+                              value={v}
+                              isOverride={!!it.overrideIds[i]}
+                              onSave={async (valor) => {
+                                await upsertCell.mutateAsync({
+                                  tipo: "despesa",
+                                  rowOrigemTipo: it.origemTipo,
+                                  rowOrigemId: it.origemId,
+                                  monthOverrideId: it.overrideIds[i],
+                                  nome: it.nome,
+                                  categoria: it.categoria,
+                                  year,
+                                  month: i,
+                                  day: it.days[i] ?? defaultDay,
+                                  valor,
+                                });
+                              }}
+                            />
+                          );
+                        })}
                         <td className="px-3 py-1 text-right font-mono text-[11px] border-l border-border">{fmt(it.total)}</td>
                       </tr>
                     ))}
@@ -395,9 +437,32 @@ export default function CashFlowPage() {
                         {open && d.children.map((it) => (
                           <tr key={`i-${d.categoria}-${it.key}`} className="border-t border-border/40 bg-secondary/10 text-muted-foreground">
                             <td className="px-3 py-1 pl-9 sticky left-0 bg-secondary/10 text-[11px]">{it.label}</td>
-                            {it.values.map((v, i) => (
-                              <td key={i} className="px-2 py-1 text-right font-mono text-[11px]">{fmt(v)}</td>
-                            ))}
+                            {it.values.map((v: number, i: number) => {
+                              const hasOverride = !!it.overrideIds[i];
+                              const defaultDay = it.days.find((d: number | null) => d != null) ?? 5;
+                              return (
+                                <EditableCashCell
+                                  key={i}
+                                  value={v}
+                                  isOverride={hasOverride}
+                                  disabled={!hasOverride && v === 0}
+                                  onSave={async (valor) => {
+                                    await upsertCell.mutateAsync({
+                                      tipo: "investimento",
+                                      rowOrigemTipo: "avulso",
+                                      rowOrigemId: null,
+                                      monthOverrideId: it.overrideIds[i],
+                                      nome: it.nome,
+                                      categoria: it.categoria,
+                                      year,
+                                      month: i,
+                                      day: it.days[i] ?? defaultDay,
+                                      valor,
+                                    });
+                                  }}
+                                />
+                              );
+                            })}
                             <td className="px-3 py-1 text-right font-mono text-[11px] border-l border-border">{fmt(it.total)}</td>
                           </tr>
                         ))}
