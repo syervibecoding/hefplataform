@@ -523,7 +523,7 @@ export default function CashFlowPage() {
             </tbody>
           </table>
           <p className="text-[10px] text-muted-foreground p-3 border-t border-border">
-            Clique em um mês para abrir a visão diária, adicionar lançamentos ou ajustar a receita projetada de um cliente. Valores em R$.
+            Clique em uma célula de cliente, despesa ou investimento para editar o valor daquele mês. Clique no nome do mês para abrir a visão diária. Valores em R$.
           </p>
         </div>
       )}
