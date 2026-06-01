@@ -449,7 +449,30 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
                       {dayNum}
                     </div>
                     <div className="space-y-0.5">
-                      {events.map((ev, idx) => (
+                      {isConsultoriaView ? (
+                        <>
+                          {(["manha", "tarde"] as const).map((turno) => {
+                            const turnoEvents = events.filter((e) => e.turno === turno);
+                            return (
+                              <div key={turno} className="space-y-0.5">
+                                <div className="flex items-center gap-1 text-[8px] uppercase tracking-wider text-muted-foreground/70 font-semibold pt-0.5">
+                                  {turno === "manha" ? <Sun size={8} /> : <Moon size={8} />}
+                                  {turno === "manha" ? "Manhã" : "Tarde"}
+                                </div>
+                                {turnoEvents.map((ev, idx) => (
+                                  <div
+                                    key={`${turno}-${idx}`}
+                                    className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border truncate ${ev.color}`}
+                                    title={`${ev.consultantName} · ${ev.clientName}`}
+                                  >
+                                    {ev.clientName}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : events.map((ev, idx) => (
                         <div
                           key={idx}
                           draggable={isDraggable(ev)}
