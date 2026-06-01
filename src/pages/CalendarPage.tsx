@@ -1,10 +1,14 @@
 import { useState, useMemo, useCallback } from "react";
-import { ChevronLeft, ChevronRight, X, GripVertical, AlertTriangle, Eye, Bot } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, GripVertical, AlertTriangle, Eye, Bot, Sun, Moon } from "lucide-react";
 import { type HefSysClient, type GenericClient, type AnyClient, type ScheduleConfig, TODAS_CONSULTAS, FREQUENCIAS, isHefSysClient } from "@/data/constants";
 import { getScheduleDays, scheduleLabel } from "@/lib/schedule-utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useConsultants } from "@/hooks/useConsultants";
+import { useAllConsultoriaSlots, TURNO_LABEL } from "@/hooks/useConsultoriaSlots";
+import ConsultantManagerDialog from "@/components/ConsultantManagerDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   clients: AnyClient[];
@@ -31,8 +35,10 @@ interface CalendarEvent {
   color: string;
   eventKey: string;
   originalDay: number;
-  tipo: "certidoes" | "caixas" | "conferencia" | "alerta_saldo" | "automacao" | "custom";
+  tipo: "certidoes" | "caixas" | "conferencia" | "alerta_saldo" | "automacao" | "custom" | "consultoria";
   label?: string;
+  turno?: "manha" | "tarde";
+  consultantName?: string;
 }
 
 const COLORS = [
@@ -96,6 +102,12 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
   const isHefsysView = activeProduct === "hefsys";
   const isTrafegoView = activeProduct === "trafego";
   const isAutomacaoView = activeProduct === "automacao";
+  const isConsultoriaView = activeProduct === "consultoria-clix";
+
+  const { user, isAdmin } = useAuth();
+  const { consultants } = useConsultants();
+  const { data: allSlots = [] } = useAllConsultoriaSlots();
+  const [filterConsultantId, setFilterConsultantId] = useState<string>("all");
 
   const eventsByDay = useMemo(() => {
     const map: Record<number, CalendarEvent[]> = {};
@@ -279,8 +291,40 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
       });
     }
 
+    if (isConsultoriaView) {
+      const cMap = new Map(consultants.map((c) => [c.id, c]));
+      const clientMap = new Map(clients.map((c) => [c.id, c.nome]));
+      const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day);
+        const dow = date.getDay();
+        allSlots.forEach((slot) => {
+          if (slot.diaSemana !== dow) return;
+          if (slot.dataInicio && new Date(slot.dataInicio + "T00:00:00") > date) return;
+          if (slot.dataFim && new Date(slot.dataFim + "T00:00:00") < date) return;
+          const cName = clientMap.get(slot.clientId);
+          if (!cName) return;
+          if (filterConsultantId !== "all" && slot.consultantId !== filterConsultantId) return;
+          const consultant = cMap.get(slot.consultantId);
+          if (!map[day]) map[day] = [];
+          map[day].push({
+            clientName: cName,
+            clientId: slot.clientId,
+            consultas: [],
+            color: consultant?.cor || "bg-secondary text-foreground border-border",
+            eventKey: `${slot.id}-${day}`,
+            originalDay: day,
+            tipo: "consultoria",
+            turno: slot.turno,
+            consultantName: consultant?.displayName || "—",
+            label: `${TURNO_LABEL[slot.turno]} · ${consultant?.displayName || "—"}`,
+          });
+        });
+      }
+    }
+
     return map;
-  }, [clients, currentMonth, currentYear, isHefsysView, isTrafegoView, isAutomacaoView]);
+  }, [clients, currentMonth, currentYear, isHefsysView, isTrafegoView, isAutomacaoView, isConsultoriaView, allSlots, consultants, filterConsultantId]);
 
   const handleDragStart = useCallback((e: React.DragEvent, eventKey: string) => {
     e.dataTransfer.setData("text/plain", eventKey);
@@ -345,6 +389,28 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
               {clients.filter((c) => c.status === "ativo").length} clientes ativos
               {isHefsysView && " · Arraste eventos entre dias"}
             </span>
+            {isConsultoriaView && (
+              <>
+                <select
+                  value={filterConsultantId}
+                  onChange={(e) => setFilterConsultantId(e.target.value)}
+                  className="h-8 text-xs rounded-md border border-border bg-secondary px-2"
+                >
+                  <option value="all">Todos consultores</option>
+                  {user && consultants.some((c) => c.profileId === user.id) && (
+                    <option value={consultants.find((c) => c.profileId === user.id)!.id}>
+                      Eu ({consultants.find((c) => c.profileId === user.id)!.displayName})
+                    </option>
+                  )}
+                  {consultants
+                    .filter((c) => c.profileId !== user?.id)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>{c.displayName}</option>
+                    ))}
+                </select>
+                {isAdmin && <ConsultantManagerDialog />}
+              </>
+            )}
           </div>
         </div>
 
