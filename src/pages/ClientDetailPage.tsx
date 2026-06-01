@@ -7,6 +7,7 @@ import { type AnyClient, type ProductId, type GenericClient, type ConsultaExtra,
 import { scheduleLabel } from "@/lib/schedule-utils";
 import { useAuth } from "@/contexts/AuthContext";
 import InteractionTimeline from "@/components/InteractionTimeline";
+import ConsultoriaSlotsManager from "@/components/ConsultoriaSlotsManager";
 
 interface Props {
   client: AnyClient;
@@ -22,6 +23,7 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
   const isTrafego = activeProduct === "trafego";
   const isAutomacao = activeProduct === "automacao";
   const isPlataformas = activeProduct === "plataformas";
+  const isConsultoria = activeProduct === "consultoria-clix";
 
   return (
     <div>
@@ -360,6 +362,12 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
 
           {/* Interaction Timeline */}
           <InteractionTimeline clientId={client.id} />
+
+          {isConsultoria && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <ConsultoriaSlotsManager clientId={client.id} />
+            </div>
+          )}
         </div>
       </div>
     </div>
