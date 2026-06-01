@@ -1,42 +1,81 @@
-# Edição inline das células do Fluxo de Caixa
+## Objetivo
 
-Permitir que o admin clique em qualquer célula numérica das **linhas filhas** (cliente, despesa, item de investimento) da tabela do Fluxo de Caixa e edite o valor daquele mês. O valor digitado **substitui** a projeção automática via `cash_overrides`.
+Quando o produto ativo for **Consultoria IA**, mostrar um calendário no mesmo formato do calendário do HefSys, mas com a visão dos turnos (manhã/tarde) de cada consultor. Cada cliente de consultoria fecha 1 ou 2 turnos recorrentes (ex: "toda terça de manhã com Bruno") e a agenda é preenchida automaticamente.
 
-## Comportamento
+## O que vamos construir
 
-- Clique simples na célula → vira `<input>` numérico já focado e selecionado.
-- Confirma com **Enter** ou **Tab/blur**; cancela com **Esc**.
-- Valor vazio ou `0` zera o mês (override com valor 0).
-- Mostra spinner curto enquanto salva; React Query revalida e a tabela recalcula sozinha (subtotais, totais, resultado, saldo).
-- Indicador visual sutil (ex.: ponto/sublinhado) quando a célula já é override manual, para distinguir do valor projetado.
-- Linhas pai (produto/categoria) e linhas de Total **continuam somente leitura**.
+### 1. Cadastro de consultores
+- Tabela `consultants` (linkada a `profiles.id`) com cor de exibição.
+- Tela admin simples para marcar quais usuários são consultores (em Usuários ou um botão "Gerenciar consultores" no topo do calendário).
+- Inicialmente os 3 consultores: você, Syer e Bruno.
 
-## Regras de gravação (cash_overrides)
+### 2. Slot recorrente no contrato do cliente
+No cadastro/edição de cliente de consultoria, novos campos:
+- **Turnos contratados** (1 ou 2 slots), cada slot com:
+  - Consultor responsável
+  - Dia da semana (Seg–Sex)
+  - Turno (Manhã / Tarde)
+  - Data de início (opcional, default = `data_inicio` do cliente)
 
-Para cada célula `(item, mês)`, há no máximo 1 override. Determinar a chave `origem_tipo` + `origem_id`:
+Esses slots geram automaticamente as sessões mensais no calendário, do jeito que o HefSys já faz com agendas recorrentes.
 
-| Tipo de linha | origem_tipo | origem_id |
-|---|---|---|
-| Receita de cliente | `cliente` | `client.id` |
-| Despesa cadastrada | `despesa` | `expense.id` |
-| Investimento avulso existente | `avulso` | `null` (atualiza pelo `overrideId` da linha) |
-| Linha avulsa de receita/despesa (já é override) | `avulso` | `null` (atualiza pelo `overrideId`) |
+### 3. Calendário de Consultoria (nova view)
+- Mesma página `CalendarPage`, novo modo quando `activeProduct === "consultoria-clix"`.
+- Cada célula de dia mostra dois sub-blocos: **Manhã** e **Tarde**.
+- Dentro de cada turno: pílulas coloridas com `Consultor · Cliente`, pintadas com a cor do consultor.
+- Filtro topo: "Todos / Eu / Syer / Bruno" para ver só a agenda de um consultor.
+- Clique no dia abre o painel lateral existente com a lista detalhada.
+- Sessões pontuais (remarcação) ficam fora do escopo desta entrega; só a recorrência do contrato.
 
-Fluxo no salvar:
-1. Se a linha já tem `overrideId` naquele mês → `update` pelo id.
-2. Senão, procurar override existente em `cash_overrides` com mesmo `origem_tipo`+`origem_id` no mês → se achar, `update`; senão, `insert`.
-3. Campos: `tipo` (= tipo da seção), `nome` (= label da linha), `categoria` (= `product_id` para receita ou categoria da despesa/investimento), `data` (dia padrão do mês — dia 5 para receitas/despesas avulsas; ou preservar o dia da entrada projetada quando houver), `valor`.
+### 4. Detalhe do cliente
+Na página do cliente de consultoria, nova seção **Próximas sessões** (lista) + **Histórico** (lista), geradas a partir dos slots recorrentes do contrato, com data, turno e consultor.
 
 ## Detalhes técnicos
 
-- **Novo componente** `src/components/EditableCashCell.tsx`: célula controlada com modos view/edit; recebe `value`, `loading`, `isOverride`, `onSave(valor)`.
-- **`src/hooks/useCashOverrides.ts`**: adicionar `upsertForOriginMonth({ tipo, origemTipo, origemId, overrideId, year, month, nome, categoria, dia, valor })` que encapsula a lógica de procurar/atualizar/inserir. Invalida `["cash-flow"]`.
-- **`src/hooks/useCashFlow.ts`**: incluir `overrideId` nas árvores agregadas — propagar de `CashEntry.overrideId` até a estrutura `children[].values` para que a célula saiba qual id usar. Estrutura passa de `values: number[]` para `values: { valor: number; overrideId: string | null; isOverride: boolean }[]` (ou um mapa paralelo).
-- **`src/pages/CashFlowPage.tsx`**: substituir os `<td>` numéricos das linhas filhas (receitas, despesas, investimentos) por `<EditableCashCell>`. Manter `stopPropagation` no clique para não disparar o toggle da linha pai.
-- Permissão: já restrito a admin (RLS em `cash_overrides` exige `admin`).
+### Banco (migração nova)
+```sql
+-- Consultores: marca quais profiles atendem
+CREATE TABLE public.consultants (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id uuid NOT NULL UNIQUE,
+  cor text NOT NULL DEFAULT 'bg-primary/20 text-primary border-primary/30',
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.consultants TO authenticated;
+GRANT ALL ON public.consultants TO service_role;
+ALTER TABLE public.consultants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Auth read consultants" ON public.consultants FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins manage consultants" ON public.consultants FOR ALL TO authenticated
+  USING (has_role(auth.uid(),'admin')) WITH CHECK (has_role(auth.uid(),'admin'));
+
+-- Slots recorrentes vinculados ao cliente de consultoria
+CREATE TABLE public.consultoria_slots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL,
+  consultant_id uuid NOT NULL,
+  dia_semana smallint NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
+  turno text NOT NULL CHECK (turno IN ('manha','tarde')),
+  data_inicio date,
+  data_fim date,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.consultoria_slots TO authenticated;
+GRANT ALL ON public.consultoria_slots TO service_role;
+ALTER TABLE public.consultoria_slots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Auth manage slots" ON public.consultoria_slots FOR ALL TO authenticated
+  USING (true) WITH CHECK (true);
+```
+
+### Front
+- `src/hooks/useConsultants.ts` — CRUD lista de consultores (com `display_name` via join em profiles).
+- `src/hooks/useConsultoriaSlots.ts` — CRUD slots por cliente + leitura global (para o calendário).
+- `CalendarPage.tsx`: novo branch `isConsultoriaView`, gera `eventsByDay` expandindo cada slot pelos dias do mês que caem no `dia_semana`, com `turno` e cor do consultor.
+- `AddClientDialog` / `EditClientDialog`: quando `product_id === "consultoria-clix"`, mostrar bloco "Turnos contratados" com até 2 linhas (consultor + dia da semana + turno).
+- `ClientDetailPage`: seção "Próximas sessões" / "Histórico" para consultoria.
+- Pequeno gerenciador de consultores em `UsersPage` (toggle "É consultor" + seletor de cor).
 
 ## Fora do escopo
-
-- Não editar células de produto/categoria/totais.
-- Não criar novas linhas pela tabela (continua via botão "Lançamento" / clique no mês).
-- Sócios (aportes/retiradas) não têm linhas filhas — sem mudança.
+- Remarcação/sessão avulsa (pode vir numa segunda iteração).
+- Bloqueio de conflito entre slots no mesmo turno/consultor (apenas aviso visual se ocorrer).
+- Notificações.

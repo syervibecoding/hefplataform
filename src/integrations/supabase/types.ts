@@ -339,6 +339,63 @@ export type Database = {
         }
         Relationships: []
       }
+      consultants: {
+        Row: {
+          ativo: boolean
+          cor: string
+          created_at: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: []
+      }
+      consultoria_slots: {
+        Row: {
+          client_id: string
+          consultant_id: string
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          dia_semana: number
+          id: string
+          turno: string
+        }
+        Insert: {
+          client_id: string
+          consultant_id: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          dia_semana: number
+          id?: string
+          turno: string
+        }
+        Update: {
+          client_id?: string
+          consultant_id?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          dia_semana?: number
+          id?: string
+          turno?: string
+        }
+        Relationships: []
+      }
       crm_stages: {
         Row: {
           color: string
