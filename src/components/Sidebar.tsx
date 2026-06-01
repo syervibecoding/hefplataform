@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2, Globe, Wallet } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2, Globe, Wallet, Package } from "lucide-react";
 import { useState } from "react";
 import logoHef from "@/assets/logo-hefsys.png";
 import { type ProductId } from "@/data/constants";
@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { id: "calendar", label: "Calendário", icon: Calendar },
   { id: "workflow", label: "Planning", icon: Activity },
   { id: "materials", label: "Materiais", icon: BookOpen },
+  { id: "lovable-products", label: "Produtos Lovable", icon: Package },
   { id: "crm", label: "CRM", icon: TrendingUp },
   { id: "melhorias", label: "Melhorias", icon: Rocket },
 ];
