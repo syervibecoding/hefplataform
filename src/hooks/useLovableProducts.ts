@@ -122,6 +122,17 @@ export function useLovableProducts() {
     onSuccess: invalidate,
   });
 
+  const renameCategory = useMutation({
+    mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
+      const { error } = await supabase
+        .from("lovable_products")
+        .update({ categoria: newName })
+        .eq("categoria", oldName);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
   const clientIdsFor = (productId: string) =>
     links.filter((l) => l.product_id === productId).map((l) => l.client_id);
 
@@ -137,6 +148,7 @@ export function useLovableProducts() {
     deleteProduct,
     linkClient,
     unlinkClient,
+    renameCategory,
     clientIdsFor,
     productsForClient,
   };

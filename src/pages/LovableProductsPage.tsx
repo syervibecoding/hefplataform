@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Package, Plus, Pencil, Trash2, ExternalLink, Search, Users, X } from "lucide-react";
+import { Package, Plus, Pencil, Trash2, ExternalLink, Search, Users, X, Tag } from "lucide-react";
 import { useLovableProducts, type LovableProduct, type LovableProductInsert } from "@/hooks/useLovableProducts";
 import { useAllClients } from "@/hooks/useAllClients";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ export default function LovableProductsPage() {
     editProduct,
     deleteProduct,
     clientIdsFor,
+    renameCategory,
   } = useLovableProducts();
   const { data: clients = [] } = useAllClients();
 
@@ -66,6 +67,8 @@ export default function LovableProductsPage() {
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [stackInput, setStackInput] = useState("");
   const [tagInput, setTagInput] = useState("");
+  const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const categories = useMemo(
     () => Array.from(new Set(products.map((p) => p.categoria).filter(Boolean))) as string[],
@@ -199,21 +202,84 @@ export default function LovableProductsPage() {
         {categories.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {categories.map((c) => (
-              <button
+              <div
                 key={c}
-                onClick={() => setCategoryFilter(categoryFilter === c ? null : c)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                className={`group flex items-center gap-1 pl-3 pr-1.5 py-1 rounded-full text-xs font-medium border transition-all ${
                   categoryFilter === c
                     ? "bg-accent text-accent-foreground border-accent"
                     : "bg-secondary border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {c}
-              </button>
+                <button onClick={() => setCategoryFilter(categoryFilter === c ? null : c)}>
+                  {c}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRenamingCategory(c);
+                    setRenameValue(c);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-background/50 transition-opacity"
+                  title="Renomear categoria"
+                >
+                  <Pencil size={10} />
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Rename category dialog */}
+      <Dialog open={!!renamingCategory} onOpenChange={(o) => !o && setRenamingCategory(null)}>
+        <DialogContent className="max-w-sm bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Tag size={15} /> Renomear categoria
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-1">
+            <div>
+              <Label className="text-xs text-muted-foreground">Novo nome</Label>
+              <Input
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                className="mt-1 bg-secondary border-border"
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                Todos os produtos com "{renamingCategory}" serão atualizados.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setRenamingCategory(null)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const newName = renameValue.trim();
+                  if (!newName || !renamingCategory || newName === renamingCategory) {
+                    setRenamingCategory(null);
+                    return;
+                  }
+                  renameCategory.mutate(
+                    { oldName: renamingCategory, newName },
+                    {
+                      onSuccess: () => {
+                        if (categoryFilter === renamingCategory) setCategoryFilter(newName);
+                        setRenamingCategory(null);
+                      },
+                    }
+                  );
+                }}
+              >
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
