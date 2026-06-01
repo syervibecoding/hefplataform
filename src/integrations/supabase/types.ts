@@ -420,6 +420,89 @@ export type Database = {
         }
         Relationships: []
       }
+      lovable_product_clients: {
+        Row: {
+          client_id: string
+          created_at: string
+          data_replicacao: string | null
+          notas: string | null
+          product_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data_replicacao?: string | null
+          notas?: string | null
+          product_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data_replicacao?: string | null
+          notas?: string | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lovable_product_clients_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "lovable_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lovable_products: {
+        Row: {
+          categoria: string | null
+          cliente_origem_id: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          stack: string[] | null
+          status: string
+          tags: string[] | null
+          thumbnail_url: string | null
+          updated_at: string
+          url_app: string | null
+          video_demo_url: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          cliente_origem_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          stack?: string[] | null
+          status?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          url_app?: string | null
+          video_demo_url?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          cliente_origem_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          stack?: string[] | null
+          status?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          url_app?: string | null
+          video_demo_url?: string | null
+        }
+        Relationships: []
+      }
       materials: {
         Row: {
           categoria: string | null
