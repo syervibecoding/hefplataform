@@ -536,6 +536,12 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
                     {ev.label} — {ev.clientName}
                   </div>
                 )}
+                {ev.tipo === "consultoria" && (
+                  <div className={`flex items-center gap-2 p-3 rounded-lg text-sm font-medium ${ev.color}`}>
+                    {ev.turno === "manha" ? <Sun size={16} /> : <Moon size={16} />}
+                    {ev.turno === "manha" ? "Manhã" : "Tarde"} · {ev.consultantName} → {ev.clientName}
+                  </div>
+                )}
                 {ev.consultas.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     {ev.consultas.filter((c) => c.tipo === "certidao").length > 0 && (
