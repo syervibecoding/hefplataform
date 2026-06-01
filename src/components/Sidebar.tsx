@@ -103,6 +103,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
         </p>
       </div>
 
+      <div className="flex-1 overflow-y-auto min-h-0">
       {/* Product Selector */}
       <div className="px-3 pt-4 pb-2">
         {isAdmin && (
@@ -218,7 +219,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-2 flex flex-col gap-0.5">
+      <nav className="px-3 py-2 flex flex-col gap-0.5">
         <span className="text-[10px] uppercase tracking-[1.5px] text-muted-foreground/60 font-semibold px-3 pb-2 pt-2">
           Menu
         </span>
@@ -277,6 +278,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
             Sair
           </button>
         </div>
+      </div>
       </div>
 
       {/* Add Product Dialog */}
