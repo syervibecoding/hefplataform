@@ -577,7 +577,21 @@ export default function CalendarPage({ clients, activeProduct }: Props) {
       )}
 
       {/* Legend */}
-      {clients.filter((c) => c.status === "ativo").length > 0 && (
+      {isConsultoriaView ? (
+        consultants.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-5">
+            <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">Consultores</h3>
+            <div className="flex flex-wrap gap-3">
+              {consultants.map((c) => (
+                <div key={c.id} className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded ${c.cor.split(" ")[0]}`} />
+                  <span className="text-sm font-medium">{c.displayName}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      ) : clients.filter((c) => c.status === "ativo").length > 0 && (
         <div className="bg-card border border-border rounded-xl p-5">
           <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">Legenda</h3>
           <div className="grid grid-cols-2 gap-3">
