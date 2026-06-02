@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import {
   useInvestments,
   INVESTMENT_TYPES,
@@ -48,6 +49,18 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
 
   const [txForms, setTxForms] = useState<Record<string, { data: string; tipo: "aporte" | "resgate" | "rendimento"; valor: number }>>({});
   const [editingRate, setEditingRate] = useState<Record<string, number>>({});
+
+  const saveRate = async (id: string) => {
+    const value = editingRate[id];
+    if (value === undefined) return;
+    try {
+      await updateInvestment.mutateAsync({ id, data: { rendimento_anual: value } });
+      toast.success("Rendimento atualizado");
+      setEditingRate((s) => { const ns = { ...s }; delete ns[id]; return ns; });
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + (e?.message || "desconhecido"));
+    }
+  };
 
   const resetForm = () =>
     setForm({
