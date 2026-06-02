@@ -48,11 +48,12 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
   });
 
   const [txForms, setTxForms] = useState<Record<string, { data: string; tipo: "aporte" | "resgate" | "rendimento"; valor: number }>>({});
-  const [editingRate, setEditingRate] = useState<Record<string, number>>({});
+  const [editingRate, setEditingRate] = useState<Record<string, string>>({});
 
   const saveRate = async (id: string) => {
-    const value = editingRate[id];
-    if (value === undefined) return;
+    const raw = editingRate[id];
+    if (raw === undefined) return;
+    const value = Number(String(raw).replace(",", ".")) || 0;
     try {
       await updateInvestment.mutateAsync({ id, data: { rendimento_anual: value } });
       toast.success("Rendimento atualizado");
@@ -184,7 +185,7 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                             step="0.01"
                             className="h-6 w-20 text-xs px-1 py-0"
                             value={editingRate[inv.id]}
-                            onChange={(e) => setEditingRate((s) => ({ ...s, [inv.id]: Number(e.target.value) || 0 }))}
+                            onChange={(e) => setEditingRate((s) => ({ ...s, [inv.id]: e.target.value }))}
                             onKeyDown={async (e) => {
                               if (e.key === "Enter") {
                                 await saveRate(inv.id);
@@ -207,7 +208,7 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                           {inv.rendimento_anual ? <span>· {inv.rendimento_anual}% a.a.</span> : <span>· --% a.a.</span>}
                           <button
                             className="text-muted-foreground hover:text-primary"
-                            onClick={() => setEditingRate((s) => ({ ...s, [inv.id]: inv.rendimento_anual }))}
+                            onClick={() => setEditingRate((s) => ({ ...s, [inv.id]: String(inv.rendimento_anual) }))}
                             title="Editar rendimento"
                           >
                             <Pencil size={10} />
