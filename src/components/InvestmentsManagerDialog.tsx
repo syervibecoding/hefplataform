@@ -160,10 +160,51 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                 <div className="flex items-start justify-between mb-3">
                   <div className="min-w-0">
                     <div className="font-semibold text-sm">{inv.nome}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {tipoLabel} · {liqLabel}
-                      {inv.instituicao ? ` · ${inv.instituicao}` : ""}
-                      {inv.rendimento_anual ? ` · ${inv.rendimento_anual}% a.a.` : ""}
+                    <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                      <span>{tipoLabel} · {liqLabel}</span>
+                      {inv.instituicao ? <span>· {inv.instituicao}</span> : null}
+                      {editingRate[inv.id] !== undefined ? (
+                        <span className="flex items-center gap-1">
+                          <span>·</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            className="h-6 w-20 text-xs px-1 py-0"
+                            value={editingRate[inv.id]}
+                            onChange={(e) => setEditingRate((s) => ({ ...s, [inv.id]: Number(e.target.value) || 0 }))}
+                            onKeyDown={async (e) => {
+                              if (e.key === "Enter") {
+                                await updateInvestment.mutateAsync({ id: inv.id, data: { rendimento_anual: editingRate[inv.id] } });
+                                setEditingRate((s) => { const ns = { ...s }; delete ns[inv.id]; return ns; });
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <span>% a.a.</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-1 py-0 text-[10px]"
+                            onClick={async () => {
+                              await updateInvestment.mutateAsync({ id: inv.id, data: { rendimento_anual: editingRate[inv.id] } });
+                              setEditingRate((s) => { const ns = { ...s }; delete ns[inv.id]; return ns; });
+                            }}
+                          >
+                            Salvar
+                          </Button>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          {inv.rendimento_anual ? <span>· {inv.rendimento_anual}% a.a.</span> : <span>· --% a.a.</span>}
+                          <button
+                            className="text-muted-foreground hover:text-primary"
+                            onClick={() => setEditingRate((s) => ({ ...s, [inv.id]: inv.rendimento_anual }))}
+                            title="Editar rendimento"
+                          >
+                            <Pencil size={10} />
+                          </button>
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right ml-3">
