@@ -187,8 +187,7 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                             onChange={(e) => setEditingRate((s) => ({ ...s, [inv.id]: Number(e.target.value) || 0 }))}
                             onKeyDown={async (e) => {
                               if (e.key === "Enter") {
-                                await updateInvestment.mutateAsync({ id: inv.id, data: { rendimento_anual: editingRate[inv.id] } });
-                                setEditingRate((s) => { const ns = { ...s }; delete ns[inv.id]; return ns; });
+                                await saveRate(inv.id);
                               }
                             }}
                             autoFocus
@@ -198,10 +197,7 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                             size="sm"
                             variant="ghost"
                             className="h-6 px-1 py-0 text-[10px]"
-                            onClick={async () => {
-                              await updateInvestment.mutateAsync({ id: inv.id, data: { rendimento_anual: editingRate[inv.id] } });
-                              setEditingRate((s) => { const ns = { ...s }; delete ns[inv.id]; return ns; });
-                            }}
+                            onClick={() => saveRate(inv.id)}
                           >
                             Salvar
                           </Button>
