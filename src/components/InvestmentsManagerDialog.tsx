@@ -27,6 +27,7 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
     transactions,
     balances,
     addInvestment,
+    updateInvestment,
     removeInvestment,
     addTransaction,
     removeTransaction,
