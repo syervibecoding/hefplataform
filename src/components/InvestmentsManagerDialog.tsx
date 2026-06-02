@@ -47,6 +47,7 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
   });
 
   const [txForms, setTxForms] = useState<Record<string, { data: string; tipo: "aporte" | "resgate" | "rendimento"; valor: number }>>({});
+  const [editingRate, setEditingRate] = useState<Record<string, number>>({});
 
   const resetForm = () =>
     setForm({
