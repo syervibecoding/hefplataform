@@ -1,10 +1,16 @@
+import { useState } from "react";
+import { Wallet, Settings } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import StatusTag from "@/components/StatusTag";
+import InvestmentsManagerDialog from "@/components/InvestmentsManagerDialog";
 import { type Melhoria } from "@/data/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllClients, clientMonthlyRevenue, type ClientRow } from "@/hooks/useAllClients";
 import { useFinancialOverview } from "@/hooks/useFinancialOverview";
 import { type Product } from "@/hooks/useProducts";
+import { useCashFlowYear } from "@/hooks/useCashFlow";
+import { categoryLabel } from "@/hooks/useCashExpenses";
+import { useInvestments } from "@/hooks/useInvestments";
 import { getIcon } from "@/lib/icon-map";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,6 +24,10 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const { isAdmin } = useAuth();
   const { data: allClients = [] } = useAllClients(isAdmin);
   const { data: financialOverview = [] } = useFinancialOverview(isAdmin);
+  const now = new Date();
+  const { data: cashFlow } = useCashFlowYear(now.getFullYear(), isAdmin);
+  const { investments, balances, totalSaldo } = useInvestments(isAdmin);
+  const [invDialogOpen, setInvDialogOpen] = useState(false);
 
   if (!isAdmin) {
     return (
@@ -27,7 +37,6 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     );
   }
 
-  const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
@@ -43,6 +52,18 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     const di = new Date(c.data_implementacao + "T00:00:00");
     return di >= monthStart && di <= monthEnd;
   });
+
+  const monthData = cashFlow?.months[now.getMonth()];
+  const despesasByCat = monthData?.byCategoryDespesa || {};
+  const totalDespesasMes = Object.values(despesasByCat).reduce((s, v) => s + v, 0);
+  const categoriasOrdenadas = Object.entries(despesasByCat)
+    .map(([id, valor]) => ({ id, label: categoryLabel(id), valor, pct: totalDespesasMes > 0 ? (valor / totalDespesasMes) * 100 : 0 }))
+    .sort((a, b) => b.valor - a.valor);
+
+  const CATEGORY_COLORS = [
+    "bg-primary", "bg-hef-info", "bg-hef-success", "bg-hef-warning",
+    "bg-destructive", "bg-purple-500", "bg-pink-500", "bg-cyan-500",
+  ];
 
   return (
     <div>
@@ -61,8 +82,112 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
           sub="consolidada"
           colorClass="text-hef-success"
         />
-        <StatCard label="Produtos" value={products.length} sub="cadastrados" colorClass="text-hef-info" />
-        <StatCard label="Em Desenvolvimento" value={emDev} sub="melhorias ativas" colorClass="text-hef-warning" />
+        <StatCard
+          label="Despesas do Mês"
+          value={`R$ ${totalDespesasMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          sub={`${categoriasOrdenadas.length} categorias`}
+          colorClass="text-hef-warning"
+        />
+        <StatCard
+          label="Investido"
+          value={`R$ ${totalSaldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          sub={`${investments.length} ${investments.length === 1 ? "aplicação" : "aplicações"}`}
+          colorClass="text-hef-info"
+        />
+      </div>
+
+      {/* Despesas por categoria + Investimentos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-7">
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold">Despesas por Categoria · {format(now, "MMM/yy", { locale: ptBR })}</h2>
+            <span className="text-[11px] text-muted-foreground font-mono">
+              R$ {totalDespesasMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+          {categoriasOrdenadas.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-8">Sem despesas no mês</div>
+          ) : (
+            <>
+              <div className="flex h-2 rounded-full overflow-hidden bg-secondary mb-4">
+                {categoriasOrdenadas.map((c, i) => (
+                  <div
+                    key={c.id}
+                    className={CATEGORY_COLORS[i % CATEGORY_COLORS.length]}
+                    style={{ width: `${c.pct}%` }}
+                    title={`${c.label}: ${c.pct.toFixed(1)}%`}
+                  />
+                ))}
+              </div>
+              <div className="space-y-2.5">
+                {categoriasOrdenadas.map((c, i) => (
+                  <div key={c.id} className="flex items-center gap-3">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}`} />
+                    <span className="text-xs flex-1 truncate">{c.label}</span>
+                    <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                      R$ {c.valor.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                    <span className="text-xs font-mono font-semibold tabular-nums w-12 text-right">
+                      {c.pct.toFixed(1)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-hef-info" />
+              <h2 className="text-sm font-semibold">Investimentos</h2>
+            </div>
+            <button
+              onClick={() => setInvDialogOpen(true)}
+              className="text-[11px] text-primary hover:underline flex items-center gap-1"
+            >
+              <Settings size={11} /> Gerenciar
+            </button>
+          </div>
+          <div className="mb-4">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Saldo total</div>
+            <div className="text-2xl font-bold font-mono text-hef-info">
+              R$ {totalSaldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+          {investments.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-4">
+              Nenhuma aplicação cadastrada.{" "}
+              <button onClick={() => setInvDialogOpen(true)} className="text-primary hover:underline">
+                Adicionar
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[220px] overflow-y-auto">
+              {investments.map((inv) => {
+                const saldo = balances.get(inv.id) || 0;
+                const pct = totalSaldo > 0 ? (saldo / totalSaldo) * 100 : 0;
+                return (
+                  <div key={inv.id} className="flex items-center justify-between py-1.5 border-b border-border/40 last:border-b-0">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold truncate">{inv.nome}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {inv.instituicao || "—"}{inv.rendimento_anual ? ` · ${inv.rendimento_anual}% a.a.` : ""}
+                      </div>
+                    </div>
+                    <div className="text-right ml-3 shrink-0">
+                      <div className="text-xs font-mono font-semibold text-hef-info">
+                        R$ {saldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-mono">{pct.toFixed(1)}%</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Visão Financeira por Produto */}
@@ -182,6 +307,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
           })}
         </div>
       </div>
+      <InvestmentsManagerDialog open={invDialogOpen} onOpenChange={setInvDialogOpen} />
     </div>
   );
 }

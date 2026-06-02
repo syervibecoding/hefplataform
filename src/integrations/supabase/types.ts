@@ -420,6 +420,89 @@ export type Database = {
         }
         Relationships: []
       }
+      investment_transactions: {
+        Row: {
+          created_at: string
+          data: string
+          id: string
+          investment_id: string
+          notas: string | null
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          data?: string
+          id?: string
+          investment_id: string
+          notas?: string | null
+          tipo?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          id?: string
+          investment_id?: string
+          notas?: string | null
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investment_transactions_investment_id_fkey"
+            columns: ["investment_id"]
+            isOneToOne: false
+            referencedRelation: "investments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investments: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          data_inicial: string
+          id: string
+          instituicao: string | null
+          liquidez: string
+          nome: string
+          notas: string | null
+          rendimento_anual: number
+          saldo_inicial: number
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          data_inicial?: string
+          id?: string
+          instituicao?: string | null
+          liquidez?: string
+          nome: string
+          notas?: string | null
+          rendimento_anual?: number
+          saldo_inicial?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          data_inicial?: string
+          id?: string
+          instituicao?: string | null
+          liquidez?: string
+          nome?: string
+          notas?: string | null
+          rendimento_anual?: number
+          saldo_inicial?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lovable_product_clients: {
         Row: {
           client_id: string
