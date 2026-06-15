@@ -8,6 +8,8 @@ import { scheduleLabel } from "@/lib/schedule-utils";
 import { useAuth } from "@/contexts/AuthContext";
 import InteractionTimeline from "@/components/InteractionTimeline";
 import ConsultoriaSlotsManager from "@/components/ConsultoriaSlotsManager";
+import CompanyProductsSection from "@/components/CompanyProductsSection";
+import CompanySupportSection from "@/components/CompanySupportSection";
 
 interface Props {
   client: AnyClient;
