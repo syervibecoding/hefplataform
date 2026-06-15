@@ -9,11 +9,11 @@ export const CONSULTAS_CERTIDOES = [
   { id: "cndt_trab", nome: "CNDT Trabalhista", custo: 0.28, tipo: "certidao" as const },
   { id: "cnd_estadual", nome: "CND Estadual (SEFAZ)", custo: 0.24, tipo: "certidao" as const },
   { id: "cnd_municipal", nome: "CND Municipal", custo: 0.20, tipo: "certidao" as const },
+  { id: "ecac_situacao", nome: "ECAC Situação Fiscal", custo: 0.28, tipo: "certidao" as const },
 ];
 
 export const CONSULTAS_CAIXAS = [
   { id: "ecac_caixa", nome: "ECAC Caixa Postal", custo: 0.28, tipo: "caixa_postal" as const },
-  { id: "ecac_situacao", nome: "ECAC Situação Fiscal", custo: 0.28, tipo: "caixa_postal" as const },
   { id: "dte_efisco", nome: "DTE (e-Fisco)", custo: 0.40, tipo: "caixa_postal" as const },
   { id: "det_trab", nome: "DET (Trabalhista)", custo: 0.40, tipo: "caixa_postal" as const },
   { id: "cred_sefaz", nome: "Credenciamentos SEFAZ", custo: 0.40, tipo: "caixa_postal" as const },
