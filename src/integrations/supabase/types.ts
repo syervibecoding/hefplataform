@@ -255,6 +255,8 @@ export type Database = {
           rotina_conferencia: Json | null
           saldo_anuncio: number | null
           status: string
+          support_enabled: boolean
+          support_slug: string | null
           tem_mensalidade: boolean | null
           tipo_plataforma: string | null
           updated_at: string
@@ -292,6 +294,8 @@ export type Database = {
           rotina_conferencia?: Json | null
           saldo_anuncio?: number | null
           status?: string
+          support_enabled?: boolean
+          support_slug?: string | null
           tem_mensalidade?: boolean | null
           tipo_plataforma?: string | null
           updated_at?: string
@@ -329,6 +333,8 @@ export type Database = {
           rotina_conferencia?: Json | null
           saldo_anuncio?: number | null
           status?: string
+          support_enabled?: boolean
+          support_slug?: string | null
           tem_mensalidade?: boolean | null
           tipo_plataforma?: string | null
           updated_at?: string
@@ -871,6 +877,119 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: true
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_messages: {
+        Row: {
+          author_name: string | null
+          author_type: string
+          body: string
+          created_at: string
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          author_name?: string | null
+          author_type: string
+          body: string
+          created_at?: string
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          author_name?: string | null
+          author_type?: string
+          body?: string
+          created_at?: string
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          categoria: string
+          client_id: string
+          closed_at: string | null
+          created_at: string
+          csat_comment: string | null
+          csat_rating: number | null
+          descricao: string
+          first_response_at: string | null
+          id: string
+          opened_at: string
+          prioridade: string
+          product_id: string | null
+          resolved_at: string | null
+          status: string
+          submitted_by_email: string | null
+          submitted_by_name: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          categoria?: string
+          client_id: string
+          closed_at?: string | null
+          created_at?: string
+          csat_comment?: string | null
+          csat_rating?: number | null
+          descricao: string
+          first_response_at?: string | null
+          id?: string
+          opened_at?: string
+          prioridade?: string
+          product_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          submitted_by_email?: string | null
+          submitted_by_name?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          client_id?: string
+          closed_at?: string | null
+          created_at?: string
+          csat_comment?: string | null
+          csat_rating?: number | null
+          descricao?: string
+          first_response_at?: string | null
+          id?: string
+          opened_at?: string
+          prioridade?: string
+          product_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          submitted_by_email?: string | null
+          submitted_by_name?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "lovable_products"
             referencedColumns: ["id"]
           },
         ]

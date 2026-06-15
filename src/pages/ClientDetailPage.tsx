@@ -8,6 +8,8 @@ import { scheduleLabel } from "@/lib/schedule-utils";
 import { useAuth } from "@/contexts/AuthContext";
 import InteractionTimeline from "@/components/InteractionTimeline";
 import ConsultoriaSlotsManager from "@/components/ConsultoriaSlotsManager";
+import CompanyProductsSection from "@/components/CompanyProductsSection";
+import CompanySupportSection from "@/components/CompanySupportSection";
 
 interface Props {
   client: AnyClient;
@@ -369,6 +371,11 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-4 space-y-4">
+        <CompanyProductsSection clientId={client.id} />
+        <CompanySupportSection clientId={client.id} clientName={client.nome} />
       </div>
     </div>
   );
