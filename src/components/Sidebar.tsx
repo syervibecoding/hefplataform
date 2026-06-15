@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { id: "calendar", label: "Calendário", icon: Calendar },
   { id: "workflow", label: "Planning", icon: Activity },
   { id: "materials", label: "Materiais", icon: BookOpen },
-  { id: "lovable-products", label: "Produtos Lovable", icon: Package },
+  { id: "lovable-products", label: "Produtos", icon: Package },
   { id: "crm", label: "CRM", icon: TrendingUp },
   { id: "melhorias", label: "Melhorias", icon: Rocket },
 ];

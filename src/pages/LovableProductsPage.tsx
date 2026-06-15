@@ -162,7 +162,7 @@ export default function LovableProductsPage() {
             <Package size={18} className="text-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-bold">Produtos Lovable</h1>
+            <h1 className="text-lg font-bold">Produtos</h1>
             <p className="text-xs text-muted-foreground">Biblioteca de apps construídos para clientes</p>
           </div>
         </div>
@@ -457,7 +457,7 @@ export default function LovableProductsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Produto" : "Novo Produto Lovable"}</DialogTitle>
+            <DialogTitle>{editing ? "Editar Produto" : "Novo Produto"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
             <div className="grid grid-cols-2 gap-3">
