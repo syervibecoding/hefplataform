@@ -372,6 +372,11 @@ export default function ClientDetailPage({ client, activeProduct, onBack, onEdit
           )}
         </div>
       </div>
+
+      <div className="mt-4 space-y-4">
+        <CompanyProductsSection clientId={client.id} />
+        <CompanySupportSection clientId={client.id} clientName={client.nome} />
+      </div>
     </div>
   );
 }
