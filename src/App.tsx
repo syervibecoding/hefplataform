@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
+import PublicSupportPortal from "./pages/PublicSupportPortal";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -39,7 +40,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AuthGate />
+          <Routes>
+            <Route path="/suporte/p/:slug" element={<PublicSupportPortal />} />
+            <Route path="*" element={<AuthGate />} />
+          </Routes>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
