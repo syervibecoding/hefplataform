@@ -14,9 +14,9 @@ import { Loader2 } from "lucide-react";
 const queryClient = new QueryClient();
 
 function AuthGate() {
-  const { user, loading, isCliente } = useAuth();
+  const { user, loading, role, isCliente } = useAuth();
 
-  if (loading) {
+  if (loading || (user && !role)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-primary" />
