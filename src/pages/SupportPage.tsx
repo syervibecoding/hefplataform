@@ -6,6 +6,7 @@ import ClientesAcessosTab from "@/components/ClientesAcessosTab";
 import { useSupportTickets, computeMetrics, STATUS_META, CATEGORIA_META, type TicketStatus, type SupportTicket } from "@/hooks/useSupport";
 import { useAllClients } from "@/hooks/useAllClients";
 import { useLovableProducts } from "@/hooks/useLovableProducts";
+import { usePlatformCompanies } from "@/hooks/usePlatformCompanies";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import SupportTicketDialog from "@/components/SupportTicketDialog";
@@ -60,6 +61,7 @@ function ChamadosTab() {
   const { data: tickets = [], isLoading } = useSupportTickets();
   const { data: clients = [] } = useAllClients();
   const { products } = useLovableProducts();
+  const { data: companies = [] } = usePlatformCompanies();
   const { data: unread } = useUnreadSupport();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TicketStatus | null>(null);
@@ -71,6 +73,11 @@ function ChamadosTab() {
   };
 
   const clientMap = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c.nome])), [clients]);
+  const companyMap = useMemo(() => Object.fromEntries(companies.map((c) => [c.id, c.nome])), [companies]);
+  const nameForTicket = (t: SupportTicket) =>
+    (t as any).platform_company_id
+      ? companyMap[(t as any).platform_company_id] ?? "—"
+      : clientMap[t.client_id] ?? "—";
   const productMap = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p.nome])), [products]);
 
   const metrics = useMemo(() => computeMetrics(tickets), [tickets]);
@@ -81,7 +88,7 @@ function ChamadosTab() {
     if (!s) return true;
     return (
       t.titulo.toLowerCase().includes(s) ||
-      (clientMap[t.client_id] ?? "").toLowerCase().includes(s) ||
+      nameForTicket(t).toLowerCase().includes(s) ||
       t.descricao.toLowerCase().includes(s)
     );
   });
