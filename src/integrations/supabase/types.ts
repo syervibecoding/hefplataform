@@ -549,6 +549,7 @@ export type Database = {
           created_by: string | null
           descricao: string | null
           id: string
+          links: Json
           nome: string
           stack: string[] | null
           status: string
@@ -565,6 +566,7 @@ export type Database = {
           created_by?: string | null
           descricao?: string | null
           id?: string
+          links?: Json
           nome: string
           stack?: string[] | null
           status?: string
@@ -581,6 +583,7 @@ export type Database = {
           created_by?: string | null
           descricao?: string | null
           id?: string
+          links?: Json
           nome?: string
           stack?: string[] | null
           status?: string
@@ -731,6 +734,91 @@ export type Database = {
             columns: ["column_id"]
             isOneToOne: false
             referencedRelation: "planning_columns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_credentials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string
+          notas: string | null
+          product_id: string
+          senha: string | null
+          updated_at: string
+          usuario: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label: string
+          notas?: string | null
+          product_id: string
+          senha?: string | null
+          updated_at?: string
+          usuario?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          notas?: string | null
+          product_id?: string
+          senha?: string | null
+          updated_at?: string
+          usuario?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_credentials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "lovable_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_files: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          mime_type: string | null
+          nome: string
+          product_id: string
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mime_type?: string | null
+          nome: string
+          product_id: string
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mime_type?: string | null
+          nome?: string
+          product_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_files_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "lovable_products"
             referencedColumns: ["id"]
           },
         ]
