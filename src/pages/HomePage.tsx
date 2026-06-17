@@ -1,4 +1,4 @@
-import { ChevronRight, Globe, Wallet, Boxes, Activity, LifeBuoy, type LucideIcon } from "lucide-react";
+import { ChevronRight, Globe, Wallet, Boxes, Activity, LayoutGrid, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Product } from "@/hooks/useProducts";
 import type { ProductId } from "@/data/constants";
@@ -76,9 +76,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           onClick={() => onNavigate("workflow")}
         />
         <HomeCard
-          icon={LifeBuoy}
-          title="Suporte"
-          subtitle="Chamados e métricas"
+          icon={LayoutGrid}
+          title="Gerenciador de Plataformas"
+          subtitle="Plataformas, chamados e acessos"
           onClick={() => onNavigate("support")}
         />
       </div>

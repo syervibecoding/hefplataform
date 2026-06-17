@@ -13,6 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   calendar: "Calendário",
   workflow: "Workflow",
   melhorias: "Melhorias",
+  support: "Gerenciador de Plataformas",
   settings: "Configurações",
 };
 
