@@ -2,11 +2,12 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-export type AppRole = "admin" | "coordenador" | "user";
+export type AppRole = "admin" | "coordenador" | "user" | "cliente";
 
 interface Profile {
   username: string;
   display_name: string | null;
+  client_id: string | null;
 }
 
 interface AuthState {
@@ -15,6 +16,8 @@ interface AuthState {
   role: AppRole;
   isAdmin: boolean;
   isCoordenador: boolean;
+  isCliente: boolean;
+  clientId: string | null;
   canEditChecklist: boolean;
   loading: boolean;
   signIn: (username: string, password: string) => Promise<{ error: string | null }>;
@@ -23,8 +26,10 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-function toEmail(username: string) {
-  return `${username.toLowerCase().trim()}@internal.app`;
+function toEmail(input: string) {
+  const v = input.trim();
+  if (v.includes("@")) return v.toLowerCase();
+  return `${v.toLowerCase()}@internal.app`;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -37,10 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data: p } = await supabase
         .from("profiles")
-        .select("username, display_name")
+        .select("username, display_name, client_id")
         .eq("id", userId)
         .maybeSingle();
-      setProfile(p ? { username: p.username, display_name: p.display_name } : null);
+      setProfile(p ? { username: p.username, display_name: p.display_name, client_id: (p as any).client_id ?? null } : null);
 
       const { data: r } = await supabase
         .from("user_roles")
@@ -114,6 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         isAdmin: role === "admin",
         isCoordenador: role === "coordenador",
+        isCliente: role === "cliente",
+        clientId: profile?.client_id ?? null,
         canEditChecklist: role === "admin" || role === "coordenador",
         loading,
         signIn,
