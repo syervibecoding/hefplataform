@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, Briefcase, FileText } from "lucide-react";
+import { ArrowLeft, ChevronRight, Briefcase, FileText, type LucideIcon } from "lucide-react";
 import type { ProductId } from "@/data/constants";
 
 interface OperacionalPageProps {
@@ -7,7 +7,7 @@ interface OperacionalPageProps {
 }
 
 interface CardProps {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   title: string;
   tag: string;
   description: string;

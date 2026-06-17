@@ -1,4 +1,4 @@
-import { ChevronRight, Globe, Wallet, Boxes } from "lucide-react";
+import { ChevronRight, Globe, Wallet, Boxes, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getIcon } from "@/lib/icon-map";
 import type { Product } from "@/hooks/useProducts";
@@ -11,7 +11,7 @@ interface HomePageProps {
 }
 
 interface CardProps {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   title: string;
   subtitle: string;
   onClick: () => void;
