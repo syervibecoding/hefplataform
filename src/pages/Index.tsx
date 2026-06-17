@@ -16,6 +16,14 @@ import CRMPage from "./CRMPage";
 import WorkflowPage from "./WorkflowPage";
 import HomePage from "./HomePage";
 import OperacionalPage from "./OperacionalPage";
+import ConsultoriaPage from "./ConsultoriaPage";
+import ConsultoriaReportPage from "./ConsultoriaReportPage";
+import {
+  SEED_CONSULTORIA_CLIENTS,
+  novoCliente as novoConsultoriaCliente,
+  type ConsultoriaClient,
+  type RelatorioConsultoria,
+} from "@/data/consultoria";
 import { useClients } from "@/hooks/useClients";
 import { useMelhorias } from "@/hooks/useMelhorias";
 import { useProducts } from "@/hooks/useProducts";
@@ -28,6 +36,8 @@ export default function Index() {
   const [activePage, setActivePage] = useState("home");
   const [activeProduct, setActiveProduct] = useState<ProductId>("");
   const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);
+  const [consultoriaClients, setConsultoriaClients] = useState<ConsultoriaClient[]>(SEED_CONSULTORIA_CLIENTS);
+  const [selectedConsultoriaId, setSelectedConsultoriaId] = useState<string | null>(null);
 
   const { products, isLoading: productsLoading } = useProducts();
   const { clients, isLoading: clientsLoading, addClient, editClient, deleteClient } = useClients(activeProduct);
@@ -93,6 +103,24 @@ export default function Index() {
     changeStatus.mutate({ id, status });
   };
 
+  const selectedConsultoria = consultoriaClients.find((c) => c.id === selectedConsultoriaId) || null;
+
+  const handleAddConsultoriaClient = (nome: string, tipo: string, dataInicio: string) => {
+    setConsultoriaClients((prev) => [...prev, novoConsultoriaCliente(nome, tipo, dataInicio)]);
+  };
+
+  const handleOpenConsultoriaReport = (id: string) => {
+    setSelectedConsultoriaId(id);
+    setActivePage("consultoria-relatorio");
+  };
+
+  const handleUpdateConsultoriaReport = (rel: RelatorioConsultoria) => {
+    if (!selectedConsultoriaId) return;
+    setConsultoriaClients((prev) =>
+      prev.map((c) => (c.id === selectedConsultoriaId ? { ...c, relatorio: rel } : c))
+    );
+  };
+
   const renderPage = () => {
     if (activePage === "client-detail" && selectedClient) {
       return (
@@ -110,6 +138,33 @@ export default function Index() {
         return <HomePage products={products} onNavigate={handleNavigate} onChangeProduct={handleChangeProduct} />;
       case "operacional":
         return <OperacionalPage onNavigate={handleNavigate} onChangeProduct={handleChangeProduct} />;
+      case "consultoria":
+        return (
+          <ConsultoriaPage
+            clients={consultoriaClients}
+            onAddClient={handleAddConsultoriaClient}
+            onOpenReport={handleOpenConsultoriaReport}
+            onNavigate={handleNavigate}
+          />
+        );
+      case "consultoria-relatorio":
+        if (selectedConsultoria) {
+          return (
+            <ConsultoriaReportPage
+              client={selectedConsultoria}
+              onUpdate={handleUpdateConsultoriaReport}
+              onBack={() => handleNavigate("consultoria")}
+            />
+          );
+        }
+        return (
+          <ConsultoriaPage
+            clients={consultoriaClients}
+            onAddClient={handleAddConsultoriaClient}
+            onOpenReport={handleOpenConsultoriaReport}
+            onNavigate={handleNavigate}
+          />
+        );
       case "general-dashboard":
         return <GeneralDashboardPage products={products} melhorias={melhorias} />;
       case "cash-flow":
