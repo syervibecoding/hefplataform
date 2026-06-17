@@ -27,12 +27,14 @@ import {
 import { useClients } from "@/hooks/useClients";
 import { useMelhorias } from "@/hooks/useMelhorias";
 import { useProducts } from "@/hooks/useProducts";
+import { useSupportRealtime } from "@/hooks/useUnreadSupport";
 import {
   type ProductId,
   type AnyClient,
 } from "@/data/constants";
 
 export default function Index() {
+  useSupportRealtime();
   const [activePage, setActivePage] = useState("home");
   const [activeProduct, setActiveProduct] = useState<ProductId>("");
   const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);

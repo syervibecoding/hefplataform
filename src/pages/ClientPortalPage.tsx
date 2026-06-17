@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LogOut, Plus, LayoutGrid, MessageSquare, Send, Loader2, Building2, CheckCircle2, Clock, Circle } from "lucide-react";
 import { toast } from "sonner";
+import { useSupportRealtime, useUnreadSupport, markTicketRead } from "@/hooks/useUnreadSupport";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import logoHef from "@/assets/logo-hefsys.png";
@@ -57,6 +58,8 @@ interface Msg {
 
 export default function ClientPortalPage() {
   const { profile, clientId, signOut } = useAuth();
+  useSupportRealtime();
+  const { data: unread } = useUnreadSupport();
 
   const { data: client } = useQuery({
     queryKey: ["portal_client", clientId],
@@ -95,6 +98,11 @@ export default function ClientPortalPage() {
 
   const [openNew, setOpenNew] = useState(false);
   const [selected, setSelected] = useState<Ticket | null>(null);
+
+  const openTicket = (t: Ticket) => {
+    setSelected(t);
+    markTicketRead(t.id, "cliente");
+  };
 
   if (!clientId) {
     return (
@@ -177,11 +185,19 @@ export default function ClientPortalPage() {
                   const cs = mapStatus(t.status);
                   const meta = STATUS_CLIENT[cs];
                   const Icon = meta.icon;
+                  const u = unread?.perTicket[t.id] ?? 0;
                   return (
-                    <button key={t.id} onClick={() => setSelected(t)}
+                    <button key={t.id} onClick={() => openTicket(t)}
                       className="w-full text-left px-4 py-3 hover:bg-secondary/40 transition-colors flex items-center gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{t.titulo}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold truncate">{t.titulo}</p>
+                          {u > 0 && (
+                            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                              {u > 9 ? "9+" : u}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-muted-foreground truncate">
                           {t.product_id ? productMap[t.product_id] ?? "—" : "—"} ·{" "}
                           {format(new Date(t.opened_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}

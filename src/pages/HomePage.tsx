@@ -1,5 +1,6 @@
 import { ChevronRight, Globe, Wallet, Boxes, Activity, LayoutGrid, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUnreadTotal } from "@/hooks/useUnreadSupport";
 import type { Product } from "@/hooks/useProducts";
 import type { ProductId } from "@/data/constants";
 
@@ -14,17 +15,23 @@ interface CardProps {
   title: string;
   subtitle: string;
   onClick: () => void;
+  badge?: number;
 }
 
-function HomeCard({ icon: Icon, title, subtitle, onClick }: CardProps) {
+function HomeCard({ icon: Icon, title, subtitle, onClick, badge }: CardProps) {
   return (
     <button
       onClick={onClick}
       className="group w-full flex flex-col gap-3 p-5 rounded-xl bg-card border border-border transition-all hover:bg-card/80 hover:border-primary/40 text-left"
     >
       <div className="flex items-center justify-between">
-        <div className="w-11 h-11 rounded-xl bg-primary/12 flex items-center justify-center">
+        <div className="relative w-11 h-11 rounded-xl bg-primary/12 flex items-center justify-center">
           <Icon size={20} className="text-primary" />
+          {badge && badge > 0 ? (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-card">
+              {badge > 99 ? "99+" : badge}
+            </span>
+          ) : null}
         </div>
         <ChevronRight size={18} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
       </div>
@@ -38,6 +45,7 @@ function HomeCard({ icon: Icon, title, subtitle, onClick }: CardProps) {
 
 export default function HomePage({ onNavigate }: HomePageProps) {
   const { isAdmin } = useAuth();
+  const unread = useUnreadTotal();
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -80,6 +88,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           title="Gerenciador de Plataformas"
           subtitle="Plataformas, chamados e acessos"
           onClick={() => onNavigate("support")}
+          badge={unread}
         />
       </div>
     </div>

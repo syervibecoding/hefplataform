@@ -9,6 +9,7 @@ import { useLovableProducts } from "@/hooks/useLovableProducts";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import SupportTicketDialog from "@/components/SupportTicketDialog";
+import { useUnreadSupport, markTicketRead } from "@/hooks/useUnreadSupport";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -59,9 +60,15 @@ function ChamadosTab() {
   const { data: tickets = [], isLoading } = useSupportTickets();
   const { data: clients = [] } = useAllClients();
   const { products } = useLovableProducts();
+  const { data: unread } = useUnreadSupport();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TicketStatus | null>(null);
   const [selected, setSelected] = useState<SupportTicket | null>(null);
+
+  const openTicket = (t: SupportTicket) => {
+    setSelected(t);
+    markTicketRead(t.id, "team");
+  };
 
   const clientMap = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c.nome])), [clients]);
   const productMap = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p.nome])), [products]);
@@ -141,14 +148,22 @@ function ChamadosTab() {
           <div className="divide-y divide-border">
             {filtered.map((t) => {
               const meta = STATUS_META[t.status];
+              const u = unread?.perTicket[t.id] ?? 0;
               return (
                 <button
                   key={t.id}
-                  onClick={() => setSelected(t)}
+                  onClick={() => openTicket(t)}
                   className="w-full text-left px-4 py-3 hover:bg-secondary/40 transition-colors flex items-center gap-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{t.titulo}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold truncate">{t.titulo}</p>
+                      {u > 0 && (
+                        <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                          {u > 9 ? "9+" : u}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">{clientMap[t.client_id] ?? "—"}{t.product_id && productMap[t.product_id] ? ` · ${productMap[t.product_id]}` : ""}</p>
                   </div>
                   <Badge variant="outline" className="text-[10px]">{CATEGORIA_META[t.categoria].label}</Badge>
