@@ -171,7 +171,7 @@ function ChamadosTab() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{clientMap[t.client_id] ?? "—"}{t.product_id && productMap[t.product_id] ? ` · ${productMap[t.product_id]}` : ""}</p>
+                    <p className="text-xs text-muted-foreground truncate">{nameForTicket(t)}{t.product_id && productMap[t.product_id] ? ` · ${productMap[t.product_id]}` : ""}</p>
                   </div>
                   <Badge variant="outline" className="text-[10px]">{CATEGORIA_META[t.categoria].label}</Badge>
                   <span className="text-[10px] text-muted-foreground hidden sm:block">{format(new Date(t.opened_at), "dd/MM HH:mm", { locale: ptBR })}</span>
@@ -183,7 +183,7 @@ function ChamadosTab() {
         )}
       </div>
 
-      <SupportTicketDialog ticket={selected} clientName={selected ? clientMap[selected.client_id] : undefined} onClose={() => setSelected(null)} />
+      <SupportTicketDialog ticket={selected} clientName={selected ? nameForTicket(selected) : undefined} onClose={() => setSelected(null)} />
     </div>
   );
 }
