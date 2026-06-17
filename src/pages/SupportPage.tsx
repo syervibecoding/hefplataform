@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { LifeBuoy, Clock, CheckCircle2, Star, BarChart3, Search } from "lucide-react";
+import { LayoutGrid, Clock, CheckCircle2, Star, BarChart3, Search } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSupportTickets, computeMetrics, STATUS_META, CATEGORIA_META, type TicketStatus, type SupportTicket } from "@/hooks/useSupport";
 import { useAllClients } from "@/hooks/useAllClients";
 import { useLovableProducts } from "@/hooks/useLovableProducts";
@@ -17,6 +18,46 @@ function fmtHours(h: number | null) {
 }
 
 export default function SupportPage() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+          <LayoutGrid size={18} className="text-primary" />
+        </div>
+        <div>
+          <h1 className="text-lg font-bold">Gerenciador de Plataformas</h1>
+          <p className="text-xs text-muted-foreground">Plataformas, chamados e acessos dos clientes</p>
+        </div>
+      </div>
+
+      <Tabs defaultValue="chamados" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="plataformas">Plataformas</TabsTrigger>
+          <TabsTrigger value="chamados">Chamados</TabsTrigger>
+          <TabsTrigger value="clientes">Clientes & Acessos</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="plataformas">
+          <div className="bg-card border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+            Em breve — cadastro de plataformas com links, arquivos e acessos.
+          </div>
+        </TabsContent>
+
+        <TabsContent value="chamados">
+          <ChamadosTab />
+        </TabsContent>
+
+        <TabsContent value="clientes">
+          <div className="bg-card border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+            Em breve — gerar logins e liberar plataformas por cliente.
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function ChamadosTab() {
   const { data: tickets = [], isLoading } = useSupportTickets();
   const { data: clients = [] } = useAllClients();
   const { products } = useLovableProducts();
@@ -42,16 +83,6 @@ export default function SupportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <LifeBuoy size={18} className="text-primary" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold">Suporte</h1>
-          <p className="text-xs text-muted-foreground">Chamados das empresas e métricas de atendimento</p>
-        </div>
-      </div>
-
       {/* Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard icon={Clock} label="1ª resposta" value={fmtHours(metrics.avgFirstResponseHours)} sub={`${tickets.filter(t => t.first_response_at).length} respondidos`} />
