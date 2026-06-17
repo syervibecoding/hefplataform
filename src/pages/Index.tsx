@@ -14,6 +14,8 @@ import LovableProductsPage from "./LovableProductsPage";
 import SupportPage from "./SupportPage";
 import CRMPage from "./CRMPage";
 import WorkflowPage from "./WorkflowPage";
+import HomePage from "./HomePage";
+import OperacionalPage from "./OperacionalPage";
 import { useClients } from "@/hooks/useClients";
 import { useMelhorias } from "@/hooks/useMelhorias";
 import { useProducts } from "@/hooks/useProducts";
@@ -23,7 +25,7 @@ import {
 } from "@/data/constants";
 
 export default function Index() {
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState("home");
   const [activeProduct, setActiveProduct] = useState<ProductId>("");
   const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);
 
@@ -104,6 +106,10 @@ export default function Index() {
       );
     }
     switch (activePage) {
+      case "home":
+        return <HomePage products={products} onNavigate={handleNavigate} onChangeProduct={handleChangeProduct} />;
+      case "operacional":
+        return <OperacionalPage onNavigate={handleNavigate} onChangeProduct={handleChangeProduct} />;
       case "general-dashboard":
         return <GeneralDashboardPage products={products} melhorias={melhorias} />;
       case "cash-flow":
@@ -163,7 +169,8 @@ export default function Index() {
         <Topbar
           title={activePage === "client-detail" ? "clients" : activePage}
           tag={
-            activePage === "general-dashboard" ? "Visão Geral"
+            activePage === "home" || activePage === "operacional" || activePage === "consultoria" || activePage === "consultoria-relatorio" ? ""
+            : activePage === "general-dashboard" ? "Visão Geral"
             : activePage === "cash-flow" ? "Financeiro"
             : currentProductInfo?.nome || ""
           }

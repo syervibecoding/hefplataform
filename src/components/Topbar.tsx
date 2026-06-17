@@ -4,6 +4,10 @@ interface TopbarProps {
 }
 
 const PAGE_TITLES: Record<string, string> = {
+  home: "Início",
+  operacional: "Operacional",
+  consultoria: "Consultoria",
+  "consultoria-relatorio": "Relatório de Consultoria",
   dashboard: "Dashboard",
   clients: "Clientes",
   calendar: "Calendário",
