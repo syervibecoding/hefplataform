@@ -45,10 +45,10 @@ Deno.serve(async (req) => {
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
     const display_name = String(body.display_name ?? "").trim();
-    const client_id = String(body.client_id ?? "");
+    const platform_company_id = String(body.platform_company_id ?? "");
 
-    if (!email || !email.includes("@") || password.length < 6 || !client_id) {
-      return json({ error: "Dados inválidos. Email válido, senha (6+ caracteres) e client_id são obrigatórios." }, 400);
+    if (!email || !email.includes("@") || password.length < 6 || !platform_company_id) {
+      return json({ error: "Dados inválidos. Email válido, senha (6+ caracteres) e platform_company_id são obrigatórios." }, 400);
     }
 
     // Create auth user
@@ -73,13 +73,13 @@ Deno.serve(async (req) => {
       return json({ error: `Erro ao atribuir papel: ${roleErr.message}` }, 500);
     }
 
-    // Update profile with client_id (trigger handle_new_user already inserted the profile row)
+    // Update profile with platform_company_id (trigger handle_new_user already inserted the profile row)
     const { error: profErr } = await admin
       .from("profiles")
-      .update({ client_id, display_name: display_name || email.split("@")[0] })
+      .update({ platform_company_id, display_name: display_name || email.split("@")[0] })
       .eq("id", newUserId);
     if (profErr) {
-      return json({ error: `Erro ao vincular ao cliente: ${profErr.message}` }, 500);
+      return json({ error: `Erro ao vincular à empresa: ${profErr.message}` }, 500);
     }
 
     return json({ success: true, user_id: newUserId });

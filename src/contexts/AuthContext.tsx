@@ -7,7 +7,7 @@ export type AppRole = "admin" | "coordenador" | "user" | "cliente";
 interface Profile {
   username: string;
   display_name: string | null;
-  client_id: string | null;
+  platform_company_id: string | null;
 }
 
 interface AuthState {
@@ -17,7 +17,7 @@ interface AuthState {
   isAdmin: boolean;
   isCoordenador: boolean;
   isCliente: boolean;
-  clientId: string | null;
+  platformCompanyId: string | null;
   canEditChecklist: boolean;
   loading: boolean;
   signIn: (username: string, password: string) => Promise<{ error: string | null }>;
@@ -42,10 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data: p } = await supabase
         .from("profiles")
-        .select("username, display_name, client_id")
+        .select("username, display_name, platform_company_id")
         .eq("id", userId)
         .maybeSingle();
-      setProfile(p ? { username: p.username, display_name: p.display_name, client_id: (p as any).client_id ?? null } : null);
+      setProfile(p ? { username: p.username, display_name: p.display_name, platform_company_id: (p as any).platform_company_id ?? null } : null);
 
       const { data: r } = await supabase
         .from("user_roles")
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: role === "admin",
         isCoordenador: role === "coordenador",
         isCliente: role === "cliente",
-        clientId: profile?.client_id ?? null,
+        platformCompanyId: profile?.platform_company_id ?? null,
         canEditChecklist: role === "admin" || role === "coordenador",
         loading,
         signIn,

@@ -738,6 +738,69 @@ export type Database = {
           },
         ]
       }
+      platform_companies: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_company_products: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_company_products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "platform_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_company_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "lovable_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_credentials: {
         Row: {
           created_at: string
@@ -859,6 +922,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          platform_company_id: string | null
           updated_at: string
           username: string
         }
@@ -867,6 +931,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          platform_company_id?: string | null
           updated_at?: string
           username: string
         }
@@ -875,6 +940,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          platform_company_id?: string | null
           updated_at?: string
           username?: string
         }
@@ -884,6 +950,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_platform_company_id_fkey"
+            columns: ["platform_company_id"]
+            isOneToOne: false
+            referencedRelation: "platform_companies"
             referencedColumns: ["id"]
           },
         ]
@@ -1018,7 +1091,7 @@ export type Database = {
       support_tickets: {
         Row: {
           categoria: string
-          client_id: string
+          client_id: string | null
           closed_at: string | null
           created_at: string
           csat_comment: string | null
@@ -1029,6 +1102,7 @@ export type Database = {
           last_client_read_at: string | null
           last_team_read_at: string | null
           opened_at: string
+          platform_company_id: string | null
           prioridade: string
           product_id: string | null
           resolved_at: string | null
@@ -1040,7 +1114,7 @@ export type Database = {
         }
         Insert: {
           categoria?: string
-          client_id: string
+          client_id?: string | null
           closed_at?: string | null
           created_at?: string
           csat_comment?: string | null
@@ -1051,6 +1125,7 @@ export type Database = {
           last_client_read_at?: string | null
           last_team_read_at?: string | null
           opened_at?: string
+          platform_company_id?: string | null
           prioridade?: string
           product_id?: string | null
           resolved_at?: string | null
@@ -1062,7 +1137,7 @@ export type Database = {
         }
         Update: {
           categoria?: string
-          client_id?: string
+          client_id?: string | null
           closed_at?: string | null
           created_at?: string
           csat_comment?: string | null
@@ -1073,6 +1148,7 @@ export type Database = {
           last_client_read_at?: string | null
           last_team_read_at?: string | null
           opened_at?: string
+          platform_company_id?: string | null
           prioridade?: string
           product_id?: string | null
           resolved_at?: string | null
@@ -1088,6 +1164,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_platform_company_id_fkey"
+            columns: ["platform_company_id"]
+            isOneToOne: false
+            referencedRelation: "platform_companies"
             referencedColumns: ["id"]
           },
           {
@@ -1124,6 +1207,7 @@ export type Database = {
     Functions: {
       client_has_product: { Args: { _product_id: string }; Returns: boolean }
       get_my_client_id: { Args: never; Returns: string }
+      get_my_platform_company_id: { Args: never; Returns: string }
       get_username: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

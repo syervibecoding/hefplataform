@@ -38,7 +38,8 @@ type Categoria = (typeof CATEGORIAS)[number]["value"];
 
 interface Ticket {
   id: string;
-  client_id: string;
+  client_id: string | null;
+  platform_company_id: string | null;
   product_id: string | null;
   titulo: string;
   descricao: string;
@@ -57,24 +58,24 @@ interface Msg {
 }
 
 export default function ClientPortalPage() {
-  const { profile, clientId, signOut } = useAuth();
+  const { profile, platformCompanyId, signOut } = useAuth();
   useSupportRealtime();
   const { data: unread } = useUnreadSupport();
 
-  const { data: client } = useQuery({
-    queryKey: ["portal_client", clientId],
-    enabled: !!clientId,
+  const { data: company } = useQuery({
+    queryKey: ["portal_company", platformCompanyId],
+    enabled: !!platformCompanyId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("clients").select("id, nome").eq("id", clientId!).maybeSingle();
+        .from("platform_companies").select("id, nome").eq("id", platformCompanyId!).maybeSingle();
       if (error) throw error;
       return data as { id: string; nome: string } | null;
     },
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ["portal_products", clientId],
-    enabled: !!clientId,
+    queryKey: ["portal_products", platformCompanyId],
+    enabled: !!platformCompanyId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("lovable_products").select("id, nome, descricao, url_app").order("nome");
@@ -84,8 +85,8 @@ export default function ClientPortalPage() {
   });
 
   const { data: tickets = [] } = useQuery({
-    queryKey: ["portal_tickets", clientId],
-    enabled: !!clientId,
+    queryKey: ["portal_tickets", platformCompanyId],
+    enabled: !!platformCompanyId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("support_tickets").select("*").order("opened_at", { ascending: false });
@@ -104,7 +105,7 @@ export default function ClientPortalPage() {
     markTicketRead(t.id, "cliente");
   };
 
-  if (!clientId) {
+  if (!platformCompanyId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md text-center space-y-3">
@@ -121,7 +122,7 @@ export default function ClientPortalPage() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <img src={logoHef} alt="HefSys" className="h-9 w-auto" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{client?.nome ?? "Portal do cliente"}</p>
+            <p className="text-sm font-semibold truncate">{company?.nome ?? "Portal do cliente"}</p>
             <p className="text-[11px] text-muted-foreground truncate">
               {profile?.display_name || profile?.username}
             </p>
@@ -218,7 +219,7 @@ export default function ClientPortalPage() {
       <NewTicketDialog
         open={openNew}
         onClose={() => setOpenNew(false)}
-        clientId={clientId}
+        companyId={platformCompanyId}
         products={products}
       />
       <TicketDetailDialog
@@ -231,9 +232,9 @@ export default function ClientPortalPage() {
 }
 
 function NewTicketDialog({
-  open, onClose, clientId, products,
+  open, onClose, companyId, products,
 }: {
-  open: boolean; onClose: () => void; clientId: string;
+  open: boolean; onClose: () => void; companyId: string;
   products: Array<{ id: string; nome: string }>;
 }) {
   const qc = useQueryClient();
@@ -246,7 +247,7 @@ function NewTicketDialog({
   const create = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("support_tickets").insert({
-        client_id: clientId,
+        platform_company_id: companyId,
         product_id: productId || null,
         titulo: titulo.trim(),
         descricao: descricao.trim(),
