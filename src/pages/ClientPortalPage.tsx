@@ -122,7 +122,7 @@ export default function ClientPortalPage() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <img src={logoHef} alt="HefSys" className="h-9 w-auto" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{client?.nome ?? "Portal do cliente"}</p>
+            <p className="text-sm font-semibold truncate">{company?.nome ?? "Portal do cliente"}</p>
             <p className="text-[11px] text-muted-foreground truncate">
               {profile?.display_name || profile?.username}
             </p>
@@ -219,7 +219,7 @@ export default function ClientPortalPage() {
       <NewTicketDialog
         open={openNew}
         onClose={() => setOpenNew(false)}
-        clientId={clientId}
+        companyId={platformCompanyId}
         products={products}
       />
       <TicketDetailDialog
@@ -232,9 +232,9 @@ export default function ClientPortalPage() {
 }
 
 function NewTicketDialog({
-  open, onClose, clientId, products,
+  open, onClose, companyId, products,
 }: {
-  open: boolean; onClose: () => void; clientId: string;
+  open: boolean; onClose: () => void; companyId: string;
   products: Array<{ id: string; nome: string }>;
 }) {
   const qc = useQueryClient();
@@ -247,7 +247,7 @@ function NewTicketDialog({
   const create = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("support_tickets").insert({
-        client_id: clientId,
+        platform_company_id: companyId,
         product_id: productId || null,
         titulo: titulo.trim(),
         descricao: descricao.trim(),
