@@ -33,6 +33,7 @@ import {
 } from "@/data/constants";
 
 export default function Index() {
+  useSupportRealtime();
   const [activePage, setActivePage] = useState("home");
   const [activeProduct, setActiveProduct] = useState<ProductId>("");
   const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);
