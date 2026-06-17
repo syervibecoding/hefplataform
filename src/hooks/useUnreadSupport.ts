@@ -46,17 +46,17 @@ interface UnreadRow {
  * For the cliente: messages from "equipe" newer than ticket.last_client_read_at.
  */
 export function useUnreadSupport() {
-  const { user, isCliente, clientId } = useAuth();
+  const { user, isCliente, platformCompanyId } = useAuth();
 
   return useQuery({
-    queryKey: ["unread_support", isCliente ? `cli:${clientId}` : `team:${user?.id ?? "anon"}`],
+    queryKey: ["unread_support", isCliente ? `cli:${platformCompanyId}` : `team:${user?.id ?? "anon"}`],
     enabled: !!user,
     queryFn: async (): Promise<{ total: number; perTicket: Record<string, number> }> => {
       const sideAuthor = isCliente ? "equipe" : "cliente";
       const readCol = isCliente ? "last_client_read_at" : "last_team_read_at";
 
       let tQ = supabase.from("support_tickets").select(`id, ${readCol}`);
-      if (isCliente && clientId) tQ = tQ.eq("client_id", clientId);
+      if (isCliente && platformCompanyId) tQ = tQ.eq("platform_company_id", platformCompanyId);
       const { data: tickets, error: tErr } = await tQ;
       if (tErr) throw tErr;
 
