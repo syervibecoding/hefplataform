@@ -42,6 +42,7 @@ const EMPTY_FORM: LovableProductInsert = {
   stack: [],
   cliente_origem_id: null,
   tags: [],
+  links: [],
 };
 
 export default function LovableProductsPage() {
@@ -109,6 +110,7 @@ export default function LovableProductsPage() {
       stack: p.stack ?? [],
       cliente_origem_id: p.cliente_origem_id,
       tags: p.tags ?? [],
+      links: p.links ?? [],
     });
     setSelectedClients(clientIdsFor(p.id));
     setStackInput("");

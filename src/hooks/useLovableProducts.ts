@@ -14,6 +14,7 @@ export interface LovableProduct {
   stack: string[];
   cliente_origem_id: string | null;
   tags: string[];
+  links: { label: string; url: string }[];
   created_by: string | null;
   created_at: string;
   updated_at: string;

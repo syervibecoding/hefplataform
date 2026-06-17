@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { LayoutGrid, Clock, CheckCircle2, Star, BarChart3, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import PlataformasTab from "@/components/PlataformasTab";
 import { useSupportTickets, computeMetrics, STATUS_META, CATEGORIA_META, type TicketStatus, type SupportTicket } from "@/hooks/useSupport";
 import { useAllClients } from "@/hooks/useAllClients";
 import { useLovableProducts } from "@/hooks/useLovableProducts";
@@ -38,9 +39,7 @@ export default function SupportPage() {
         </TabsList>
 
         <TabsContent value="plataformas">
-          <div className="bg-card border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-            Em breve — cadastro de plataformas com links, arquivos e acessos.
-          </div>
+          <PlataformasTab />
         </TabsContent>
 
         <TabsContent value="chamados">
