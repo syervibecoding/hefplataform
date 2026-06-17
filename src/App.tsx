@@ -8,12 +8,13 @@ import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import PublicSupportPortal from "./pages/PublicSupportPortal";
+import ClientPortalPage from "./pages/ClientPortalPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
 function AuthGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, isCliente } = useAuth();
 
   if (loading) {
     return (
@@ -24,6 +25,15 @@ function AuthGate() {
   }
 
   if (!user) return <LoginPage />;
+
+  if (isCliente) {
+    return (
+      <Routes>
+        <Route path="/" element={<ClientPortalPage />} />
+        <Route path="*" element={<ClientPortalPage />} />
+      </Routes>
+    );
+  }
 
   return (
     <Routes>
