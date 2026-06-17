@@ -1026,6 +1026,8 @@ export type Database = {
           descricao: string
           first_response_at: string | null
           id: string
+          last_client_read_at: string | null
+          last_team_read_at: string | null
           opened_at: string
           prioridade: string
           product_id: string | null
@@ -1046,6 +1048,8 @@ export type Database = {
           descricao: string
           first_response_at?: string | null
           id?: string
+          last_client_read_at?: string | null
+          last_team_read_at?: string | null
           opened_at?: string
           prioridade?: string
           product_id?: string | null
@@ -1066,6 +1070,8 @@ export type Database = {
           descricao?: string
           first_response_at?: string | null
           id?: string
+          last_client_read_at?: string | null
+          last_team_read_at?: string | null
           opened_at?: string
           prioridade?: string
           product_id?: string | null
