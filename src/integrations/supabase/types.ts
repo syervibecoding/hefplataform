@@ -855,6 +855,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          client_id: string | null
           created_at: string
           display_name: string | null
           id: string
@@ -862,6 +863,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          client_id?: string | null
           created_at?: string
           display_name?: string | null
           id: string
@@ -869,13 +871,22 @@ export type Database = {
           username: string
         }
         Update: {
+          client_id?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
           updated_at?: string
           username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       prospects: {
         Row: {
@@ -1115,7 +1126,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "coordenador"
+      app_role: "admin" | "user" | "coordenador" | "cliente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1243,7 +1254,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "coordenador"],
+      app_role: ["admin", "user", "coordenador", "cliente"],
     },
   },
 } as const
