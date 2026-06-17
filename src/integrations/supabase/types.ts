@@ -1116,6 +1116,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      client_has_product: { Args: { _product_id: string }; Returns: boolean }
+      get_my_client_id: { Args: never; Returns: string }
       get_username: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1124,6 +1126,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_internal_team: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user" | "coordenador" | "cliente"

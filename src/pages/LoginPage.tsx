@@ -32,13 +32,13 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-6 space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Usuário</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Usuário ou e-mail</label>
             <div className="relative">
               <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="seu.usuario"
+                placeholder="seu.usuario ou cliente@empresa.com"
                 className="pl-9"
                 autoComplete="username"
                 autoFocus
