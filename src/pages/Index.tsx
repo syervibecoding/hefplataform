@@ -27,6 +27,7 @@ import {
 import { useClients } from "@/hooks/useClients";
 import { useMelhorias } from "@/hooks/useMelhorias";
 import { useProducts } from "@/hooks/useProducts";
+import { useSupportRealtime } from "@/hooks/useUnreadSupport";
 import {
   type ProductId,
   type AnyClient,
