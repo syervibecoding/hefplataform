@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Calendar, Activity, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2, Globe, Wallet, Package, LifeBuoy, Home, Boxes } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2, Package, Home } from "lucide-react";
 import { useState } from "react";
 import logoHef from "@/assets/logo-hefsys.png";
 import { type ProductId } from "@/data/constants";
@@ -19,14 +19,10 @@ interface SidebarProps {
 
 const NAV_ITEMS = [
   { id: "home", label: "Início", icon: Home },
-  { id: "operacional", label: "Operacional", icon: Boxes },
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "clients", label: "Clientes", icon: Users },
   { id: "calendar", label: "Calendário", icon: Calendar },
-  { id: "workflow", label: "Planning", icon: Activity },
   { id: "materials", label: "Materiais", icon: BookOpen },
   { id: "lovable-products", label: "Produtos", icon: Package },
-  { id: "support", label: "Suporte", icon: LifeBuoy },
   { id: "crm", label: "CRM", icon: TrendingUp },
   { id: "melhorias", label: "Melhorias", icon: Rocket },
 ];
