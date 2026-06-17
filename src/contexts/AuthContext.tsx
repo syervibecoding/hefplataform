@@ -13,7 +13,7 @@ interface Profile {
 interface AuthState {
   user: User | null;
   profile: Profile | null;
-  role: AppRole;
+  role: AppRole | null;
   isAdmin: boolean;
   isCoordenador: boolean;
   isCliente: boolean;
@@ -35,7 +35,7 @@ function toEmail(input: string) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [role, setRole] = useState<AppRole>("user");
+  const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
@@ -60,43 +60,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Ongoing auth changes (does NOT control loading)
   useEffect(() => {
+    let mounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         const u = session?.user ?? null;
         setUser(u);
         if (u) {
-          loadProfile(u.id);
+          setLoading(true);
+          // Defer to avoid deadlock inside the auth callback
+          setTimeout(async () => {
+            await loadProfile(u.id);
+            if (mounted) setLoading(false);
+          }, 0);
         } else {
           setProfile(null);
-          setRole("user");
+          setRole(null);
+          setLoading(false);
         }
       }
     );
-    return () => subscription.unsubscribe();
-  }, []);
 
-  // Initial load (controls loading state)
-  useEffect(() => {
-    const init = async () => {
+    // Initial session load
+    (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const u = session?.user ?? null;
         setUser(u);
         if (u) {
           await loadProfile(u.id);
+        } else {
+          setRole(null);
         }
       } catch (err) {
         console.error("Error initializing auth:", err);
         setUser(null);
         setProfile(null);
-        setRole("user");
+        setRole(null);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
+    })();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
     };
-    init();
   }, []);
 
   const signIn = async (username: string, password: string) => {
