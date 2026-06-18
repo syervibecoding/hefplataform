@@ -1,76 +1,33 @@
-# Plano: Suporte na Plataforma + Portal do Cliente
+## Objetivo
 
-Objetivo: cada **empresa** (cliente) vira o ponto central. Dentro dela, ficam os **Produtos** vinculados e uma aba de **Suporte**. As empresas abrem chamados por um **link público exclusivo** (sem login). Vocês veem tudo internamente com métricas.
+Quando você abrir "Novo Cliente" em qualquer produto (HefSys, Tráfego, Automação, Plataformas), aparecer no topo do formulário um campo de busca com **todos os clientes já cadastrados em qualquer produto**. Ao selecionar um, os dados básicos (nome, contato, whatsapp, email) são preenchidos automaticamente — você só precisa completar os campos específicos do produto.
 
-## 1. Estrutura do banco
+## Como vai funcionar na prática
 
-Novas tabelas e campos:
+1. No diálogo "Novo Cliente", logo acima dos campos atuais, vou adicionar uma seção opcional:
+   - **"Reaproveitar cliente existente"** com um campo combobox (busca por nome).
+   - A lista mostra todos os clientes do banco, com o nome da empresa + um chip indicando em quais produtos ela já existe (ex: "Acme Ltda · Consultoria, Plataformas").
+   - Clientes que já existem **no mesmo produto** ficam desabilitados (para evitar duplicar dentro do mesmo produto).
+2. Ao selecionar um cliente da lista:
+   - Preenche automaticamente: nome, contato, WhatsApp, email, status.
+   - Mostra um aviso discreto: "Dados copiados de [Produto X]. Edite se necessário."
+   - Um botão pequeno "Limpar seleção" volta o formulário para entrada manual.
+3. Os campos específicos do produto (valor de contrato, consultas, kickoff etc.) continuam em branco para você preencher.
+4. Se você não selecionar nada, o comportamento é exatamente o atual.
 
-- `clients` ganha 2 colunas: `support_slug` (token único pra URL pública) e `support_enabled` (liga/desliga o portal).
-- `support_tickets`: empresa, produto (opcional), título, descrição, categoria (bug / ajuste / dúvida / nova feature / outro), prioridade, status (aberto, em andamento, aguardando cliente, resolvido, fechado), quem abriu (nome + email opcional), nota CSAT 1-5 + comentário, e timestamps de abertura, primeira resposta, resolução e fechamento.
-- `support_ticket_messages`: thread de mensagens do ticket, com autor (cliente ou equipe).
+## Detalhes técnicos
 
-## 2. Acesso do cliente (portal público)
+- **Hook novo `useDistinctClients`** (ou estender `useAllClients`): retorna uma lista deduplicada por nome (ou por email se houver) contendo `{ nome, contato, whatsapp, email, productsIn: ProductId[] }`. Como hoje cada produto tem sua própria linha em `clients`, vou agregar no client-side agrupando por `lower(trim(nome))`.
+- **`AddClientDialog.tsx`**:
+  - Adicionar prop ou consumir o hook diretamente.
+  - Adicionar um `Popover` + `Command` (shadcn) no topo do form, antes do grid de Nome/Contato.
+  - Função `applyExistingClient(c)` que faz `setValue` nos quatro campos base e marca um estado `linkedFromName` para exibir o aviso.
+  - Filtrar do dropdown os clientes onde `productsIn.includes(activeProduct)`.
+- **Sem mudanças no banco** nem nas RLS — leitura usa as policies já existentes da tabela `clients`.
+- **Sem alteração na lógica de submissão**: continua criando um novo registro em `clients` para o produto ativo (cada produto é uma linha independente, como hoje). Isso preserva o histórico financeiro por produto.
 
-Como não tem login da empresa, o acesso seguro é via **Edge Functions** que validam o `support_slug` e fazem as operações com privilégio de serviço. Isso evita expor tickets de outras empresas.
+## Fora do escopo (posso fazer depois se quiser)
 
-Functions:
-- `portal-get-tickets` — lista tickets de uma empresa pelo slug
-- `portal-create-ticket` — empresa abre chamado
-- `portal-add-message` — empresa responde no thread
-- `portal-rate-ticket` — empresa envia CSAT ao fechar
-
-## 3. Telas (frontend)
-
-### a) Página da Empresa — `/empresas/:id`
-Substitui a navegação atual focada em produto. Abas:
-- **Visão Geral** — dados básicos, saúde, contatos
-- **Produtos** — lista dos produtos vinculados àquela empresa (vem de `lovable_product_clients`)
-- **Suporte** — tickets daquela empresa + botão "copiar link do portal"
-
-### b) Página Suporte (global) — `/suporte`
-Nova entrada no sidebar com:
-- Lista de todos os tickets, filtros por status / categoria / empresa / produto / período
-- Cards de métricas no topo:
-  - Tempo médio de **primeira resposta**
-  - Tempo médio de **resolução**
-  - Volume por **empresa** e por **produto** (top 5)
-  - Distribuição por **categoria** (gráfico)
-  - **CSAT médio** + nº de avaliações
-- Detalhe do ticket abre dialog com thread, status e categoria editáveis
-
-### c) Portal público — `/suporte/p/:slug`
-Página sem login, com identidade visual mais clean:
-- Cabeçalho com nome da empresa
-- Botão "Abrir chamado" (form: título, categoria, descrição, nome de quem está abrindo)
-- Lista dos chamados da empresa com status
-- Detalhe do chamado: thread de mensagens, campo pra responder
-- Quando o ticket é marcado como **resolvido** pela equipe, aparece pro cliente o pedido de **nota CSAT** (estrelas + comentário). Depois disso o ticket vai pra **fechado**.
-
-## 4. Métricas — fórmulas
-
-```text
-Primeira resposta = first_response_at - opened_at
-Resolução        = resolved_at      - opened_at
-Volume           = count por empresa / produto / categoria
-CSAT             = média(csat_rating) entre tickets fechados com nota
-```
-
-Cálculo no client (React Query) em cima dos tickets já carregados, sem view SQL nesta primeira versão.
-
-## 5. Mudanças adjacentes
-
-- **Sidebar**: adicionar item "Suporte". Manter "Produtos" (já renomeado) — vira mais uma view de catálogo; a operação dia-a-dia migra pra Empresa.
-- **Página Clientes** já existente: cada linha vira link pra `/empresas/:id`.
-- **Link do portal** copiável no cabeçalho da aba Suporte da empresa, com toggle "ativar/desativar portal".
-
-## 6. O que NÃO entra agora
-
-- Notificação por email/WhatsApp quando chega ticket (fica como próximo passo).
-- Upload de anexos no ticket (próximo passo).
-- SLA configurável por plano/cliente.
-- Login próprio do cliente (continua link público).
-
----
-
-Se aprovar, eu sigo nessa ordem: (1) migração das tabelas e edge functions, (2) página da Empresa com abas, (3) página Suporte global com métricas, (4) portal público.
+- Unificar de verdade os clientes (uma única empresa com múltiplos vínculos de produto) — exigiria refactor maior da tabela `clients`.
+- Sincronizar alterações de contato entre produtos automaticamente.
+- Reaproveitar dados também em `platform_companies` (clientes só do portal de plataformas).
