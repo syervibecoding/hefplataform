@@ -34,12 +34,12 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+      <div className="px-4 md:px-5 py-3 md:py-4 border-b border-border flex items-center justify-between gap-2">
         <h2 className="text-[15px] font-semibold">Clientes</h2>
         <AddClientDialog activeProduct={activeProduct} onAddClient={onAddClient} />
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-[720px]">
           <thead>
             <tr>
               {headers.map((h) => (

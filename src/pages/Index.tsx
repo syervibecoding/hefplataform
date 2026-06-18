@@ -38,6 +38,7 @@ export default function Index() {
   const [activePage, setActivePage] = useState("home");
   const [activeProduct, setActiveProduct] = useState<ProductId>("");
   const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [consultoriaClients, setConsultoriaClients] = useState<ConsultoriaClient[]>(SEED_CONSULTORIA_CLIENTS);
   const [selectedConsultoriaId, setSelectedConsultoriaId] = useState<string | null>(null);
 
@@ -221,10 +222,18 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar activePage={activePage} onNavigate={handleNavigate} activeProduct={activeProduct} onChangeProduct={handleChangeProduct} />
-      <main className="ml-60 min-h-screen">
+      <Sidebar
+        activePage={activePage}
+        onNavigate={handleNavigate}
+        activeProduct={activeProduct}
+        onChangeProduct={handleChangeProduct}
+        mobileOpen={mobileMenuOpen}
+        onMobileOpenChange={setMobileMenuOpen}
+      />
+      <main className="md:ml-60 min-h-screen">
         <Topbar
           title={activePage === "client-detail" ? "clients" : activePage}
+          onOpenMenu={() => setMobileMenuOpen(true)}
           tag={
             activePage === "home" || activePage === "operacional" || activePage === "consultoria" || activePage === "consultoria-relatorio" ? ""
             : activePage === "general-dashboard" ? "Visão Geral"
@@ -232,7 +241,7 @@ export default function Index() {
             : currentProductInfo?.nome || ""
           }
         />
-        <div className="p-7">{renderPage()}</div>
+        <div className="p-4 md:p-7">{renderPage()}</div>
       </main>
     </div>
   );

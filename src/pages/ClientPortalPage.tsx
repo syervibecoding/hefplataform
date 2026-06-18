@@ -119,21 +119,21 @@ export default function ClientPortalPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/60 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
-          <img src={logoHef} alt="HefSys" className="h-9 w-auto" />
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-3">
+          <img src={logoHef} alt="HefSys" className="h-8 sm:h-9 w-auto shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate">{company?.nome ?? "Portal do cliente"}</p>
             <p className="text-[11px] text-muted-foreground truncate">
               {profile?.display_name || profile?.username}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => signOut()} className="gap-1.5">
-            <LogOut size={14} /> Sair
+          <Button variant="ghost" size="sm" onClick={() => signOut()} className="gap-1.5 shrink-0 px-2 sm:px-3">
+            <LogOut size={14} /> <span className="hidden sm:inline">Sair</span>
           </Button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
         <section>
           <div className="flex items-center gap-2 mb-3">
             <LayoutGrid size={16} className="text-primary" />
@@ -144,7 +144,7 @@ export default function ClientPortalPage() {
               Nenhuma plataforma liberada ainda.
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {products.map((p) => (
                 <div key={p.id} className="bg-card border border-border rounded-xl p-4 space-y-2">
                   <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export default function ClientPortalPage() {
         </section>
 
         <section>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
             <div className="flex items-center gap-2">
               <MessageSquare size={16} className="text-primary" />
               <h2 className="text-sm font-bold uppercase tracking-wider">Suas conversas</h2>
