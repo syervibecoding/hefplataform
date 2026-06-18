@@ -2,12 +2,17 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Check, ChevronsUpDown, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type ProductId, type ScheduleConfig, type ConsultaExtra, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
 import ScheduleInput from "@/components/ScheduleInput";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { useDistinctClients, type DistinctClient } from "@/hooks/useDistinctClients";
+import { useProducts } from "@/hooks/useProducts";
+import { cn } from "@/lib/utils";
 
 const baseSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -71,6 +76,11 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
   const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
   const [rotinaConferencia, setRotinaConferencia] = useState<ScheduleConfig>({});
   const [consultasExtras, setConsultasExtras] = useState<ConsultaExtra[]>([]);
+  const [linkedFrom, setLinkedFrom] = useState<DistinctClient | null>(null);
+  const [comboOpen, setComboOpen] = useState(false);
+  const { data: distinctClients = [] } = useDistinctClients();
+  const { products } = useProducts();
+  const productNameById = (id: string) => products.find((p) => p.id === id)?.nome || id;
 
   const hefsysForm = useForm<HefsysForm>({
     resolver: zodResolver(hefsysSchema),
@@ -137,6 +147,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
     setRotinaConferencia({});
     setConsultasExtras([]);
     setOpen(false);
+    setLinkedFrom(null);
   };
 
   const addConsultaExtra = () => {
@@ -162,6 +173,24 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
   const hasCertidoes = selectedConsultas.some((id: string) => CONSULTAS_CERTIDOES.some((c) => c.id === id));
   const hasCaixas = selectedConsultas.some((id: string) => CONSULTAS_CAIXAS.some((c) => c.id === id));
 
+  const applyExistingClient = (c: DistinctClient) => {
+    setValue("nome", c.nome, { shouldValidate: true });
+    setValue("contato", c.contato, { shouldValidate: true });
+    setValue("whatsapp", c.whatsapp, { shouldValidate: true });
+    setValue("email", c.email, { shouldValidate: true });
+    setValue("status", c.status || "ativo", { shouldValidate: true });
+    setLinkedFrom(c);
+    setComboOpen(false);
+  };
+
+  const clearLinkedClient = () => {
+    setLinkedFrom(null);
+    setValue("nome", "", { shouldValidate: false });
+    setValue("contato", "", { shouldValidate: false });
+    setValue("whatsapp", "", { shouldValidate: false });
+    setValue("email", "", { shouldValidate: false });
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -176,6 +205,67 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+          <div className="rounded-lg border border-dashed border-border bg-secondary/30 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Reaproveitar cliente existente (opcional)</Label>
+              {linkedFrom && (
+                <button type="button" onClick={clearLinkedClient} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                  <X size={11} /> Limpar
+                </button>
+              )}
+            </div>
+            <Popover open={comboOpen} onOpenChange={setComboOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  role="combobox"
+                  className="w-full h-10 px-3 rounded-md border border-border bg-secondary text-sm flex items-center justify-between text-left"
+                >
+                  <span className={cn("truncate", !linkedFrom && "text-muted-foreground")}>
+                    {linkedFrom ? linkedFrom.nome : "Buscar cliente já cadastrado…"}
+                  </span>
+                  <ChevronsUpDown size={14} className="opacity-50 shrink-0 ml-2" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border" align="start">
+                <Command>
+                  <CommandInput placeholder="Digite o nome da empresa…" className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {distinctClients.map((c) => {
+                        const already = c.productsIn.includes(activeProduct);
+                        return (
+                          <CommandItem
+                            key={c.nome}
+                            value={c.nome}
+                            disabled={already}
+                            onSelect={() => !already && applyExistingClient(c)}
+                            className={cn("flex items-start gap-2", already && "opacity-50 cursor-not-allowed")}
+                          >
+                            <Check size={14} className={cn("mt-0.5", linkedFrom?.nome === c.nome ? "opacity-100" : "opacity-0")} />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm truncate">{c.nome}</div>
+                              <div className="text-[10px] text-muted-foreground truncate">
+                                {c.productsIn.map(productNameById).join(" · ") || "—"}
+                                {already && " (já neste produto)"}
+                              </div>
+                            </div>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {linkedFrom && (
+              <p className="text-[10px] text-hef-info">
+                Dados copiados de {linkedFrom.productsIn.map(productNameById).join(", ") || "outro produto"}. Edite se necessário.
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground">Nome da Empresa</Label>
