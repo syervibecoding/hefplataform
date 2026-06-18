@@ -9,12 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface SidebarProps {
   activePage: string;
   onNavigate: (page: string) => void;
   activeProduct: ProductId;
   onChangeProduct: (product: ProductId) => void;
+  mobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
 }
 
 const NAV_ITEMS = [
@@ -27,7 +30,7 @@ const NAV_ITEMS = [
   { id: "melhorias", label: "Melhorias", icon: Rocket },
 ];
 
-export default function Sidebar({ activePage, onNavigate, activeProduct, onChangeProduct }: SidebarProps) {
+export default function Sidebar({ activePage, onNavigate, activeProduct, onChangeProduct, mobileOpen = false, onMobileOpenChange }: SidebarProps) {
   const { profile, isAdmin, signOut } = useAuth();
   const { products, addProduct, editProduct, deleteProduct } = useProducts();
   const [productOpen, setProductOpen] = useState(false);
@@ -94,8 +97,18 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
     setProductOpen(false);
   };
 
-  return (
-    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border flex flex-col z-50">
+  const handleNavigate = (page: string) => {
+    onNavigate(page);
+    onMobileOpenChange?.(false);
+  };
+
+  const handleChangeProduct = (id: ProductId) => {
+    onChangeProduct(id);
+    onMobileOpenChange?.(false);
+  };
+
+  const inner = (
+    <div className="h-full flex flex-col">
       <div className="px-5 py-6 border-b border-sidebar-border">
         <img src={logoHef} alt="HefSys" className="h-20 w-auto" />
         <p className="text-[10px] uppercase tracking-[1.5px] font-semibold text-primary mt-1.5">
@@ -130,7 +143,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
                   <button
                     key={product.id}
                     onClick={() => {
-                      onChangeProduct(product.id);
+                      handleChangeProduct(product.id);
                       setProductOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors group ${
@@ -193,7 +206,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => handleNavigate(item.id)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                 ${isActive
                   ? "bg-primary/12 text-primary border border-primary/15"
@@ -210,7 +223,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
       <div className="px-3 pb-4 space-y-1">
         {isAdmin && (
           <button
-            onClick={() => onNavigate("users")}
+            onClick={() => handleNavigate("users")}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full ${
               activePage === "users"
                 ? "bg-primary/12 text-primary border border-primary/15"
@@ -222,7 +235,7 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
           </button>
         )}
         <button
-          onClick={() => onNavigate("settings")}
+          onClick={() => handleNavigate("settings")}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground transition-all w-full"
         >
           <Settings size={18} />
@@ -244,6 +257,20 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
         </div>
       </div>
       </div>
+    </div>
+  );
+
+  return (
+    <>
+      <aside className="fixed left-0 top-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border z-50 hidden md:flex md:flex-col">
+        {inner}
+      </aside>
+
+      <Sheet open={mobileOpen} onOpenChange={(o) => onMobileOpenChange?.(o)}>
+        <SheetContent side="left" className="w-[260px] p-0 bg-sidebar border-r border-sidebar-border md:hidden">
+          {inner}
+        </SheetContent>
+      </Sheet>
 
       {/* Add Product Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
