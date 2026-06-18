@@ -387,6 +387,6 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </aside>
+    </>
   );
 }
