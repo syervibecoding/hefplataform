@@ -431,8 +431,8 @@ export default function CRMPage() {
 
           {/* Table View */}
           {view === "table" && (
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-card border border-border rounded-xl overflow-x-auto">
+              <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr className="border-b border-border bg-secondary/40">
                     <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Nome</th>
