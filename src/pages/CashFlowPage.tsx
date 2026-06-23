@@ -1,14 +1,16 @@
 import { useState, useMemo, Fragment } from "react";
-import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, Plus } from "lucide-react";
+import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, Plus, FileUp, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashFlowYear } from "@/hooks/useCashFlow";
 import { categoryLabel, EXPENSE_CATEGORIES } from "@/hooks/useCashExpenses";
 import CashFlowSettingsDialog from "@/components/CashFlowSettingsDialog";
 import CashFlowDayDetail from "@/components/CashFlowDayDetail";
 import CashEntryDialog from "@/components/CashEntryDialog";
+import ImportFinancialDialog from "@/components/ImportFinancialDialog";
 import EditableCashCell from "@/components/EditableCashCell";
 import { useCashOverrides } from "@/hooks/useCashOverrides";
 import { useProducts } from "@/hooks/useProducts";
+import { useFinancialImports } from "@/hooks/useFinancialImports";
 
 const MONTH_ABBR = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -29,9 +31,11 @@ export default function CashFlowPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailMonth, setDetailMonth] = useState<number | null>(null);
   const [newEntryOpen, setNewEntryOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const { products } = useProducts();
   const { data, isLoading } = useCashFlowYear(year, isAdmin);
   const { upsertCell } = useCashOverrides();
+  const { data: imports, revertImport } = useFinancialImports(isAdmin);
 
   const productName = (id: string) => products.find((p) => p.id === id)?.nome || id;
 
@@ -246,6 +250,9 @@ export default function CashFlowPage() {
           </div>
           <button onClick={() => setNewEntryOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all">
             <Plus size={14} /> Lançamento
+          </button>
+          <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-secondary border border-border hover:bg-secondary/80 transition-all">
+            <FileUp size={14} /> Importar PDF
           </button>
           <button onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-secondary border border-border hover:bg-secondary/80 transition-all">
             <Settings size={14} /> Configurações
@@ -534,6 +541,7 @@ export default function CashFlowPage() {
         onOpenChange={setNewEntryOpen}
         defaultDate={new Date().toISOString().slice(0, 10)}
       />
+      <ImportFinancialDialog open={importOpen} onOpenChange={setImportOpen} />
       <CashFlowDayDetail
         open={detailMonth !== null}
         onOpenChange={(v) => !v && setDetailMonth(null)}
@@ -541,6 +549,38 @@ export default function CashFlowPage() {
         year={year}
         saldoInicialMes={saldoInicialMes}
       />
+
+      {imports && imports.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Importações recentes</h3>
+          <div className="space-y-1">
+            {imports.map((imp) => (
+              <div key={imp.id} className="flex items-center justify-between gap-3 text-xs py-1.5 border-b border-border/40 last:border-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-secondary border border-border">
+                    {imp.kind === "fatura" ? "Fatura" : "Extrato"}
+                  </span>
+                  <span className="truncate">{imp.source_name}</span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground shrink-0">
+                  <span>{imp.transactions_count} lanç.</span>
+                  <span>{new Date(imp.created_at).toLocaleDateString("pt-BR")}</span>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Reverter esta importação? Os ${imp.transactions_count} lançamentos serão removidos do fluxo de caixa.`)) {
+                        revertImport.mutate(imp.id);
+                      }
+                    }}
+                    className="text-muted-foreground hover:text-hef-danger"
+                    title="Reverter importação">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
