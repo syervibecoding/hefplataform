@@ -65,6 +65,7 @@ export type Database = {
           created_at: string
           data: string
           id: string
+          import_id: string | null
           nome: string
           origem_id: string | null
           origem_tipo: string | null
@@ -77,6 +78,7 @@ export type Database = {
           created_at?: string
           data: string
           id?: string
+          import_id?: string | null
           nome: string
           origem_id?: string | null
           origem_tipo?: string | null
@@ -89,6 +91,7 @@ export type Database = {
           created_at?: string
           data?: string
           id?: string
+          import_id?: string | null
           nome?: string
           origem_id?: string | null
           origem_tipo?: string | null
@@ -96,7 +99,15 @@ export type Database = {
           updated_at?: string
           valor?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cash_overrides_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "financial_imports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cash_settings: {
         Row: {
@@ -423,6 +434,42 @@ export type Database = {
           id?: string
           label?: string
           position?: number
+        }
+        Relationships: []
+      }
+      financial_imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          period_end: string | null
+          period_start: string | null
+          source_name: string
+          transactions_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          period_end?: string | null
+          period_start?: string | null
+          source_name: string
+          transactions_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          period_end?: string | null
+          period_start?: string | null
+          source_name?: string
+          transactions_count?: number
+          updated_at?: string
         }
         Relationships: []
       }
