@@ -1,66 +1,88 @@
 ## Objetivo
 
-Criar um ambiente onde você faz upload de **extratos bancários** e **faturas de cartão** (PDF), a plataforma extrai as transações automaticamente via IA, você revisa/categoriza em massa e confirma — e tudo cai no Fluxo de Caixa real, sem digitação manual.
-
-> Observação: os 2 PDFs que você anexou estão protegidos por senha. O importador vai pedir a senha quando detectar isso.
-
----
-
-## Fluxo de uso
-
-1. Em **Fluxo de Caixa**, novo botão **"Importar extrato/fatura"**.
-2. Drag-and-drop de 1 ou mais PDFs (extrato bancário ou fatura de cartão). Se o PDF for protegido, abre campo de senha.
-3. A IA (Gemini via Lovable AI) lê o PDF e devolve uma lista estruturada de transações: `data`, `descrição`, `valor`, `tipo` (entrada/saída), `categoria sugerida` e `origem` (banco/cartão detectado).
-4. Tela de **revisão em lote**: tabela editável com todas as linhas extraídas. Você pode:
-   - Marcar/desmarcar linhas (excluir o que não quer importar — ex: pagamento da própria fatura para não duplicar)
-   - Editar descrição, valor, data, categoria, tipo
-   - Aplicar categoria em massa para linhas selecionadas
-   - Ver alerta de **possíveis duplicatas** (mesma data + valor + descrição similar já existente no `cash_overrides`)
-5. **Confirmar importação** → grava tudo como lançamentos em `cash_overrides` (mesma tabela que o "Novo lançamento" usa hoje), aparecendo direto no fluxo de caixa.
-6. Histórico de importações: lista de PDFs importados com data, qtd. de lançamentos, e botão "Reverter" (apaga em lote os lançamentos daquela importação).
+1. **Conectar sua chave OPENAI_API_KEY** para todas as chamadas de IA (extração + análise).
+2. **Trocar o extrator atual de PDF** por um parser dedicado rodando no servidor (sem IA na extração — só na classificação).
+3. **Nova página "Assistente Financeiro"** — chat dedicado onde você conversa com a IA usando seu fluxo de caixa real e a base de clientes/MRR como contexto.
 
 ---
 
-## Comportamento da IA
+## 1. Chave OpenAI
 
-- **Extrato bancário**: extrai movimentações (PIX, TED, boletos, tarifas), classificando entrada/saída pelo sinal/coluna.
-- **Fatura de cartão**: extrai cada compra como **despesa** com data da compra, e ignora linhas de "pagamento de fatura" / "saldo anterior" (para não duplicar com o débito que já aparece no extrato).
-- **Categorização automática** usando as categorias que já existem em `EXPENSE_CATEGORIES` (alimentação, software, marketing, etc.) com base na descrição.
-- **Detecção de origem**: tenta identificar o banco/bandeira pelo cabeçalho do PDF e marca isso no `nome` do lançamento (ex: "Inter — Uber 12/03").
+Vou pedir a `OPENAI_API_KEY` via `add_secret` (você cola o valor em formulário seguro). A chave fica disponível server-side e nunca vaza para o navegador.
+
+Todas as chamadas existentes e novas para IA vão passar a usar:
+- **Modelo padrão de chat/análise**: `gpt-5-mini` (rápido e barato pra conversa).
+- **Modelo padrão de extração de transações**: `gpt-5-mini` com structured output (JSON schema).
+
+Você pode trocar o modelo depois se quiser usar `gpt-5` (mais capaz) ou `gpt-5-nano` (mais barato).
+
+---
+
+## 2. Novo parser de PDF
+
+A edge function `parse-financial-pdf` vai ser reescrita:
+
+- **Extração**: usa `unpdf` (parser open-source, roda em Deno sem dependências nativas) para extrair o texto estruturado do PDF, página por página. Para PDFs com senha, recebe a senha do frontend e passa pro parser.
+- **Classificação**: o texto cru vai pra OpenAI (com a sua chave) usando structured outputs (`response_format: json_schema`) — a IA só categoriza e estrutura, não "lê" o PDF.
+
+Benefícios vs. hoje:
+- Extração 100% determinística (mesma entrada → mesma saída).
+- Mais barato: a IA só vê o texto limpo, não o PDF inteiro.
+- Mais confiável em faturas longas (não perde linhas).
+
+O fluxo do dialog de importação (upload → senha → revisão → confirmação) continua igual; só o motor server-side muda.
+
+---
+
+## 3. Página "Assistente Financeiro"
+
+Nova entrada no sidebar: **Assistente** (ícone de mensagem).
+
+**Comportamento**:
+- Chat dedicado, single-conversation (sem threads), sem persistência por padrão — cada visita começa limpa, mas com um botão "Nova conversa" pra resetar manualmente.
+- Markdown rendering nas respostas (tabelas, listas, gráficos em texto).
+- Streaming em tempo real (token a token).
+
+**Contexto que a IA recebe automaticamente** (system prompt + dados injetados a cada mensagem):
+- Snapshot do **fluxo de caixa anual** do ano corrente: saldo inicial, receitas/despesas/investimentos/aportes/retiradas mês a mês, saldo final.
+- **MRR e clientes ativos por produto**: total de clientes, ticket médio, soma mensal por produto.
+- Data atual e mês de referência.
+
+Tudo isso é montado numa edge function `financial-assistant-chat` antes de mandar pro modelo, então as respostas saem grounded nos seus números reais.
+
+**Exemplos de perguntas que o assistente responde bem**:
+- "Qual minha projeção de saldo até dezembro mantendo o ritmo atual?"
+- "Em qual mês meu caixa fica mais apertado?"
+- "Se eu cortar 20% das despesas administrativas, quanto sobra no final do ano?"
+- "Que produto tem a melhor relação receita/cliente?"
+
+**Limites**:
+- Só admins acessam (mesma regra do fluxo de caixa).
+- O assistente é consultivo — não cria/edita lançamentos sozinho. Se você quiser que ele insira despesas via chat, é uma segunda fase com tool calling.
 
 ---
 
 ## Detalhes técnicos
 
-**Backend (Edge Function)** — `supabase/functions/import-financial-pdf/index.ts`:
-- Recebe `{ pdfBase64, password?, kind: "extrato" | "fatura" | "auto" }`.
-- Se PDF tem senha, descriptografa com `qpdf` equivalente em JS (`pdf-lib` não suporta — usar `pdfjs-dist` com `password`) ou pede a senha de novo.
-- Extrai texto com `pdfjs-dist` (já roda em Deno).
-- Envia o texto para **Lovable AI Gateway** (`google/gemini-2.5-flash`) com prompt estruturado pedindo JSON: `{ origem, periodo, transacoes: [{data, descricao, valor, tipo, categoria_sugerida}] }`.
-- Retorna o JSON para o frontend (sem gravar nada ainda — a gravação é só após revisão do usuário).
+**Secrets**:
+- `OPENAI_API_KEY` — solicitada via `add_secret`.
 
-**Banco** — nova tabela `financial_imports` para histórico:
-- `id`, `created_by`, `kind` (extrato/fatura), `source_name` (nome do arquivo / banco detectado), `period_start`, `period_end`, `transactions_count`, `created_at`.
-- Em `cash_overrides`, adicionar coluna nullable `import_id` (FK → `financial_imports.id`) pra permitir o "Reverter importação".
-- RLS: só admins (mesma regra atual do fluxo de caixa).
+**Backend (edge functions)**:
+- `parse-financial-pdf` (reescrita): `unpdf` para texto + OpenAI structured outputs para JSON.
+- `financial-assistant-chat` (nova): monta contexto financeiro (fluxo de caixa + MRR) consultando o banco com service role, envia pra OpenAI Chat Completions em streaming, devolve SSE.
 
 **Frontend**:
-- `src/components/ImportFinancialDialog.tsx` — modal multi-step (upload → senha se necessário → loading IA → tabela de revisão → confirmação).
-- `src/pages/CashFlowPage.tsx` — adicionar botão "Importar extrato/fatura" no header e seção "Importações recentes" no rodapé.
-- `src/hooks/useFinancialImports.ts` — list / revert.
+- `src/pages/AssistantPage.tsx` — chat UI com `react-markdown`, input no rodapé, scroll automático, botão "Nova conversa".
+- `src/components/Sidebar.tsx` — novo item "Assistente" (visível só pra admin).
+- `src/pages/Index.tsx` — rota `assistant` ligada à nova página.
+
+**Sem mudanças de schema**: não preciso criar tabelas novas. Conversas não são persistidas.
 
 ---
 
 ## Fora do escopo desta entrega
 
-- OFX/CSV (fica para depois, se quiser).
-- Conexão direta com Open Finance / API de banco (precisa de credenciais de produção e contrato — não é viável agora).
-- Conciliação automática com clientes (marcar PIX recebido como "pagamento do cliente X") — possível como segunda fase.
-
----
-
-## Pontos para você confirmar
-
-1. Os dois PDFs anexados estão **com senha**. Confirma que o fluxo deve ter campo de senha por arquivo? (sim/não)
-2. Para **fatura de cartão**, prefere lançar cada compra individual no dia da compra, ou um único lançamento consolidado no dia do vencimento? (recomendo individual = visão real do gasto)
-3. Quer também um modo "preview rápido" que só mostra o resumo (total entradas/saídas) sem precisar revisar linha-a-linha?
+- Persistência de conversas anteriores (pode ser adicionada depois).
+- Tool calling (assistente criando lançamentos sozinho).
+- Projeções gráficas geradas pela IA — por ora a resposta é em texto/markdown.
+- CRM e renovações no contexto (só fluxo de caixa + clientes/MRR, conforme você escolheu).
