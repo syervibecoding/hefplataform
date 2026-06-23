@@ -2,7 +2,6 @@
 // Supports password-protected PDFs by throwing a tagged error
 // so the UI can prompt the user for a password.
 import * as pdfjs from "pdfjs-dist";
-// @ts-expect-error worker has no types
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
