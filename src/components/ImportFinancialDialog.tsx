@@ -1,0 +1,295 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Upload, Loader2, AlertCircle, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { extractPdfText, PdfPasswordRequiredError } from "@/lib/pdf-extract";
+import { useFinancialImports, type ConfirmedTransaction } from "@/hooks/useFinancialImports";
+import { EXPENSE_CATEGORIES } from "@/hooks/useCashExpenses";
+import { useToast } from "@/hooks/use-toast";
+
+type Step = "upload" | "password" | "loading" | "review";
+
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}
+
+export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
+  const { toast } = useToast();
+  const { confirmImport } = useFinancialImports(false);
+  const [step, setStep] = useState<Step>("upload");
+  const [file, setFile] = useState<File | null>(null);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [hint, setHint] = useState<"auto" | "extrato" | "fatura">("auto");
+  const [detectedKind, setDetectedKind] = useState<"extrato" | "fatura">("extrato");
+  const [origem, setOrigem] = useState("");
+  const [periodStart, setPeriodStart] = useState<string | null>(null);
+  const [periodEnd, setPeriodEnd] = useState<string | null>(null);
+  const [rows, setRows] = useState<ConfirmedTransaction[]>([]);
+
+  const reset = () => {
+    setStep("upload"); setFile(null); setPassword(""); setPasswordError(null);
+    setError(null); setHint("auto"); setRows([]); setOrigem("");
+    setPeriodStart(null); setPeriodEnd(null);
+  };
+
+  const close = () => { reset(); onOpenChange(false); };
+
+  const process = async (f: File, pwd?: string) => {
+    setError(null);
+    setStep("loading");
+    let text: string;
+    try {
+      text = await extractPdfText(f, pwd);
+    } catch (e) {
+      if (e instanceof PdfPasswordRequiredError) {
+        setPasswordError(e.incorrect ? "Senha incorreta. Tente de novo." : null);
+        setStep("password");
+        return;
+      }
+      setError((e as Error).message || "Falha ao ler PDF");
+      setStep("upload");
+      return;
+    }
+
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke("parse-financial-pdf", {
+        body: { text, filename: f.name, hint: hint === "auto" ? undefined : hint },
+      });
+      if (fnErr) throw fnErr;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const parsed = data as {
+        kind: "extrato" | "fatura";
+        origem?: string;
+        periodo_inicio?: string;
+        periodo_fim?: string;
+        transacoes: ConfirmedTransaction[];
+      };
+
+      setDetectedKind(parsed.kind || "extrato");
+      setOrigem(parsed.origem || "");
+      setPeriodStart(parsed.periodo_inicio || null);
+      setPeriodEnd(parsed.periodo_fim || null);
+      setRows((parsed.transacoes || []).map((t) => ({ ...t, include: true })));
+      setStep("review");
+    } catch (e: any) {
+      setError(e?.message || "Falha ao processar PDF.");
+      setStep("upload");
+    }
+  };
+
+  const onFileChange = (f: File | null) => {
+    setFile(f);
+    setPassword("");
+    setPasswordError(null);
+    if (f) process(f);
+  };
+
+  const onPasswordSubmit = () => {
+    if (!file) return;
+    process(file, password);
+  };
+
+  const updateRow = (i: number, patch: Partial<ConfirmedTransaction>) => {
+    setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  };
+
+  const toggleAll = (v: boolean) => setRows((r) => r.map((row) => ({ ...row, include: v })));
+
+  const confirm = async () => {
+    const included = rows.filter((r) => r.include);
+    if (included.length === 0) {
+      toast({ title: "Nada selecionado", description: "Marque ao menos uma transação." });
+      return;
+    }
+    try {
+      await confirmImport.mutateAsync({
+        kind: detectedKind,
+        sourceName: origem ? `${origem} — ${file?.name || ""}`.trim() : (file?.name || "Importação"),
+        periodStart, periodEnd,
+        transactions: included.map((t) => ({
+          data: t.data,
+          nome: t.descricao,
+          valor: t.valor,
+          tipo: t.tipo,
+          categoria: t.categoria_sugerida,
+        })),
+      });
+      toast({ title: "Importação concluída", description: `${included.length} lançamento(s) adicionado(s) ao fluxo de caixa.` });
+      close();
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e?.message || "Tente novamente.", variant: "destructive" });
+    }
+  };
+
+  const totalIn = rows.filter((r) => r.include && r.tipo === "receita").reduce((a, b) => a + b.valor, 0);
+  const totalOut = rows.filter((r) => r.include && r.tipo === "despesa").reduce((a, b) => a + b.valor, 0);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) close(); else onOpenChange(true); }}>
+      <DialogContent className="bg-card border-border sm:max-w-5xl">
+        <DialogHeader>
+          <DialogTitle className="font-heading">Importar extrato ou fatura</DialogTitle>
+        </DialogHeader>
+
+        {step === "upload" && (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Tipo do documento</Label>
+              <div className="grid grid-cols-3 gap-1 mt-1">
+                {(["auto", "extrato", "fatura"] as const).map((k) => (
+                  <button key={k} type="button" onClick={() => setHint(k)}
+                    className={`px-2 py-1.5 rounded-md text-[11px] font-semibold border transition-all ${
+                      hint === k ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary border-border text-muted-foreground hover:bg-secondary/80"
+                    }`}>
+                    {k === "auto" ? "Detectar" : k === "extrato" ? "Extrato bancário" : "Fatura de cartão"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl p-10 cursor-pointer hover:bg-secondary/40 transition-all">
+              <Upload size={24} className="text-muted-foreground" />
+              <span className="text-sm font-medium">Clique para selecionar um PDF</span>
+              <span className="text-[11px] text-muted-foreground">Extrato bancário ou fatura de cartão (PDFs com senha são aceitos)</span>
+              <input type="file" accept="application/pdf" className="hidden"
+                onChange={(e) => onFileChange(e.target.files?.[0] || null)} />
+            </label>
+            {error && (
+              <div className="flex items-start gap-2 text-xs text-hef-danger bg-hef-danger/10 border border-hef-danger/30 rounded-md p-2">
+                <AlertCircle size={14} className="mt-0.5" /><span>{error}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === "password" && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Este PDF está protegido. Informe a senha para abrir <strong>{file?.name}</strong>.
+            </p>
+            <Input type="password" value={password} autoFocus
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onPasswordSubmit()}
+              placeholder="Senha do PDF" className="h-9 bg-secondary border-border text-xs" />
+            {passwordError && <p className="text-[11px] text-hef-danger">{passwordError}</p>}
+            <DialogFooter>
+              <Button variant="ghost" onClick={close}>Cancelar</Button>
+              <Button onClick={onPasswordSubmit} disabled={!password}>Abrir</Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === "loading" && (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <Loader2 size={28} className="animate-spin text-primary" />
+            <p className="text-xs text-muted-foreground">Lendo PDF e extraindo transações com IA…</p>
+          </div>
+        )}
+
+        {step === "review" && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
+              <span className="px-2 py-0.5 rounded-md bg-secondary border border-border">
+                {detectedKind === "fatura" ? "Fatura de cartão" : "Extrato bancário"}
+              </span>
+              {origem && <span className="text-muted-foreground">Origem: <strong>{origem}</strong></span>}
+              {(periodStart || periodEnd) && (
+                <span className="text-muted-foreground">Período: {periodStart || "?"} → {periodEnd || "?"}</span>
+              )}
+              <span className="ml-auto text-muted-foreground">
+                <span className="text-hef-success font-semibold">+{totalIn.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>{" "}
+                <span className="text-hef-danger font-semibold">-{totalOut.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px]">
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => toggleAll(true)}>Marcar todos</Button>
+                <Button size="sm" variant="ghost" onClick={() => toggleAll(false)}>Desmarcar todos</Button>
+              </div>
+              <span className="text-muted-foreground">{rows.filter((r) => r.include).length} de {rows.length} selecionadas</span>
+            </div>
+
+            <div className="border border-border rounded-lg overflow-auto max-h-[55vh]">
+              <table className="w-full text-xs">
+                <thead className="bg-secondary/60 text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="px-2 py-1.5 w-8"></th>
+                    <th className="px-2 py-1.5 text-left font-semibold">Data</th>
+                    <th className="px-2 py-1.5 text-left font-semibold">Descrição</th>
+                    <th className="px-2 py-1.5 text-left font-semibold w-24">Tipo</th>
+                    <th className="px-2 py-1.5 text-left font-semibold w-36">Categoria</th>
+                    <th className="px-2 py-1.5 text-right font-semibold w-28">Valor (R$)</th>
+                    <th className="px-2 py-1.5 w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={i} className={`border-t border-border/50 ${r.include ? "" : "opacity-40"}`}>
+                      <td className="px-2 py-1 text-center">
+                        <input type="checkbox" checked={r.include}
+                          onChange={(e) => updateRow(i, { include: e.target.checked })} />
+                      </td>
+                      <td className="px-2 py-1">
+                        <Input type="date" value={r.data} onChange={(e) => updateRow(i, { data: e.target.value })}
+                          className="h-7 bg-secondary border-border text-xs" />
+                      </td>
+                      <td className="px-2 py-1">
+                        <Input value={r.descricao} onChange={(e) => updateRow(i, { descricao: e.target.value })}
+                          className="h-7 bg-secondary border-border text-xs" />
+                      </td>
+                      <td className="px-2 py-1">
+                        <select value={r.tipo}
+                          onChange={(e) => updateRow(i, { tipo: e.target.value as "receita" | "despesa" })}
+                          className="h-7 w-full rounded-md border border-border bg-secondary px-1 text-xs">
+                          <option value="receita">Receita</option>
+                          <option value="despesa">Despesa</option>
+                        </select>
+                      </td>
+                      <td className="px-2 py-1">
+                        <select value={r.categoria_sugerida}
+                          onChange={(e) => updateRow(i, { categoria_sugerida: e.target.value })}
+                          className="h-7 w-full rounded-md border border-border bg-secondary px-1 text-xs">
+                          {EXPENSE_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-2 py-1">
+                        <Input type="number" step={0.01} value={r.valor}
+                          onChange={(e) => updateRow(i, { valor: Number(e.target.value) })}
+                          className="h-7 bg-secondary border-border text-xs text-right font-mono" />
+                      </td>
+                      <td className="px-2 py-1 text-center">
+                        <button onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))}
+                          className="text-muted-foreground hover:text-hef-danger">
+                          <Trash2 size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {rows.length === 0 && (
+                    <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Nenhuma transação encontrada.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={close}>Cancelar</Button>
+              <Button onClick={confirm} disabled={confirmImport.isPending}>
+                {confirmImport.isPending ? "Salvando…" : `Adicionar ao fluxo de caixa`}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
