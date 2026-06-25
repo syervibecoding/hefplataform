@@ -17,6 +17,7 @@ const PAGE_TITLES: Record<string, string> = {
   workflow: "Workflow",
   melhorias: "Melhorias",
   support: "Gerenciador de Plataformas",
+  assistant: "Assistente Financeiro",
   settings: "Configurações",
 };
 
