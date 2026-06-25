@@ -1,88 +1,71 @@
-## Objetivo
+# Histórico de importações + validação prévia
 
-1. **Conectar sua chave OPENAI_API_KEY** para todas as chamadas de IA (extração + análise).
-2. **Trocar o extrator atual de PDF** por um parser dedicado rodando no servidor (sem IA na extração — só na classificação).
-3. **Nova página "Assistente Financeiro"** — chat dedicado onde você conversa com a IA usando seu fluxo de caixa real e a base de clientes/MRR como contexto.
+## 1. Nova página "Importações" no menu
+- Adicionar item **Importações** na `Sidebar.tsx` (admin-only, ícone `FileUp`), abaixo de "Fluxo de Caixa".
+- Registrar rota `/importacoes` em `src/pages/Index.tsx` → nova página `FinancialImportsPage.tsx`.
+- Atualizar título no `Topbar.tsx`.
 
----
+## 2. Página `FinancialImportsPage.tsx`
+Layout em duas seções:
 
-## 1. Chave OpenAI
+**Topo — ação principal**
+- Botão **"Nova importação"** que abre o `ImportFinancialDialog` já existente.
 
-Vou pedir a `OPENAI_API_KEY` via `add_secret` (você cola o valor em formulário seguro). A chave fica disponível server-side e nunca vaza para o navegador.
+**Lista de histórico** (usa `useFinancialImports(true)` já existente)
+Tabela com colunas:
+- Data da importação
+- Origem (banco/cartão + nome do arquivo)
+- Tipo (Extrato / Fatura)
+- Período (início → fim)
+- Nº transações
+- Totais (+receitas / −despesas) — calculados a partir de `cash_overrides` filtrados por `import_id`
+- Ações: **Ver detalhes**, **Exportar CSV**, **Reverter**
 
-Todas as chamadas existentes e novas para IA vão passar a usar:
-- **Modelo padrão de chat/análise**: `gpt-5-mini` (rápido e barato pra conversa).
-- **Modelo padrão de extração de transações**: `gpt-5-mini` com structured output (JSON schema).
+**Ver detalhes** → abre um `Dialog` listando as transações daquela importação (mesma tabela do passo de revisão, somente leitura).
 
-Você pode trocar o modelo depois se quiser usar `gpt-5` (mais capaz) ou `gpt-5-nano` (mais barato).
+**Exportar CSV** → gera CSV no cliente (data, descrição, tipo, categoria, valor) a partir das transações da importação.
 
----
+**Reverter** → confirma e chama `revertImport` (já existente em `useFinancialImports`).
 
-## 2. Novo parser de PDF
+## 3. Validação antes de confirmar importação
+Alterar o passo **"review"** do `ImportFinancialDialog.tsx`:
 
-A edge function `parse-financial-pdf` vai ser reescrita:
+**a) Banner de conferência (totais)**
+Já existe a soma de entradas/saídas no topo. Adicionar **saldo do período** (= receitas − despesas) bem destacado, para o usuário comparar com o PDF.
 
-- **Extração**: usa `unpdf` (parser open-source, roda em Deno sem dependências nativas) para extrair o texto estruturado do PDF, página por página. Para PDFs com senha, recebe a senha do frontend e passa pro parser.
-- **Classificação**: o texto cru vai pra OpenAI (com a sua chave) usando structured outputs (`response_format: json_schema`) — a IA só categoriza e estrutura, não "lê" o PDF.
+**b) Aviso de sobreposição de período**
+Ao entrar no passo "review", consultar `financial_imports` filtrando por:
+- mesma `kind`
+- mesma `origem` (quando detectada)
+- período que se sobrepõe a `periodo_inicio`/`periodo_fim` do novo PDF
 
-Benefícios vs. hoje:
-- Extração 100% determinística (mesma entrada → mesma saída).
-- Mais barato: a IA só vê o texto limpo, não o PDF inteiro.
-- Mais confiável em faturas longas (não perde linhas).
+Se houver, mostrar um alerta amarelo no topo:
+> "O período X já foi importado em DD/MM/AAAA (origem Y). Confira para evitar duplicidade."
+Com link "Ver importação" abrindo o detalhe.
 
-O fluxo do dialog de importação (upload → senha → revisão → confirmação) continua igual; só o motor server-side muda.
+**c) Duplicatas vs. lançamentos existentes**
+Ao entrar no "review", buscar em `cash_overrides` todas as linhas cuja `data` esteja no intervalo `[periodo_inicio, periodo_fim]` (uma query só). Para cada linha do PDF, marcar como **duplicata provável** se existir registro com:
+- mesma `data`
+- mesmo `tipo`
+- mesmo `valor` (até 2 casas)
+- e descrição com similaridade alta (normalizar: lowercase, sem acento, ignorar nº de parcela; match se uma string contém a outra OU Jaccard de tokens ≥ 0.7)
 
----
+Comportamento na tabela do "review":
+- Coluna nova com badge **"Duplicata"** (amarelo) quando suspeita.
+- Tooltip no badge mostra o lançamento existente (data, valor, descrição) que casou.
+- Duplicatas vêm com `include = false` por padrão.
+- Botão extra **"Desmarcar duplicatas"** ao lado de "Marcar/Desmarcar todos".
+- Contador no rodapé: "X duplicatas detectadas, Y selecionadas para importar".
 
-## 3. Página "Assistente Financeiro"
+## 4. Detalhes técnicos
+- **Totais por importação** no histórico: agregar `cash_overrides` por `import_id` numa única query (`select tipo, valor, import_id from cash_overrides where import_id in (...)`) e somar no cliente.
+- **Detecção de duplicatas**: utilitário puro em `src/lib/import-validation.ts` (`detectDuplicates(rows, existing)` + `normalizeDescription`) para ficar testável.
+- **Sobreposição de período**: utilitário `findPeriodOverlap(imports, kind, origem, start, end)` no mesmo arquivo.
+- **CSV**: helper `exportImportToCsv(import, rows)` que monta o blob e dispara download.
+- Nenhuma mudança de schema é necessária (todos os dados já estão em `financial_imports` + `cash_overrides.import_id`).
+- RLS já cobre essas tabelas (admin-only conforme políticas existentes).
 
-Nova entrada no sidebar: **Assistente** (ícone de mensagem).
-
-**Comportamento**:
-- Chat dedicado, single-conversation (sem threads), sem persistência por padrão — cada visita começa limpa, mas com um botão "Nova conversa" pra resetar manualmente.
-- Markdown rendering nas respostas (tabelas, listas, gráficos em texto).
-- Streaming em tempo real (token a token).
-
-**Contexto que a IA recebe automaticamente** (system prompt + dados injetados a cada mensagem):
-- Snapshot do **fluxo de caixa anual** do ano corrente: saldo inicial, receitas/despesas/investimentos/aportes/retiradas mês a mês, saldo final.
-- **MRR e clientes ativos por produto**: total de clientes, ticket médio, soma mensal por produto.
-- Data atual e mês de referência.
-
-Tudo isso é montado numa edge function `financial-assistant-chat` antes de mandar pro modelo, então as respostas saem grounded nos seus números reais.
-
-**Exemplos de perguntas que o assistente responde bem**:
-- "Qual minha projeção de saldo até dezembro mantendo o ritmo atual?"
-- "Em qual mês meu caixa fica mais apertado?"
-- "Se eu cortar 20% das despesas administrativas, quanto sobra no final do ano?"
-- "Que produto tem a melhor relação receita/cliente?"
-
-**Limites**:
-- Só admins acessam (mesma regra do fluxo de caixa).
-- O assistente é consultivo — não cria/edita lançamentos sozinho. Se você quiser que ele insira despesas via chat, é uma segunda fase com tool calling.
-
----
-
-## Detalhes técnicos
-
-**Secrets**:
-- `OPENAI_API_KEY` — solicitada via `add_secret`.
-
-**Backend (edge functions)**:
-- `parse-financial-pdf` (reescrita): `unpdf` para texto + OpenAI structured outputs para JSON.
-- `financial-assistant-chat` (nova): monta contexto financeiro (fluxo de caixa + MRR) consultando o banco com service role, envia pra OpenAI Chat Completions em streaming, devolve SSE.
-
-**Frontend**:
-- `src/pages/AssistantPage.tsx` — chat UI com `react-markdown`, input no rodapé, scroll automático, botão "Nova conversa".
-- `src/components/Sidebar.tsx` — novo item "Assistente" (visível só pra admin).
-- `src/pages/Index.tsx` — rota `assistant` ligada à nova página.
-
-**Sem mudanças de schema**: não preciso criar tabelas novas. Conversas não são persistidas.
-
----
-
-## Fora do escopo desta entrega
-
-- Persistência de conversas anteriores (pode ser adicionada depois).
-- Tool calling (assistente criando lançamentos sozinho).
-- Projeções gráficas geradas pela IA — por ora a resposta é em texto/markdown.
-- CRM e renovações no contexto (só fluxo de caixa + clientes/MRR, conforme você escolheu).
+## Fora de escopo
+- Detecção de duplicatas dentro do próprio PDF.
+- Reprocessar/re-extrair uma importação antiga.
+- Edição das transações depois de salvas (continua via Fluxo de Caixa).

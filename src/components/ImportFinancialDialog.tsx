@@ -1,14 +1,21 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, AlertCircle, Trash2 } from "lucide-react";
+import { Upload, Loader2, AlertCircle, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { extractPdfText, PdfPasswordRequiredError } from "@/lib/pdf-extract";
 import { useFinancialImports, type ConfirmedTransaction } from "@/hooks/useFinancialImports";
 import { EXPENSE_CATEGORIES } from "@/hooks/useCashExpenses";
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  detectDuplicates,
+  findPeriodOverlap,
+  type ExistingTx,
+} from "@/lib/import-validation";
+import type { FinancialImport } from "@/hooks/useFinancialImports";
 
 type Step = "upload" | "password" | "loading" | "review";
 
@@ -19,7 +26,7 @@ interface Props {
 
 export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
-  const { confirmImport } = useFinancialImports(false);
+  const { confirmImport, data: allImports = [] } = useFinancialImports(true);
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
@@ -31,11 +38,14 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const [periodStart, setPeriodStart] = useState<string | null>(null);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [rows, setRows] = useState<ConfirmedTransaction[]>([]);
+  const [duplicates, setDuplicates] = useState<Array<ExistingTx | null>>([]);
+  const [overlapping, setOverlapping] = useState<FinancialImport[]>([]);
 
   const reset = () => {
     setStep("upload"); setFile(null); setPassword(""); setPasswordError(null);
     setError(null); setHint("auto"); setRows([]); setOrigem("");
     setPeriodStart(null); setPeriodEnd(null);
+    setDuplicates([]); setOverlapping([]);
   };
 
   const close = () => { reset(); onOpenChange(false); };
@@ -76,11 +86,48 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
       setOrigem(parsed.origem || "");
       setPeriodStart(parsed.periodo_inicio || null);
       setPeriodEnd(parsed.periodo_fim || null);
-      setRows((parsed.transacoes || []).map((t) => ({ ...t, include: true })));
+      const parsedRows = (parsed.transacoes || []).map((t) => ({ ...t, include: true }));
+      setRows(parsedRows);
       setStep("review");
+      // run validations
+      await runValidations(parsed.kind || "extrato", parsed.origem || "", parsed.periodo_inicio || null, parsed.periodo_fim || null, parsedRows);
     } catch (e: any) {
       setError(e?.message || "Falha ao processar PDF.");
       setStep("upload");
+    }
+  };
+
+  const runValidations = async (
+    kind: "extrato" | "fatura",
+    origemDetected: string,
+    pStart: string | null,
+    pEnd: string | null,
+    parsedRows: ConfirmedTransaction[],
+  ) => {
+    // period overlap
+    setOverlapping(findPeriodOverlap(allImports, kind, origemDetected, pStart, pEnd));
+
+    // duplicates vs existing cash_overrides
+    if (pStart && pEnd && parsedRows.length > 0) {
+      const { data, error } = await supabase
+        .from("cash_overrides")
+        .select("id,data,nome,tipo,valor,import_id")
+        .gte("data", pStart)
+        .lte("data", pEnd);
+      if (!error && data) {
+        const existing: ExistingTx[] = (data as any[]).map((r) => ({
+          id: r.id, data: r.data, nome: r.nome, tipo: r.tipo,
+          valor: Number(r.valor) || 0, import_id: r.import_id,
+        }));
+        const dups = detectDuplicates(parsedRows, existing);
+        setDuplicates(dups);
+        // auto-uncheck duplicates
+        if (dups.some(Boolean)) {
+          setRows((rs) => rs.map((r, i) => dups[i] ? { ...r, include: false } : r));
+        }
+      }
+    } else {
+      setDuplicates(new Array(parsedRows.length).fill(null));
     }
   };
 
@@ -101,6 +148,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   };
 
   const toggleAll = (v: boolean) => setRows((r) => r.map((row) => ({ ...row, include: v })));
+
+  const uncheckDuplicates = () => {
+    setRows((rs) => rs.map((r, i) => duplicates[i] ? { ...r, include: false } : r));
+  };
 
   const confirm = async () => {
     const included = rows.filter((r) => r.include);
@@ -130,6 +181,9 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
 
   const totalIn = rows.filter((r) => r.include && r.tipo === "receita").reduce((a, b) => a + b.valor, 0);
   const totalOut = rows.filter((r) => r.include && r.tipo === "despesa").reduce((a, b) => a + b.valor, 0);
+  const saldo = totalIn - totalOut;
+  const dupCount = duplicates.filter(Boolean).length;
+  const dupSelected = rows.filter((r, i) => r.include && duplicates[i]).length;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) close(); else onOpenChange(true); }}>
@@ -196,6 +250,22 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
 
         {step === "review" && (
           <div className="space-y-3">
+            {overlapping.length > 0 && (
+              <div className="flex items-start gap-2 text-[11px] bg-yellow-500/10 border border-yellow-500/30 rounded-md p-2 text-yellow-200">
+                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>Atenção:</strong> já existe importação com período sobreposto.{" "}
+                  {overlapping.slice(0, 3).map((o, i) => (
+                    <span key={o.id}>
+                      {i > 0 ? "; " : ""}
+                      {o.source_name} ({o.period_start || "?"} → {o.period_end || "?"}, em {new Date(o.created_at).toLocaleDateString("pt-BR")})
+                    </span>
+                  ))}
+                  . Confira para evitar duplicidade.
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 text-[11px]">
               <span className="px-2 py-0.5 rounded-md bg-secondary border border-border">
                 {detectedKind === "fatura" ? "Fatura de cartão" : "Extrato bancário"}
@@ -204,9 +274,17 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
               {(periodStart || periodEnd) && (
                 <span className="text-muted-foreground">Período: {periodStart || "?"} → {periodEnd || "?"}</span>
               )}
-              <span className="ml-auto text-muted-foreground">
-                <span className="text-hef-success font-semibold">+{totalIn.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>{" "}
-                <span className="text-hef-danger font-semibold">-{totalOut.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+              <span className="ml-auto flex items-center gap-3">
+                <span className="text-muted-foreground">
+                  <span className="text-hef-success font-semibold">+{totalIn.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>{" "}
+                  <span className="text-hef-danger font-semibold">-{totalOut.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </span>
+                <span className="px-2 py-1 rounded-md bg-secondary border border-border font-mono">
+                  Saldo:{" "}
+                  <span className={saldo >= 0 ? "text-hef-success font-semibold" : "text-hef-danger font-semibold"}>
+                    {saldo >= 0 ? "+" : ""}{saldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </span>
               </span>
             </div>
 
@@ -214,8 +292,19 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
               <div className="flex gap-2">
                 <Button size="sm" variant="ghost" onClick={() => toggleAll(true)}>Marcar todos</Button>
                 <Button size="sm" variant="ghost" onClick={() => toggleAll(false)}>Desmarcar todos</Button>
+                {dupCount > 0 && (
+                  <Button size="sm" variant="ghost" onClick={uncheckDuplicates} className="text-yellow-300 hover:text-yellow-200">
+                    Desmarcar duplicatas
+                  </Button>
+                )}
               </div>
-              <span className="text-muted-foreground">{rows.filter((r) => r.include).length} de {rows.length} selecionadas</span>
+              <span className="text-muted-foreground">
+                {rows.filter((r) => r.include).length} de {rows.length} selecionadas
+                {dupCount > 0 && (
+                  <> · <span className="text-yellow-300">{dupCount} duplicata(s)</span>
+                  {dupSelected > 0 && <span className="text-yellow-300"> ({dupSelected} marcada(s))</span>}</>
+                )}
+              </span>
             </div>
 
             <div className="border border-border rounded-lg overflow-auto max-h-[55vh]">
@@ -225,6 +314,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                     <th className="px-2 py-1.5 w-8"></th>
                     <th className="px-2 py-1.5 text-left font-semibold">Data</th>
                     <th className="px-2 py-1.5 text-left font-semibold">Descrição</th>
+                    <th className="px-2 py-1.5 text-left font-semibold w-20">Status</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-24">Tipo</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-36">Categoria</th>
                     <th className="px-2 py-1.5 text-right font-semibold w-28">Valor (R$)</th>
@@ -245,6 +335,25 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                       <td className="px-2 py-1">
                         <Input value={r.descricao} onChange={(e) => updateRow(i, { descricao: e.target.value })}
                           className="h-7 bg-secondary border-border text-xs" />
+                      </td>
+                      <td className="px-2 py-1">
+                        {duplicates[i] ? (
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-500/15 border border-yellow-500/40 text-yellow-200 cursor-help">
+                                  <AlertTriangle size={10} /> Duplicata
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-[11px] max-w-xs">
+                                Já existe: {duplicates[i]!.data} · {duplicates[i]!.nome} ·{" "}
+                                R$ {duplicates[i]!.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-2 py-1">
                         <select value={r.tipo}
@@ -275,7 +384,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                     </tr>
                   ))}
                   {rows.length === 0 && (
-                    <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Nenhuma transação encontrada.</td></tr>
+                    <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Nenhuma transação encontrada.</td></tr>
                   )}
                 </tbody>
               </table>

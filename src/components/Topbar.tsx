@@ -18,6 +18,7 @@ const PAGE_TITLES: Record<string, string> = {
   melhorias: "Melhorias",
   support: "Gerenciador de Plataformas",
   assistant: "Assistente Financeiro",
+  "financial-imports": "Importações",
   settings: "Configurações",
 };
 

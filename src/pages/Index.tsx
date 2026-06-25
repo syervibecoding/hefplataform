@@ -19,6 +19,7 @@ import OperacionalPage from "./OperacionalPage";
 import ConsultoriaPage from "./ConsultoriaPage";
 import ConsultoriaReportPage from "./ConsultoriaReportPage";
 import AssistantPage from "./AssistantPage";
+import FinancialImportsPage from "./FinancialImportsPage";
 import {
   SEED_CONSULTORIA_CLIENTS,
   novoCliente as novoConsultoriaCliente,
@@ -212,6 +213,8 @@ export default function Index() {
         return <WorkflowPage />;
       case "assistant":
         return <AssistantPage />;
+      case "financial-imports":
+        return <FinancialImportsPage />;
       case "settings":
         return (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
@@ -242,6 +245,7 @@ export default function Index() {
             : activePage === "general-dashboard" ? "Visão Geral"
             : activePage === "cash-flow" ? "Financeiro"
             : activePage === "assistant" ? "IA"
+            : activePage === "financial-imports" ? "Financeiro"
             : currentProductInfo?.nome || ""
           }
         />

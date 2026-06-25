@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Calendar, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2, Package, Home, Sparkles } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Rocket, Settings, ChevronDown, LogOut, UserCog, Plus, BookOpen, TrendingUp, Pencil, Trash2, Package, Home, Sparkles, FileUp } from "lucide-react";
 import { useState } from "react";
 import logoHef from "@/assets/logo-hefsys.png";
 import { type ProductId } from "@/data/constants";
@@ -232,6 +232,19 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
           >
             <Sparkles size={18} />
             Assistente
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            onClick={() => handleNavigate("financial-imports")}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full ${
+              activePage === "financial-imports"
+                ? "bg-primary/12 text-primary border border-primary/15"
+                : "text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground"
+            }`}
+          >
+            <FileUp size={18} />
+            Importações
           </button>
         )}
         {isAdmin && (
