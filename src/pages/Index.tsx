@@ -245,6 +245,7 @@ export default function Index() {
             : activePage === "general-dashboard" ? "Visão Geral"
             : activePage === "cash-flow" ? "Financeiro"
             : activePage === "assistant" ? "IA"
+            : activePage === "financial-imports" ? "Financeiro"
             : currentProductInfo?.nome || ""
           }
         />
