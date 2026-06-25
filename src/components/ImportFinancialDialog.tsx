@@ -190,7 +190,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
         {step === "loading" && (
           <div className="flex flex-col items-center justify-center py-10 gap-3">
             <Loader2 size={28} className="animate-spin text-primary" />
-            <p className="text-xs text-muted-foreground">Lendo PDF e extraindo transações com IA…</p>
+            <p className="text-xs text-muted-foreground">Lendo PDF e classificando transações com OpenAI…</p>
           </div>
         )}
 
