@@ -1,6 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
-const LOVABLE_AI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const MODEL = 'gpt-5-mini';
 
 const SYSTEM_PROMPT = `Você extrai transações financeiras de extratos bancários brasileiros e faturas de cartão de crédito.
 
@@ -19,6 +20,7 @@ REGRAS:
 
 const SCHEMA = {
   type: 'object',
+  additionalProperties: false,
   properties: {
     kind: { type: 'string', enum: ['extrato', 'fatura'] },
     origem: { type: 'string' },
@@ -28,6 +30,7 @@ const SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           data: { type: 'string' },
           descricao: { type: 'string' },
@@ -39,16 +42,16 @@ const SCHEMA = {
       },
     },
   },
-  required: ['kind', 'transacoes'],
+  required: ['kind', 'origem', 'periodo_inicio', 'periodo_fim', 'transacoes'],
 };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY não configurada.' }), {
+      return new Response(JSON.stringify({ error: 'OPENAI_API_KEY não configurada.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -66,58 +69,55 @@ Deno.serve(async (req) => {
 
     const userPrompt = `Arquivo: ${filename}${hint ? ` (tipo informado: ${hint})` : ''}\n\nConteúdo extraído do PDF:\n\n${text.slice(0, 120000)}`;
 
-    const aiRes = await fetch(LOVABLE_AI_URL, {
+    const aiRes = await fetch(OPENAI_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Lovable-API-Key': apiKey,
-        'X-Lovable-AIG-SDK': 'custom-fetch',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: MODEL,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
         ],
-        tools: [{
-          type: 'function',
-          function: {
-            name: 'registrar_transacoes',
-            description: 'Registra as transações extraídas do documento financeiro',
-            parameters: SCHEMA,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'transacoes_financeiras',
+            strict: true,
+            schema: SCHEMA,
           },
-        }],
-        tool_choice: { type: 'function', function: { name: 'registrar_transacoes' } },
+        },
       }),
     });
 
     if (!aiRes.ok) {
       const errText = await aiRes.text();
       if (aiRes.status === 429) {
-        return new Response(JSON.stringify({ error: 'Limite de requisições da IA atingido. Tente em alguns instantes.' }), {
+        return new Response(JSON.stringify({ error: 'Limite de requisições da OpenAI atingido. Tente em alguns instantes.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (aiRes.status === 402) {
-        return new Response(JSON.stringify({ error: 'Créditos da IA esgotados. Recarregue na área de billing.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      if (aiRes.status === 401) {
+        return new Response(JSON.stringify({ error: 'OPENAI_API_KEY inválida ou expirada.' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      return new Response(JSON.stringify({ error: `Falha na IA: ${errText}` }), {
+      return new Response(JSON.stringify({ error: `Falha na OpenAI: ${errText}` }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const aiJson = await aiRes.json();
-    const toolCall = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
-    const argsRaw = toolCall?.function?.arguments;
-    if (!argsRaw) {
+    const content = aiJson?.choices?.[0]?.message?.content;
+    if (!content) {
       return new Response(JSON.stringify({ error: 'IA não retornou dados estruturados.' }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     let parsed: any;
-    try { parsed = typeof argsRaw === 'string' ? JSON.parse(argsRaw) : argsRaw; }
+    try { parsed = typeof content === 'string' ? JSON.parse(content) : content; }
     catch { return new Response(JSON.stringify({ error: 'JSON inválido da IA.' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
 
     return new Response(JSON.stringify(parsed), {
