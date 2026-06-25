@@ -65,7 +65,7 @@ function useMrrSnapshot(products: { id: string; nome: string }[], enabled: boole
 }
 
 export default function AssistantPage() {
-  const { isAdmin, session } = useAuth();
+  const { isAdmin } = useAuth();
   const year = new Date().getFullYear();
   const cf = useCashFlowYear(year, isAdmin);
   const { products } = useProducts();
@@ -136,6 +136,7 @@ export default function AssistantPage() {
     abortRef.current = controller;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-assistant-chat`;
       const res = await fetch(url, {
         method: "POST",
