@@ -241,6 +241,7 @@ export default function Index() {
             activePage === "home" || activePage === "operacional" || activePage === "consultoria" || activePage === "consultoria-relatorio" ? ""
             : activePage === "general-dashboard" ? "Visão Geral"
             : activePage === "cash-flow" ? "Financeiro"
+            : activePage === "assistant" ? "IA"
             : currentProductInfo?.nome || ""
           }
         />
