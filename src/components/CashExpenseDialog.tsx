@@ -21,6 +21,7 @@ const empty: Omit<CashExpense, "id"> = {
   data_inicio: new Date().toISOString().slice(0, 10),
   data_fim: null,
   ativo: true,
+  aliases: [],
 };
 
 export default function CashExpenseDialog({ open, onOpenChange, initial, onSubmit }: Props) {
@@ -42,6 +43,7 @@ export default function CashExpenseDialog({ open, onOpenChange, initial, onSubmi
       valor: Number(form.valor) || 0,
       dia_pagamento: Math.max(1, Math.min(31, Number(form.dia_pagamento) || 5)),
       data_fim: form.data_fim || null,
+      aliases: (form.aliases || []).map((a) => a.trim()).filter(Boolean),
     });
     onOpenChange(false);
   };
@@ -104,6 +106,18 @@ export default function CashExpenseDialog({ open, onOpenChange, initial, onSubmi
             <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} className="h-4 w-4 rounded border-border bg-secondary accent-primary" />
             <span className="text-xs text-muted-foreground">Ativa</span>
           </label>
+          <div>
+            <Label className="text-xs text-muted-foreground">Apelidos na fatura (separe por vírgula)</Label>
+            <Input
+              value={(form.aliases || []).join(", ")}
+              onChange={(e) => setForm({ ...form, aliases: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+              placeholder="LOVABLE DO, OPENAI *CHATGPT, DM*HOSTINGER"
+              className="mt-1 bg-secondary border-border"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Como esse fornecedor aparece na fatura do cartão. Usado para detectar duplicatas na importação.
+            </p>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => onOpenChange(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Cancelar</button>
             <button onClick={submit} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all">Salvar</button>
