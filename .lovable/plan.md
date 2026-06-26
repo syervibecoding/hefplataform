@@ -1,42 +1,31 @@
-# Histórico das últimas 3 conversas do Assistente Financeiro
+# Persistir a página ativa
 
-Hoje o assistente avisa "As conversas não são salvas". Vamos persistir cada conversa no banco e exibir um atalho com as 3 mais recentes de **todos os admins**, dentro da própria página do assistente.
+## Problema
+Hoje, `activePage`, `activeProduct`, `selectedClient` e `selectedConsultoriaId` vivem apenas em `useState` dentro de `src/pages/Index.tsx`. Quando você sai da aba do navegador e volta, ou recarrega, o React monta tudo do zero e cai no estado inicial `"home"`.
 
-## Backend (Lovable Cloud)
+## Solução
+Salvar o estado de navegação no `localStorage` e restaurar na montagem do `Index`. Sem mudar rotas nem o resto da arquitetura — é só persistência leve do estado já existente.
 
-Nova tabela `assistant_conversations`:
-- `user_id` (autor)
-- `title` (gerado a partir da 1ª pergunta — primeiros ~60 chars)
-- `messages` (jsonb — array `{role, content}`)
-- `created_at`, `updated_at`
+### O que será persistido
+- `activePage` (string)
+- `activeProduct` (ProductId)
+- `selectedClient` (objeto do cliente — para que "Detalhe do cliente" continue funcionando ao voltar)
+- `selectedConsultoriaId` (string | null)
 
-Regras de acesso:
-- SELECT: qualquer admin (via `has_role(auth.uid(),'admin')`) — todos veem todas.
-- INSERT/UPDATE: apenas o próprio autor (admin), garantindo `user_id = auth.uid()`.
-- DELETE: apenas o autor ou admin.
-- GRANTs padrão para `authenticated` e `service_role`.
+Tudo sob uma chave única, ex.: `hef:nav-state:v1`.
 
-## Frontend (`src/pages/AssistantPage.tsx`)
+### Como vai funcionar
+1. Na montagem do `Index`, ler o JSON salvo. Se existir e `activePage` for válido, usar como estado inicial em vez de `"home"`.
+2. Um `useEffect` observa esses 4 estados e regrava o JSON sempre que mudam (debounce simples não é necessário, são mudanças raras).
+3. Ao deslogar (no `AuthContext.signOut`), limpar a chave para que outro usuário não herde a navegação anterior.
+4. Guardar a versão (`v1`) na chave para invalidar facilmente no futuro se o shape mudar.
 
-1. **Persistência automática**: assim que o assistente termina de responder (1ª mensagem completa), cria o registro com `title` derivado da pergunta. Nas mensagens seguintes da mesma conversa, faz `update` do mesmo id (com `messages` e `updated_at`).
-2. **Painel "Conversas recentes"** no topo direito do header (ao lado de "Nova conversa"):
-   - Botão `Histórico` com contador.
-   - Abre um `Popover`/dropdown listando as **3 conversas mais recentes** (qualquer admin), mostrando:
-     - Título
-     - Autor (username via `get_username`)
-     - Data relativa ("há 2h")
-   - Click → carrega `messages` no estado atual e desativa novo `insert` (continua usando `update` no id carregado).
-3. **"Nova conversa"** continua zerando o estado e o id ativo, voltando ao fluxo de criação.
-4. Atualizar o rodapé: trocar "As conversas não são salvas" por "Conversas ficam salvas e visíveis para admins".
+### Detalhes técnicos
+- Arquivo principal alterado: `src/pages/Index.tsx`.
+  - Trocar `useState("home")` etc. por inicializadores lazy que leem do `localStorage`.
+  - Adicionar `useEffect` que serializa `{ activePage, activeProduct, selectedClient, selectedConsultoriaId }`.
+- Pequeno ajuste em `src/contexts/AuthContext.tsx`: no `signOut`, remover a chave `hef:nav-state:v1`.
+- Sem mudanças em rotas, sem novas dependências.
 
-## Detalhes técnicos
-
-- Novo hook `useAssistantConversations` (React Query):
-  - `listRecent(limit=3)` → ordenado por `updated_at desc`.
-  - `create({title, messages})` → retorna id.
-  - `update(id, messages)`.
-- Salvamento dispara só ao final do stream (no `finally` do `send`) para evitar gravar parciais.
-- Título: `text.slice(0,60)` da 1ª mensagem do usuário; se truncado, adiciona "…".
-- Tipos do Supabase serão regenerados após a migration.
-
-Nada mais é alterado — o restante da página (sugestões, streaming, contexto financeiro) permanece igual.
+### Fora de escopo
+- Não vou migrar a navegação para URLs do React Router (`/clientes`, `/assistente`, etc.). Isso resolveria o mesmo problema de forma mais "web-nativa" (URL compartilhável, botão voltar do navegador), mas é uma mudança bem maior. Posso fazer depois se quiser.
