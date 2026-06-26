@@ -118,6 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    try {
+      localStorage.removeItem("hef:nav-state:v1");
+    } catch {}
     await supabase.auth.signOut();
   };
 
