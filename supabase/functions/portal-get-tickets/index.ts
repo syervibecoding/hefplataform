@@ -15,11 +15,14 @@ Deno.serve(async (req) => {
     if (tErr) throw tErr
     const ids = (tickets ?? []).map((t: any) => t.id)
     let messages: any[] = []
+    let attachments: any[] = []
     if (ids.length) {
       const { data: msgs } = await sb.from('support_ticket_messages').select('*').in('ticket_id', ids).order('created_at')
       messages = msgs ?? []
+      const { data: atts } = await sb.from('support_attachments').select('*').in('ticket_id', ids).order('created_at')
+      attachments = atts ?? []
     }
-    return j({ client: { id: client.id, nome: client.nome }, tickets: tickets ?? [], messages })
+    return j({ client: { id: client.id, nome: client.nome }, tickets: tickets ?? [], messages, attachments })
   } catch (e) {
     return j({ error: String(e) }, 500)
   }
