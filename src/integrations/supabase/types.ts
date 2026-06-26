@@ -960,6 +960,27 @@ export type Database = {
           },
         ]
       }
+      portal_rate_limits: {
+        Row: {
+          action: string
+          count: number
+          slug: string
+          window_start: string
+        }
+        Insert: {
+          action: string
+          count?: number
+          slug: string
+          window_start?: string
+        }
+        Update: {
+          action?: string
+          count?: number
+          slug?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           config: Json | null
@@ -1123,6 +1144,60 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: true
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          message_id: string | null
+          mime_type: string
+          size_bytes: number
+          ticket_id: string
+          uploaded_by_name: string | null
+          uploaded_by_type: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          message_id?: string | null
+          mime_type: string
+          size_bytes: number
+          ticket_id: string
+          uploaded_by_name?: string | null
+          uploaded_by_type: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          message_id?: string | null
+          mime_type?: string
+          size_bytes?: number
+          ticket_id?: string
+          uploaded_by_name?: string | null
+          uploaded_by_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_attachments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
             referencedColumns: ["id"]
           },
         ]

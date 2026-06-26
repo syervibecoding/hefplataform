@@ -36,6 +36,41 @@ export interface TicketMessage {
   created_at: string;
 }
 
+export interface SupportAttachment {
+  id: string;
+  ticket_id: string;
+  message_id: string | null;
+  file_path: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_by_type: "cliente" | "equipe";
+  uploaded_by_name: string | null;
+  created_at: string;
+}
+
+export function useTicketAttachments(ticketId?: string) {
+  return useQuery({
+    queryKey: ["support_attachments", ticketId],
+    enabled: !!ticketId,
+    queryFn: async (): Promise<SupportAttachment[]> => {
+      const { data, error } = await supabase
+        .from("support_attachments" as any)
+        .select("*")
+        .eq("ticket_id", ticketId!)
+        .order("created_at");
+      if (error) throw error;
+      return ((data ?? []) as unknown) as SupportAttachment[];
+    },
+  });
+}
+
+export async function getAttachmentSignedUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from("support-attachments").createSignedUrl(path, 300);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
 export function useSupportTickets(clientId?: string) {
   return useQuery({
     queryKey: ["support_tickets", clientId ?? "all"],
