@@ -1,71 +1,42 @@
-# Histórico de importações + validação prévia
+# Histórico das últimas 3 conversas do Assistente Financeiro
 
-## 1. Nova página "Importações" no menu
-- Adicionar item **Importações** na `Sidebar.tsx` (admin-only, ícone `FileUp`), abaixo de "Fluxo de Caixa".
-- Registrar rota `/importacoes` em `src/pages/Index.tsx` → nova página `FinancialImportsPage.tsx`.
-- Atualizar título no `Topbar.tsx`.
+Hoje o assistente avisa "As conversas não são salvas". Vamos persistir cada conversa no banco e exibir um atalho com as 3 mais recentes de **todos os admins**, dentro da própria página do assistente.
 
-## 2. Página `FinancialImportsPage.tsx`
-Layout em duas seções:
+## Backend (Lovable Cloud)
 
-**Topo — ação principal**
-- Botão **"Nova importação"** que abre o `ImportFinancialDialog` já existente.
+Nova tabela `assistant_conversations`:
+- `user_id` (autor)
+- `title` (gerado a partir da 1ª pergunta — primeiros ~60 chars)
+- `messages` (jsonb — array `{role, content}`)
+- `created_at`, `updated_at`
 
-**Lista de histórico** (usa `useFinancialImports(true)` já existente)
-Tabela com colunas:
-- Data da importação
-- Origem (banco/cartão + nome do arquivo)
-- Tipo (Extrato / Fatura)
-- Período (início → fim)
-- Nº transações
-- Totais (+receitas / −despesas) — calculados a partir de `cash_overrides` filtrados por `import_id`
-- Ações: **Ver detalhes**, **Exportar CSV**, **Reverter**
+Regras de acesso:
+- SELECT: qualquer admin (via `has_role(auth.uid(),'admin')`) — todos veem todas.
+- INSERT/UPDATE: apenas o próprio autor (admin), garantindo `user_id = auth.uid()`.
+- DELETE: apenas o autor ou admin.
+- GRANTs padrão para `authenticated` e `service_role`.
 
-**Ver detalhes** → abre um `Dialog` listando as transações daquela importação (mesma tabela do passo de revisão, somente leitura).
+## Frontend (`src/pages/AssistantPage.tsx`)
 
-**Exportar CSV** → gera CSV no cliente (data, descrição, tipo, categoria, valor) a partir das transações da importação.
+1. **Persistência automática**: assim que o assistente termina de responder (1ª mensagem completa), cria o registro com `title` derivado da pergunta. Nas mensagens seguintes da mesma conversa, faz `update` do mesmo id (com `messages` e `updated_at`).
+2. **Painel "Conversas recentes"** no topo direito do header (ao lado de "Nova conversa"):
+   - Botão `Histórico` com contador.
+   - Abre um `Popover`/dropdown listando as **3 conversas mais recentes** (qualquer admin), mostrando:
+     - Título
+     - Autor (username via `get_username`)
+     - Data relativa ("há 2h")
+   - Click → carrega `messages` no estado atual e desativa novo `insert` (continua usando `update` no id carregado).
+3. **"Nova conversa"** continua zerando o estado e o id ativo, voltando ao fluxo de criação.
+4. Atualizar o rodapé: trocar "As conversas não são salvas" por "Conversas ficam salvas e visíveis para admins".
 
-**Reverter** → confirma e chama `revertImport` (já existente em `useFinancialImports`).
+## Detalhes técnicos
 
-## 3. Validação antes de confirmar importação
-Alterar o passo **"review"** do `ImportFinancialDialog.tsx`:
+- Novo hook `useAssistantConversations` (React Query):
+  - `listRecent(limit=3)` → ordenado por `updated_at desc`.
+  - `create({title, messages})` → retorna id.
+  - `update(id, messages)`.
+- Salvamento dispara só ao final do stream (no `finally` do `send`) para evitar gravar parciais.
+- Título: `text.slice(0,60)` da 1ª mensagem do usuário; se truncado, adiciona "…".
+- Tipos do Supabase serão regenerados após a migration.
 
-**a) Banner de conferência (totais)**
-Já existe a soma de entradas/saídas no topo. Adicionar **saldo do período** (= receitas − despesas) bem destacado, para o usuário comparar com o PDF.
-
-**b) Aviso de sobreposição de período**
-Ao entrar no passo "review", consultar `financial_imports` filtrando por:
-- mesma `kind`
-- mesma `origem` (quando detectada)
-- período que se sobrepõe a `periodo_inicio`/`periodo_fim` do novo PDF
-
-Se houver, mostrar um alerta amarelo no topo:
-> "O período X já foi importado em DD/MM/AAAA (origem Y). Confira para evitar duplicidade."
-Com link "Ver importação" abrindo o detalhe.
-
-**c) Duplicatas vs. lançamentos existentes**
-Ao entrar no "review", buscar em `cash_overrides` todas as linhas cuja `data` esteja no intervalo `[periodo_inicio, periodo_fim]` (uma query só). Para cada linha do PDF, marcar como **duplicata provável** se existir registro com:
-- mesma `data`
-- mesmo `tipo`
-- mesmo `valor` (até 2 casas)
-- e descrição com similaridade alta (normalizar: lowercase, sem acento, ignorar nº de parcela; match se uma string contém a outra OU Jaccard de tokens ≥ 0.7)
-
-Comportamento na tabela do "review":
-- Coluna nova com badge **"Duplicata"** (amarelo) quando suspeita.
-- Tooltip no badge mostra o lançamento existente (data, valor, descrição) que casou.
-- Duplicatas vêm com `include = false` por padrão.
-- Botão extra **"Desmarcar duplicatas"** ao lado de "Marcar/Desmarcar todos".
-- Contador no rodapé: "X duplicatas detectadas, Y selecionadas para importar".
-
-## 4. Detalhes técnicos
-- **Totais por importação** no histórico: agregar `cash_overrides` por `import_id` numa única query (`select tipo, valor, import_id from cash_overrides where import_id in (...)`) e somar no cliente.
-- **Detecção de duplicatas**: utilitário puro em `src/lib/import-validation.ts` (`detectDuplicates(rows, existing)` + `normalizeDescription`) para ficar testável.
-- **Sobreposição de período**: utilitário `findPeriodOverlap(imports, kind, origem, start, end)` no mesmo arquivo.
-- **CSV**: helper `exportImportToCsv(import, rows)` que monta o blob e dispara download.
-- Nenhuma mudança de schema é necessária (todos os dados já estão em `financial_imports` + `cash_overrides.import_id`).
-- RLS já cobre essas tabelas (admin-only conforme políticas existentes).
-
-## Fora de escopo
-- Detecção de duplicatas dentro do próprio PDF.
-- Reprocessar/re-extrair uma importação antiga.
-- Edição das transações depois de salvas (continua via Fluxo de Caixa).
+Nada mais é alterado — o restante da página (sugestões, streaming, contexto financeiro) permanece igual.
