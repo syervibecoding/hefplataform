@@ -408,7 +408,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                     <th className="px-2 py-1.5 w-8"></th>
                     <th className="px-2 py-1.5 text-left font-semibold">Data</th>
                     <th className="px-2 py-1.5 text-left font-semibold">Descrição</th>
-                    <th className="px-2 py-1.5 text-left font-semibold w-20">Status</th>
+                    <th className="px-2 py-1.5 text-left font-semibold w-44">Status / Conflito</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-24">Tipo</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-36">Categoria</th>
                     <th className="px-2 py-1.5 text-right font-semibold w-28">Valor (R$)</th>
@@ -431,7 +431,32 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                           className="h-7 bg-secondary border-border text-xs" />
                       </td>
                       <td className="px-2 py-1">
-                        {duplicates[i] ? (
+                        {conflicts[i] ? (
+                          <div className="flex flex-col gap-1">
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/15 border border-orange-500/40 text-orange-200 cursor-help w-fit">
+                                    <AlertTriangle size={10} /> Recorrente
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-[11px] max-w-xs">
+                                  Bate com <strong>{conflicts[i]!.expenseName}</strong> (R$ {conflicts[i]!.expenseValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}) via apelido "{conflicts[i]!.matchedAlias}".
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <select
+                              value={actions[i] || ""}
+                              onChange={(e) => setRowAction(i, e.target.value as RecurringAction)}
+                              className={`h-6 w-full rounded-md border px-1 text-[10px] ${actions[i] ? "border-border bg-secondary" : "border-orange-500/60 bg-orange-500/10 text-orange-100"}`}
+                            >
+                              <option value="" disabled>Escolha…</option>
+                              <option value="substitute">Substituir recorrente</option>
+                              <option value="ignore">Ignorar (manter recorrente)</option>
+                              <option value="keep_both">Manter ambos</option>
+                            </select>
+                          </div>
+                        ) : duplicates[i] ? (
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
