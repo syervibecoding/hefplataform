@@ -60,7 +60,7 @@ export function useTicketAttachments(ticketId?: string) {
         .eq("ticket_id", ticketId!)
         .order("created_at");
       if (error) throw error;
-      return (data ?? []) as SupportAttachment[];
+      return ((data ?? []) as unknown) as SupportAttachment[];
     },
   });
 }
