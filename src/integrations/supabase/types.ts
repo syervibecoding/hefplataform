@@ -43,6 +43,7 @@ export type Database = {
       }
       cash_expenses: {
         Row: {
+          aliases: string[]
           ativo: boolean
           categoria: string
           created_at: string
@@ -57,6 +58,7 @@ export type Database = {
           valor: number
         }
         Insert: {
+          aliases?: string[]
           ativo?: boolean
           categoria?: string
           created_at?: string
@@ -71,6 +73,7 @@ export type Database = {
           valor?: number
         }
         Update: {
+          aliases?: string[]
           ativo?: boolean
           categoria?: string
           created_at?: string
