@@ -7,7 +7,7 @@ import { Upload, Loader2, AlertCircle, Trash2, AlertTriangle } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { extractPdfText, PdfPasswordRequiredError } from "@/lib/pdf-extract";
 import { useFinancialImports, type ConfirmedTransaction } from "@/hooks/useFinancialImports";
-import { EXPENSE_CATEGORIES } from "@/hooks/useCashExpenses";
+import { EXPENSE_CATEGORIES, useCashExpenses, type CashExpense } from "@/hooks/useCashExpenses";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -17,7 +17,47 @@ import {
 } from "@/lib/import-validation";
 import type { FinancialImport } from "@/hooks/useFinancialImports";
 
+function detectRecurringConflict(
+  row: ConfirmedTransaction,
+  expenses: CashExpense[],
+): RecurringConflict | null {
+  if (row.tipo !== "despesa") return null;
+  const desc = (row.descricao || "").toUpperCase();
+  if (!desc) return null;
+  const rowMonth = (row.data || "").slice(0, 7);
+  for (const e of expenses) {
+    if (!e.ativo) continue;
+    // só conflita se o mês da transação cai dentro da vigência
+    const ds = e.data_inicio || "";
+    const df = e.data_fim || null;
+    if (ds && ds.slice(0, 7) > rowMonth) continue;
+    if (df && df.slice(0, 7) < rowMonth) continue;
+    const candidates = [e.nome, ...(e.aliases || [])].filter(Boolean).map((s) => s.toUpperCase());
+    for (const term of candidates) {
+      if (term.length < 3) continue;
+      if (desc.includes(term) || term.includes(desc)) {
+        return {
+          expenseId: e.id,
+          expenseName: e.nome,
+          expenseValor: e.valor,
+          matchedAlias: term,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 type Step = "upload" | "password" | "loading" | "review";
+
+type RecurringAction = "substitute" | "ignore" | "keep_both";
+
+interface RecurringConflict {
+  expenseId: string;
+  expenseName: string;
+  expenseValor: number;
+  matchedAlias: string;
+}
 
 interface Props {
   open: boolean;
@@ -27,6 +67,7 @@ interface Props {
 export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const { confirmImport, data: allImports = [] } = useFinancialImports(true);
+  const { expenses: recurringExpenses } = useCashExpenses(true);
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
@@ -40,12 +81,14 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const [rows, setRows] = useState<ConfirmedTransaction[]>([]);
   const [duplicates, setDuplicates] = useState<Array<ExistingTx | null>>([]);
   const [overlapping, setOverlapping] = useState<FinancialImport[]>([]);
+  const [conflicts, setConflicts] = useState<Array<RecurringConflict | null>>([]);
+  const [actions, setActions] = useState<Array<RecurringAction | null>>([]);
 
   const reset = () => {
     setStep("upload"); setFile(null); setPassword(""); setPasswordError(null);
     setError(null); setHint("auto"); setRows([]); setOrigem("");
     setPeriodStart(null); setPeriodEnd(null);
-    setDuplicates([]); setOverlapping([]);
+    setDuplicates([]); setOverlapping([]); setConflicts([]); setActions([]);
   };
 
   const close = () => { reset(); onOpenChange(false); };
@@ -107,6 +150,11 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
     // period overlap
     setOverlapping(findPeriodOverlap(allImports, kind, origemDetected, pStart, pEnd));
 
+    // recurring expense conflicts (by alias / nome)
+    const recurringConflicts = parsedRows.map((row) => detectRecurringConflict(row, recurringExpenses));
+    setConflicts(recurringConflicts);
+    setActions(recurringConflicts.map((c) => (c ? null : null)));
+
     // duplicates vs existing cash_overrides
     if (pStart && pEnd && parsedRows.length > 0) {
       const { data, error } = await supabase
@@ -147,6 +195,12 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
   };
 
+  const setRowAction = (i: number, action: RecurringAction) => {
+    setActions((arr) => arr.map((a, idx) => (idx === i ? action : a)));
+    // se a ação é "ignore" desmarca; se outra ação, garante marcado
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, include: action !== "ignore" } : r)));
+  };
+
   const toggleAll = (v: boolean) => setRows((r) => r.map((row) => ({ ...row, include: v })));
 
   const uncheckDuplicates = () => {
@@ -159,18 +213,40 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
       toast({ title: "Nada selecionado", description: "Marque ao menos uma transação." });
       return;
     }
+    // bloqueia se houver conflito com recorrente sem ação escolhida
+    const unresolved = rows
+      .map((r, i) => ({ r, i }))
+      .filter(({ r, i }) => r.include && conflicts[i] && !actions[i]);
+    if (unresolved.length > 0) {
+      toast({
+        title: "Resolva os conflitos antes",
+        description: `${unresolved.length} transação(ões) batem com despesas recorrentes. Escolha "Substituir", "Ignorar" ou "Manter ambos" em cada uma.`,
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       await confirmImport.mutateAsync({
         kind: detectedKind,
         sourceName: origem ? `${origem} — ${file?.name || ""}`.trim() : (file?.name || "Importação"),
         periodStart, periodEnd,
-        transactions: included.map((t) => ({
-          data: t.data,
-          nome: t.descricao,
-          valor: t.valor,
-          tipo: t.tipo,
-          categoria: t.categoria_sugerida,
-        })),
+        transactions: rows
+          .map((t, i) => ({ t, i }))
+          .filter(({ t }) => t.include)
+          .map(({ t, i }) => {
+            const conflict = conflicts[i];
+            const action = actions[i];
+            const substitute = conflict && action === "substitute";
+            return {
+              data: t.data,
+              nome: t.descricao,
+              valor: t.valor,
+              tipo: t.tipo,
+              categoria: t.categoria_sugerida,
+              origem_tipo: substitute ? ("despesa" as const) : ("avulso" as const),
+              origem_id: substitute ? conflict!.expenseId : null,
+            };
+          }),
       });
       toast({ title: "Importação concluída", description: `${included.length} lançamento(s) adicionado(s) ao fluxo de caixa.` });
       close();
@@ -184,6 +260,8 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const saldo = totalIn - totalOut;
   const dupCount = duplicates.filter(Boolean).length;
   const dupSelected = rows.filter((r, i) => r.include && duplicates[i]).length;
+  const conflictCount = conflicts.filter(Boolean).length;
+  const conflictUnresolved = rows.filter((r, i) => r.include && conflicts[i] && !actions[i]).length;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) close(); else onOpenChange(true); }}>
@@ -266,6 +344,22 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
               </div>
             )}
 
+            {conflictCount > 0 && (
+              <div className="flex items-start gap-2 text-[11px] bg-orange-500/10 border border-orange-500/30 rounded-md p-2 text-orange-200">
+                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>{conflictCount} conflito(s) com despesas recorrentes.</strong>{" "}
+                  Para cada linha marcada com <span className="font-semibold">Recorrente</span>, escolha:
+                  <span className="ml-1"><strong>Substituir</strong> (usa o valor real da fatura e remove a previsão recorrente do mês),</span>{" "}
+                  <strong>Ignorar</strong> (mantém só a recorrente) ou{" "}
+                  <strong>Manter ambos</strong> (lança em dobro — não recomendado).
+                  {conflictUnresolved > 0 && (
+                    <span className="block mt-1 text-orange-100">⚠ {conflictUnresolved} linha(s) sem decisão ainda.</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 text-[11px]">
               <span className="px-2 py-0.5 rounded-md bg-secondary border border-border">
                 {detectedKind === "fatura" ? "Fatura de cartão" : "Extrato bancário"}
@@ -304,6 +398,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                   <> · <span className="text-yellow-300">{dupCount} duplicata(s)</span>
                   {dupSelected > 0 && <span className="text-yellow-300"> ({dupSelected} marcada(s))</span>}</>
                 )}
+                {conflictCount > 0 && (
+                  <> · <span className="text-orange-300">{conflictCount} recorrente(s)</span>
+                  {conflictUnresolved > 0 && <span className="text-orange-300"> ({conflictUnresolved} sem decisão)</span>}</>
+                )}
               </span>
             </div>
 
@@ -314,7 +412,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                     <th className="px-2 py-1.5 w-8"></th>
                     <th className="px-2 py-1.5 text-left font-semibold">Data</th>
                     <th className="px-2 py-1.5 text-left font-semibold">Descrição</th>
-                    <th className="px-2 py-1.5 text-left font-semibold w-20">Status</th>
+                    <th className="px-2 py-1.5 text-left font-semibold w-44">Status / Conflito</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-24">Tipo</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-36">Categoria</th>
                     <th className="px-2 py-1.5 text-right font-semibold w-28">Valor (R$)</th>
@@ -337,7 +435,32 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                           className="h-7 bg-secondary border-border text-xs" />
                       </td>
                       <td className="px-2 py-1">
-                        {duplicates[i] ? (
+                        {conflicts[i] ? (
+                          <div className="flex flex-col gap-1">
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/15 border border-orange-500/40 text-orange-200 cursor-help w-fit">
+                                    <AlertTriangle size={10} /> Recorrente
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-[11px] max-w-xs">
+                                  Bate com <strong>{conflicts[i]!.expenseName}</strong> (R$ {conflicts[i]!.expenseValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}) via apelido "{conflicts[i]!.matchedAlias}".
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <select
+                              value={actions[i] || ""}
+                              onChange={(e) => setRowAction(i, e.target.value as RecurringAction)}
+                              className={`h-6 w-full rounded-md border px-1 text-[10px] ${actions[i] ? "border-border bg-secondary" : "border-orange-500/60 bg-orange-500/10 text-orange-100"}`}
+                            >
+                              <option value="" disabled>Escolha…</option>
+                              <option value="substitute">Substituir recorrente</option>
+                              <option value="ignore">Ignorar (manter recorrente)</option>
+                              <option value="keep_both">Manter ambos</option>
+                            </select>
+                          </div>
+                        ) : duplicates[i] ? (
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>

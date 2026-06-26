@@ -12,6 +12,7 @@ export interface CashExpense {
   data_inicio: string;
   data_fim: string | null;
   ativo: boolean;
+  aliases: string[];
 }
 
 export const EXPENSE_CATEGORIES = [
@@ -52,6 +53,7 @@ export function useCashExpenses(enabled: boolean) {
         data_inicio: r.data_inicio,
         data_fim: r.data_fim,
         ativo: !!r.ativo,
+        aliases: Array.isArray(r.aliases) ? r.aliases : [],
       }));
     },
   });
