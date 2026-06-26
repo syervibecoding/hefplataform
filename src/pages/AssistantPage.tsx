@@ -2,13 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Send, Sparkles, RotateCcw, Loader2, AlertCircle } from "lucide-react";
+import { Send, Sparkles, RotateCcw, Loader2, AlertCircle, History } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashFlowYear } from "@/hooks/useCashFlow";
 import { useProducts } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  useRecentAssistantConversations,
+  useSaveAssistantConversation,
+} from "@/hooks/useAssistantConversations";
 
 type ChatRole = "user" | "assistant";
 interface ChatMessage { role: ChatRole; content: string }
@@ -75,9 +82,13 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+
+  const recent = useRecentAssistantConversations(3, isAdmin);
+  const saveConv = useSaveAssistantConversation();
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -120,6 +131,17 @@ export default function AssistantPage() {
     setError(null);
     setStreaming(false);
     setInput("");
+    setConversationId(null);
+    setTimeout(() => taRef.current?.focus(), 0);
+  };
+
+  const loadConversation = (msgs: ChatMessage[], id: string) => {
+    abortRef.current?.abort();
+    setMessages(msgs);
+    setError(null);
+    setStreaming(false);
+    setInput("");
+    setConversationId(id);
     setTimeout(() => taRef.current?.focus(), 0);
   };
 
@@ -202,6 +224,22 @@ export default function AssistantPage() {
     } finally {
       setStreaming(false);
       abortRef.current = null;
+      // Persiste a conversa após finalizar o stream
+      setMessages((current) => {
+        const finalMsgs = current.filter(
+          (m) => !(m.role === "assistant" && m.content === ""),
+        );
+        const firstUser = finalMsgs.find((m) => m.role === "user");
+        if (firstUser && finalMsgs.some((m) => m.role === "assistant" && m.content)) {
+          const baseTitle = firstUser.content.trim().slice(0, 60);
+          const title = firstUser.content.trim().length > 60 ? baseTitle + "…" : baseTitle;
+          saveConv
+            .mutateAsync({ id: conversationId, title, messages: finalMsgs })
+            .then((id) => setConversationId(id))
+            .catch(() => { /* silencioso */ });
+        }
+        return current;
+      });
     }
   };
 
@@ -229,9 +267,45 @@ export default function AssistantPage() {
             </div>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={newConversation} disabled={streaming}>
-          <RotateCcw size={14} className="mr-1" /> Nova conversa
-        </Button>
+        <div className="flex items-center gap-1">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" disabled={streaming}>
+                <History size={14} className="mr-1" /> Histórico
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-2 bg-card border-border">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-2 py-1">
+                Últimas 3 conversas (todos admins)
+              </div>
+              {recent.isLoading && (
+                <div className="px-2 py-3 text-xs text-muted-foreground">Carregando…</div>
+              )}
+              {!recent.isLoading && (recent.data?.length ?? 0) === 0 && (
+                <div className="px-2 py-3 text-xs text-muted-foreground">Nenhuma conversa salva ainda.</div>
+              )}
+              <div className="flex flex-col">
+                {recent.data?.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => loadConversation(c.messages as ChatMessage[], c.id)}
+                    className={`text-left px-2 py-2 rounded-md hover:bg-secondary/80 transition-colors ${
+                      conversationId === c.id ? "bg-secondary/60" : ""
+                    }`}
+                  >
+                    <div className="text-xs font-medium line-clamp-2">{c.title}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {c.author_username || "—"} · há {formatDistanceToNow(new Date(c.updated_at), { locale: ptBR })}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button variant="ghost" size="sm" onClick={newConversation} disabled={streaming}>
+            <RotateCcw size={14} className="mr-1" /> Nova conversa
+          </Button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -304,7 +378,7 @@ export default function AssistantPage() {
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
-          Enter envia · Shift+Enter quebra linha · As conversas não são salvas
+          Enter envia · Shift+Enter quebra linha · Conversas ficam salvas e visíveis para admins
         </p>
       </div>
     </div>
