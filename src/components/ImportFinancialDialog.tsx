@@ -398,6 +398,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                   <> · <span className="text-yellow-300">{dupCount} duplicata(s)</span>
                   {dupSelected > 0 && <span className="text-yellow-300"> ({dupSelected} marcada(s))</span>}</>
                 )}
+                {conflictCount > 0 && (
+                  <> · <span className="text-orange-300">{conflictCount} recorrente(s)</span>
+                  {conflictUnresolved > 0 && <span className="text-orange-300"> ({conflictUnresolved} sem decisão)</span>}</>
+                )}
               </span>
             </div>
 
