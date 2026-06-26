@@ -17,6 +17,37 @@ import {
 } from "@/lib/import-validation";
 import type { FinancialImport } from "@/hooks/useFinancialImports";
 
+function detectRecurringConflict(
+  row: ConfirmedTransaction,
+  expenses: CashExpense[],
+): RecurringConflict | null {
+  if (row.tipo !== "despesa") return null;
+  const desc = (row.descricao || "").toUpperCase();
+  if (!desc) return null;
+  const rowMonth = (row.data || "").slice(0, 7);
+  for (const e of expenses) {
+    if (!e.ativo) continue;
+    // só conflita se o mês da transação cai dentro da vigência
+    const ds = e.data_inicio || "";
+    const df = e.data_fim || null;
+    if (ds && ds.slice(0, 7) > rowMonth) continue;
+    if (df && df.slice(0, 7) < rowMonth) continue;
+    const candidates = [e.nome, ...(e.aliases || [])].filter(Boolean).map((s) => s.toUpperCase());
+    for (const term of candidates) {
+      if (term.length < 3) continue;
+      if (desc.includes(term) || term.includes(desc)) {
+        return {
+          expenseId: e.id,
+          expenseName: e.nome,
+          expenseValor: e.valor,
+          matchedAlias: term,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 type Step = "upload" | "password" | "loading" | "review";
 
 type RecurringAction = "substitute" | "ignore" | "keep_both";
