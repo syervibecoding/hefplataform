@@ -35,14 +35,34 @@ import {
   type AnyClient,
 } from "@/data/constants";
 
+const NAV_STATE_KEY = "hef:nav-state:v1";
+
+type PersistedNav = {
+  activePage?: string;
+  activeProduct?: ProductId;
+  selectedClient?: AnyClient | null;
+  selectedConsultoriaId?: string | null;
+};
+
+function loadNavState(): PersistedNav {
+  try {
+    const raw = localStorage.getItem(NAV_STATE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as PersistedNav;
+  } catch {
+    return {};
+  }
+}
+
 export default function Index() {
   useSupportRealtime();
-  const [activePage, setActivePage] = useState("home");
-  const [activeProduct, setActiveProduct] = useState<ProductId>("");
-  const [selectedClient, setSelectedClient] = useState<AnyClient | null>(null);
+  const persisted = loadNavState();
+  const [activePage, setActivePage] = useState<string>(persisted.activePage || "home");
+  const [activeProduct, setActiveProduct] = useState<ProductId>(persisted.activeProduct ?? "");
+  const [selectedClient, setSelectedClient] = useState<AnyClient | null>(persisted.selectedClient ?? null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [consultoriaClients, setConsultoriaClients] = useState<ConsultoriaClient[]>(SEED_CONSULTORIA_CLIENTS);
-  const [selectedConsultoriaId, setSelectedConsultoriaId] = useState<string | null>(null);
+  const [selectedConsultoriaId, setSelectedConsultoriaId] = useState<string | null>(persisted.selectedConsultoriaId ?? null);
 
   const { products, isLoading: productsLoading } = useProducts();
   const { clients, isLoading: clientsLoading, addClient, editClient, deleteClient } = useClients(activeProduct);
@@ -54,6 +74,16 @@ export default function Index() {
       setActiveProduct(products[0].id);
     }
   }, [products, activeProduct]);
+
+  // Persist navigation state across reloads / tab switches
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        NAV_STATE_KEY,
+        JSON.stringify({ activePage, activeProduct, selectedClient, selectedConsultoriaId })
+      );
+    } catch {}
+  }, [activePage, activeProduct, selectedClient, selectedConsultoriaId]);
 
   const currentProductInfo = products.find((p) => p.id === activeProduct);
 
