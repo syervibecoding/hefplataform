@@ -7,7 +7,7 @@ import { Upload, Loader2, AlertCircle, Trash2, AlertTriangle } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { extractPdfText, PdfPasswordRequiredError } from "@/lib/pdf-extract";
 import { useFinancialImports, type ConfirmedTransaction } from "@/hooks/useFinancialImports";
-import { EXPENSE_CATEGORIES } from "@/hooks/useCashExpenses";
+import { EXPENSE_CATEGORIES, useCashExpenses, type CashExpense } from "@/hooks/useCashExpenses";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -19,6 +19,15 @@ import type { FinancialImport } from "@/hooks/useFinancialImports";
 
 type Step = "upload" | "password" | "loading" | "review";
 
+type RecurringAction = "substitute" | "ignore" | "keep_both";
+
+interface RecurringConflict {
+  expenseId: string;
+  expenseName: string;
+  expenseValor: number;
+  matchedAlias: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -27,6 +36,7 @@ interface Props {
 export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const { confirmImport, data: allImports = [] } = useFinancialImports(true);
+  const { expenses: recurringExpenses } = useCashExpenses(true);
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
@@ -40,12 +50,14 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const [rows, setRows] = useState<ConfirmedTransaction[]>([]);
   const [duplicates, setDuplicates] = useState<Array<ExistingTx | null>>([]);
   const [overlapping, setOverlapping] = useState<FinancialImport[]>([]);
+  const [conflicts, setConflicts] = useState<Array<RecurringConflict | null>>([]);
+  const [actions, setActions] = useState<Array<RecurringAction | null>>([]);
 
   const reset = () => {
     setStep("upload"); setFile(null); setPassword(""); setPasswordError(null);
     setError(null); setHint("auto"); setRows([]); setOrigem("");
     setPeriodStart(null); setPeriodEnd(null);
-    setDuplicates([]); setOverlapping([]);
+    setDuplicates([]); setOverlapping([]); setConflicts([]); setActions([]);
   };
 
   const close = () => { reset(); onOpenChange(false); };
@@ -107,6 +119,11 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
     // period overlap
     setOverlapping(findPeriodOverlap(allImports, kind, origemDetected, pStart, pEnd));
 
+    // recurring expense conflicts (by alias / nome)
+    const recurringConflicts = parsedRows.map((row) => detectRecurringConflict(row, recurringExpenses));
+    setConflicts(recurringConflicts);
+    setActions(recurringConflicts.map((c) => (c ? null : null)));
+
     // duplicates vs existing cash_overrides
     if (pStart && pEnd && parsedRows.length > 0) {
       const { data, error } = await supabase
@@ -147,6 +164,12 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
   };
 
+  const setRowAction = (i: number, action: RecurringAction) => {
+    setActions((arr) => arr.map((a, idx) => (idx === i ? action : a)));
+    // se a ação é "ignore" desmarca; se outra ação, garante marcado
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, include: action !== "ignore" } : r)));
+  };
+
   const toggleAll = (v: boolean) => setRows((r) => r.map((row) => ({ ...row, include: v })));
 
   const uncheckDuplicates = () => {
@@ -159,18 +182,40 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
       toast({ title: "Nada selecionado", description: "Marque ao menos uma transação." });
       return;
     }
+    // bloqueia se houver conflito com recorrente sem ação escolhida
+    const unresolved = rows
+      .map((r, i) => ({ r, i }))
+      .filter(({ r, i }) => r.include && conflicts[i] && !actions[i]);
+    if (unresolved.length > 0) {
+      toast({
+        title: "Resolva os conflitos antes",
+        description: `${unresolved.length} transação(ões) batem com despesas recorrentes. Escolha "Substituir", "Ignorar" ou "Manter ambos" em cada uma.`,
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       await confirmImport.mutateAsync({
         kind: detectedKind,
         sourceName: origem ? `${origem} — ${file?.name || ""}`.trim() : (file?.name || "Importação"),
         periodStart, periodEnd,
-        transactions: included.map((t) => ({
-          data: t.data,
-          nome: t.descricao,
-          valor: t.valor,
-          tipo: t.tipo,
-          categoria: t.categoria_sugerida,
-        })),
+        transactions: rows
+          .map((t, i) => ({ t, i }))
+          .filter(({ t }) => t.include)
+          .map(({ t, i }) => {
+            const conflict = conflicts[i];
+            const action = actions[i];
+            const substitute = conflict && action === "substitute";
+            return {
+              data: t.data,
+              nome: t.descricao,
+              valor: t.valor,
+              tipo: t.tipo,
+              categoria: t.categoria_sugerida,
+              origem_tipo: substitute ? ("despesa" as const) : ("avulso" as const),
+              origem_id: substitute ? conflict!.expenseId : null,
+            };
+          }),
       });
       toast({ title: "Importação concluída", description: `${included.length} lançamento(s) adicionado(s) ao fluxo de caixa.` });
       close();
@@ -184,6 +229,8 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const saldo = totalIn - totalOut;
   const dupCount = duplicates.filter(Boolean).length;
   const dupSelected = rows.filter((r, i) => r.include && duplicates[i]).length;
+  const conflictCount = conflicts.filter(Boolean).length;
+  const conflictUnresolved = rows.filter((r, i) => r.include && conflicts[i] && !actions[i]).length;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) close(); else onOpenChange(true); }}>
