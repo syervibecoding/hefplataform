@@ -344,6 +344,22 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
               </div>
             )}
 
+            {conflictCount > 0 && (
+              <div className="flex items-start gap-2 text-[11px] bg-orange-500/10 border border-orange-500/30 rounded-md p-2 text-orange-200">
+                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>{conflictCount} conflito(s) com despesas recorrentes.</strong>{" "}
+                  Para cada linha marcada com <span className="font-semibold">Recorrente</span>, escolha:
+                  <span className="ml-1"><strong>Substituir</strong> (usa o valor real da fatura e remove a previsão recorrente do mês),</span>{" "}
+                  <strong>Ignorar</strong> (mantém só a recorrente) ou{" "}
+                  <strong>Manter ambos</strong> (lança em dobro — não recomendado).
+                  {conflictUnresolved > 0 && (
+                    <span className="block mt-1 text-orange-100">⚠ {conflictUnresolved} linha(s) sem decisão ainda.</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 text-[11px]">
               <span className="px-2 py-0.5 rounded-md bg-secondary border border-border">
                 {detectedKind === "fatura" ? "Fatura de cartão" : "Extrato bancário"}
