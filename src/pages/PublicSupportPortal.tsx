@@ -438,11 +438,3 @@ function TicketThreadDialog({ ticket, slug, messages, attachments, onClose, onCh
     </Dialog>
   );
 }
-              </div>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
