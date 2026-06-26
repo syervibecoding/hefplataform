@@ -52,6 +52,8 @@ export function useFinancialImports(enabled: boolean) {
         valor: number;
         tipo: "receita" | "despesa";
         categoria: string | null;
+        origem_tipo?: "avulso" | "despesa";
+        origem_id?: string | null;
       }>;
     }) => {
       const { data: imp, error: impErr } = await supabase
@@ -70,8 +72,8 @@ export function useFinancialImports(enabled: boolean) {
       if (payload.transactions.length > 0) {
         const rows = payload.transactions.map((t) => ({
           tipo: t.tipo,
-          origem_tipo: "avulso",
-          origem_id: null,
+          origem_tipo: t.origem_tipo || "avulso",
+          origem_id: t.origem_id ?? null,
           nome: t.nome,
           categoria: t.tipo === "despesa" ? (t.categoria || "outros") : null,
           data: t.data,
