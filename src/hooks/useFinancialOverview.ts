@@ -27,21 +27,26 @@ export function useFinancialOverview(enabled: boolean) {
       for (const row of data || []) {
         const pid = row.product_id;
         const current = grouped.get(pid) || { count: 0, revenue: 0 };
-        current.count++;
         let revenue = 0;
         if (pid === "hefsys") {
+          current.count++;
           revenue = Number(row.faturamento || 0);
         } else if (pid === "plataformas") {
           const dataImpl = row.data_implementacao ? new Date(row.data_implementacao + "T00:00:00") : null;
-          // Implementação conta apenas no mês em que ocorreu
+          // Plataformas são projetos pontuais: só contam como "ativos" no mês
+          // em que a implementação ocorre OU se tiverem mensalidade recorrente.
           if (dataImpl && dataImpl >= monthStart && dataImpl <= monthEnd) {
             revenue += Number(row.valor_implementacao || 0);
+            current.count++;
+          } else if (row.tem_mensalidade && dataImpl && dataImpl <= monthEnd) {
+            current.count++;
           }
           // Mensalidade conta se ativada e implementação já ocorreu
           if (row.tem_mensalidade && dataImpl && dataImpl <= monthEnd) {
             revenue += Number(row.valor_mensalidade || 0);
           }
         } else {
+          current.count++;
           revenue = Number(row.valor_contrato || 0);
         }
         current.revenue += revenue;
