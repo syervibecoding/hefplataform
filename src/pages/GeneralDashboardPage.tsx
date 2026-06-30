@@ -41,6 +41,15 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
   const activeClients = allClients.filter((c) => c.status === "ativo");
+  // Plataformas de IA são projetos pontuais/realizados — não contam como
+  // clientes ativos recorrentes (exceto quando têm mensalidade vigente).
+  const isRecurringActive = (c: ClientRow) => {
+    if (c.product_id !== "plataformas") return true;
+    if (!c.tem_mensalidade) return false;
+    if (!c.data_implementacao) return false;
+    return new Date(c.data_implementacao + "T00:00:00") <= monthEnd;
+  };
+  const recurringActiveClients = activeClients.filter(isRecurringActive);
   const totalRevenue = activeClients.reduce((s, c) => s + clientMonthlyRevenue(c, now), 0);
   const totalRevenueAll = financialOverview.reduce((s, o) => s + o.totalRevenue, 0);
   const emDev = melhorias.filter((m) => m.status === "em_desenvolvimento").length;
@@ -75,7 +84,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
-        <StatCard label="Clientes Ativos" value={activeClients.length} sub="todos os produtos" colorClass="text-primary" />
+        <StatCard label="Clientes Ativos" value={recurringActiveClients.length} sub="recorrentes (sem projetos)" colorClass="text-primary" />
         <StatCard
           label="Receita do Mês"
           value={`R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
@@ -218,7 +227,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
           <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
             <div className="text-xs font-semibold text-primary mb-2">TOTAL</div>
             <div className="text-lg font-bold font-mono text-foreground">
-              {activeClients.length} <span className="text-xs font-normal text-muted-foreground">ativos</span>
+              {recurringActiveClients.length} <span className="text-xs font-normal text-muted-foreground">ativos</span>
             </div>
             <div className="text-sm font-semibold font-mono text-hef-success mt-0.5">
               R$ {totalRevenueAll.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -283,7 +292,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
                 <div className="max-h-[280px] overflow-y-auto">
                   {list.length === 0 ? (
                     <div className="px-4 py-6 text-xs text-muted-foreground text-center">
-                      Nenhum cliente ativo
+                      {p.id === "plataformas" ? "Nenhum projeto" : "Nenhum cliente ativo"}
                     </div>
                   ) : (
                     list.map((c: ClientRow) => (
