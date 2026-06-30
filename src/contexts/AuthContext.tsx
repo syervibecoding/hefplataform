@@ -64,15 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         const u = session?.user ?? null;
         setUser(u);
         if (u) {
-          setLoading(true);
+          // Only show the global loading spinner on the very first sign-in.
+          // TOKEN_REFRESHED / USER_UPDATED fire when the tab regains focus and
+          // must NOT unmount the app (that resets in-memory navigation state).
+          const showSpinner = event === "SIGNED_IN" || event === "INITIAL_SESSION";
+          if (showSpinner) setLoading(true);
           // Defer to avoid deadlock inside the auth callback
           setTimeout(async () => {
             await loadProfile(u.id);
-            if (mounted) setLoading(false);
+            if (mounted && showSpinner) setLoading(false);
           }, 0);
         } else {
           setProfile(null);
