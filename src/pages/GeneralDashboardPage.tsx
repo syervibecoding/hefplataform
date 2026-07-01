@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Wallet, Settings } from "lucide-react";
+import { Wallet, Settings, SlidersHorizontal } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import StatusTag from "@/components/StatusTag";
 import InvestmentsManagerDialog from "@/components/InvestmentsManagerDialog";
+import FinancialSettingsDialog from "@/components/FinancialSettingsDialog";
 import { type Melhoria } from "@/data/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllClients, clientMonthlyRevenue, type ClientRow } from "@/hooks/useAllClients";
@@ -11,6 +12,8 @@ import { type Product } from "@/hooks/useProducts";
 import { useCashFlowYear } from "@/hooks/useCashFlow";
 import { categoryLabel } from "@/hooks/useCashExpenses";
 import { useInvestments } from "@/hooks/useInvestments";
+import { useFinancialSettings } from "@/hooks/useFinancialSettings";
+import { useResultAllocations } from "@/hooks/useResultAllocations";
 import { getIcon } from "@/lib/icon-map";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,7 +30,10 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const now = new Date();
   const { data: cashFlow } = useCashFlowYear(now.getFullYear(), isAdmin);
   const { investments, balances, totalSaldo } = useInvestments(isAdmin);
+  const { taxRate } = useFinancialSettings(isAdmin);
+  const { allocations } = useResultAllocations(isAdmin);
   const [invDialogOpen, setInvDialogOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   if (!isAdmin) {
     return (
@@ -65,6 +71,11 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const monthData = cashFlow?.months[now.getMonth()];
   const despesasByCat = monthData?.byCategoryDespesa || {};
   const totalDespesasMes = Object.values(despesasByCat).reduce((s, v) => s + v, 0);
+  const impostos = totalRevenue * (Number(taxRate) / 100);
+  const faturamentoLiquido = totalRevenue - impostos;
+  const resultado = faturamentoLiquido - totalDespesasMes;
+  const margem = totalRevenue > 0 ? (resultado / totalRevenue) * 100 : 0;
+  const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
   const categoriasOrdenadas = Object.entries(despesasByCat)
     .map(([id, valor]) => ({ id, label: categoryLabel(id), valor, pct: totalDespesasMes > 0 ? (valor / totalDespesasMes) * 100 : 0 }))
     .sort((a, b) => b.valor - a.valor);
@@ -76,33 +87,137 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
 
   return (
     <div>
-      <div className="mb-7">
-        <h1 className="text-2xl font-bold">Dashboard Geral</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Visão consolidada de todos os produtos · {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
-        </p>
+      <div className="mb-7 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard Geral</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Visão consolidada de todos os produtos · {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
+          </p>
+        </div>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="text-xs text-primary hover:underline flex items-center gap-1.5 shrink-0"
+        >
+          <SlidersHorizontal size={13} /> Configurações
+        </button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
         <StatCard label="Clientes Ativos" value={recurringActiveClients.length} sub="recorrentes (sem projetos)" colorClass="text-primary" />
         <StatCard
-          label="Receita do Mês"
-          value={`R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-          sub="consolidada"
+          label="Faturamento Bruto"
+          value={fmt(totalRevenue)}
+          sub="consolidado"
           colorClass="text-hef-success"
         />
         <StatCard
           label="Despesas do Mês"
-          value={`R$ ${totalDespesasMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          value={fmt(totalDespesasMes)}
           sub={`${categoriasOrdenadas.length} categorias`}
           colorClass="text-hef-warning"
         />
         <StatCard
           label="Investido"
-          value={`R$ ${totalSaldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          value={fmt(totalSaldo)}
           sub={`${investments.length} ${investments.length === 1 ? "aplicação" : "aplicações"}`}
           colorClass="text-hef-info"
         />
+      </div>
+
+      {/* KPIs de resultado */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
+        <StatCard
+          label={`Impostos (${Number(taxRate).toFixed(1)}%)`}
+          value={fmt(impostos)}
+          sub="Simples Nacional"
+          colorClass="text-hef-warning"
+        />
+        <StatCard
+          label="Faturamento Líquido"
+          value={fmt(faturamentoLiquido)}
+          sub="após impostos"
+          colorClass="text-hef-info"
+        />
+        <StatCard
+          label="Resultado Operacional"
+          value={fmt(resultado)}
+          sub="líquido − despesas"
+          colorClass={resultado >= 0 ? "text-hef-success" : "text-destructive"}
+        />
+        <StatCard
+          label="Margem de Lucro"
+          value={`${margem.toFixed(1)}%`}
+          sub="resultado / bruto"
+          colorClass={margem >= 0 ? "text-hef-success" : "text-destructive"}
+        />
+      </div>
+
+      {/* Alocação do resultado */}
+      <div className="mb-7 bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold">Alocação do Resultado</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Distribuição sugerida do resultado operacional do mês
+            </p>
+          </div>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="text-[11px] text-primary hover:underline flex items-center gap-1"
+          >
+            <Settings size={11} /> Gerenciar
+          </button>
+        </div>
+
+        <div className="flex items-baseline gap-2 mb-4">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Resultado</span>
+          <span className={`text-xl font-bold font-mono ${resultado >= 0 ? "text-hef-success" : "text-destructive"}`}>
+            {fmt(resultado)}
+          </span>
+        </div>
+
+        {allocations.length === 0 ? (
+          <div className="text-center text-sm text-muted-foreground py-6">
+            Nenhuma categoria cadastrada.{" "}
+            <button onClick={() => setSettingsOpen(true)} className="text-primary hover:underline">
+              Adicionar
+            </button>
+          </div>
+        ) : resultado <= 0 ? (
+          <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+            Resultado não positivo — nenhuma alocação aplicada este mês.
+          </div>
+        ) : (
+          <>
+            <div className="flex h-2 rounded-full overflow-hidden bg-secondary mb-4">
+              {allocations.map((a) => (
+                <div
+                  key={a.id}
+                  className={a.cor}
+                  style={{ width: `${a.percentual}%` }}
+                  title={`${a.nome}: ${a.percentual}%`}
+                />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              {allocations.map((a) => {
+                const valor = resultado * (a.percentual / 100);
+                return (
+                  <div key={a.id} className="flex items-center gap-3">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${a.cor}`} />
+                    <span className="text-xs flex-1 truncate">{a.nome}</span>
+                    <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                      {a.percentual.toFixed(1)}%
+                    </span>
+                    <span className="text-xs font-mono font-semibold tabular-nums w-28 text-right">
+                      {fmt(valor)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Despesas por categoria + Investimentos */}
@@ -317,6 +432,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         </div>
       </div>
       <InvestmentsManagerDialog open={invDialogOpen} onOpenChange={setInvDialogOpen} />
+      <FinancialSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }
