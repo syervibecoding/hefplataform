@@ -1,47 +1,71 @@
-
 ## Objetivo
 
-Refinar o `SYSTEM_PROMPT` da edge function `financial-assistant-chat` para que as respostas do assistente venham mais bem formatadas, arejadas e fáceis de ler — sem mexer no contexto financeiro nem na UI.
+Adicionar ao Dashboard Geral novos KPIs financeiros e um painel de alocação do resultado operacional em categorias customizáveis (ex.: Reserva, Capital de Giro, Infraestrutura, Bonificação), com % editáveis e persistidos no banco.
 
-## O que muda
+## Novos KPIs (linha do topo do Dashboard)
 
-Apenas um arquivo:
-- `supabase/functions/financial-assistant-chat/index.ts` → reescrever o `SYSTEM_PROMPT` com regras explícitas de formatação.
+Calculados sobre o mês corrente:
 
-Nada de UI, nada de lógica de contexto, nada de modelo novo.
+- **Faturamento Bruto** — já existe como "Receita do Mês".
+- **Impostos (Simples ~6%)** — alíquota configurável, padrão 6%.
+- **Faturamento Líquido** = Bruto − Impostos.
+- **Despesas do Mês** — já existe.
+- **Resultado Operacional** = Líquido − Despesas.
+- **Margem de Lucro** = Resultado / Bruto (%).
 
-## Novas regras de formatação que serão adicionadas ao prompt
+Cor verde quando positivo, vermelho quando negativo.
 
-1. **Estrutura padrão de resposta**
-   - Começar com 1 frase curta de resposta direta (TL;DR), em **negrito**.
-   - Depois detalhar em seções com `##` (títulos curtos, no máximo 3-4 palavras).
-   - Encerrar sempre com seção `## Pontos de atenção` quando houver risco/decisão; e `## Próximo passo` com 1 ação concreta.
+## Painel "Alocação do Resultado"
 
-2. **Espaçamento e legibilidade**
-   - Sempre deixar **linha em branco** entre parágrafos, listas, títulos e tabelas (evita "texto colado").
-   - Parágrafos curtos: no máximo 3 linhas. Quebrar ideias longas em listas.
-   - Nunca emendar número + explicação em parágrafo longo — usar lista.
+Card novo abaixo dos KPIs, ao lado (ou substituindo) o card de Investimentos atual:
 
-3. **Listas e números**
-   - Usar bullets `-` para enumerar achados, riscos ou recomendações.
-   - Quando comparar meses/categorias/produtos, **preferir tabela markdown** a parágrafo.
-   - Valores monetários sempre em `**R$ 12.345,67**` (negrito) para destacar.
-   - Variações percentuais entre parênteses ao lado do valor: `R$ 10.000,00 (+12% vs. mês anterior)`.
+- Mostra o Resultado Operacional do mês em destaque.
+- Lista as categorias cadastradas com: nome, %, valor calculado (R$ = resultado × %).
+- Barra horizontal empilhada com as fatias, mesma linguagem visual do painel "Despesas por Categoria".
+- Botão **Gerenciar categorias** abre um dialog onde o usuário:
+  - Adiciona / edita / remove categorias.
+  - Define nome, % e cor (paleta pré-definida).
+  - Vê a soma total das % com aviso se ≠ 100%.
+- Se resultado for negativo, mostra os valores em vermelho e um aviso "Resultado negativo — nenhuma alocação aplicada".
 
-4. **Tom**
-   - Direto, consultivo, em português do Brasil.
-   - Sem floreios ("Espero ter ajudado", "Vamos analisar juntos", etc).
-   - Sem repetir a pergunta do usuário.
+## Configurações financeiras
 
-5. **Quando a resposta for curta** (1 número, 1 mês, sim/não)
-   - Responder em 1-2 frases, sem títulos nem seções. Não forçar estrutura.
+Um único dialog "Configurações financeiras" (ícone de engrenagem no topo do dashboard) contendo:
 
-## Exemplo que será incluído no prompt (few-shot)
+- Campo **Alíquota de impostos** (%) — padrão 6%.
+- Gerenciamento das categorias de alocação (mesmo componente do botão acima).
 
-Um mini-exemplo de pergunta + resposta bem formatada para ancorar o modelo, mostrando: TL;DR em negrito → tabela → bullets de atenção → próximo passo.
+## Detalhes técnicos
 
-## Fora de escopo
+### Banco (migration)
 
-- Não alterar `AssistantPage.tsx` (markdown já é renderizado com `react-markdown` + `remark-gfm`, então tabelas e listas já funcionam).
-- Não trocar o modelo (`gpt-5-mini`).
-- Não mexer no `buildContext`.
+Duas tabelas em `public`, ambas restritas a admins:
+
+```text
+financial_settings
+  id            uuid pk
+  key           text unique   -- ex.: 'tax_rate'
+  value         numeric
+  updated_at    timestamptz
+
+result_allocations
+  id            uuid pk
+  nome          text
+  percentual    numeric        -- 0..100
+  cor           text           -- classe tailwind ex.: 'bg-primary'
+  ordem         int
+  created_at, updated_at
+```
+
+RLS: SELECT/INSERT/UPDATE/DELETE apenas para usuários com role `admin` (via `has_role`). GRANT para `authenticated` e `service_role`. Trigger de `updated_at`.
+
+Seed opcional: 4 linhas em `result_allocations` (Reserva 30, Capital de Giro 30, Infraestrutura 20, Bonificação 20) e 1 linha em `financial_settings` (`tax_rate = 6`).
+
+### Frontend
+
+- Novo hook `useFinancialSettings` (React Query) para ler/gravar `tax_rate`.
+- Novo hook `useResultAllocations` para CRUD das categorias.
+- Novo componente `ResultAllocationCard` (exibição) e `FinancialSettingsDialog` (gerenciamento).
+- `GeneralDashboardPage.tsx` passa a calcular `impostos`, `liquido`, `resultado`, `margem` e renderiza a nova linha de KPIs + o card de alocação.
+
+Nenhuma alteração de lógica em outras páginas. Somente `GeneralDashboardPage.tsx` e arquivos novos.

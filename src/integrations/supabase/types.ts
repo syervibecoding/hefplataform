@@ -503,6 +503,30 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       investment_transactions: {
         Row: {
           created_at: string
@@ -1150,6 +1174,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      result_allocations: {
+        Row: {
+          cor: string
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          percentual: number
+          updated_at: string
+        }
+        Insert: {
+          cor?: string
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          percentual?: number
+          updated_at?: string
+        }
+        Update: {
+          cor?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          percentual?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       support_attachments: {
         Row: {
