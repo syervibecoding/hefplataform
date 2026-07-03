@@ -89,6 +89,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_month_snapshots: {
+        Row: {
+          ano: number
+          categoria: string | null
+          created_at: string
+          data: string
+          dia_pagamento: number | null
+          id: string
+          mes: number
+          nome: string
+          origem_id: string
+          origem_tipo: string
+          sub_kind: string
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          ano: number
+          categoria?: string | null
+          created_at?: string
+          data: string
+          dia_pagamento?: number | null
+          id?: string
+          mes: number
+          nome: string
+          origem_id: string
+          origem_tipo: string
+          sub_kind?: string
+          tipo: string
+          valor?: number
+        }
+        Update: {
+          ano?: number
+          categoria?: string | null
+          created_at?: string
+          data?: string
+          dia_pagamento?: number | null
+          id?: string
+          mes?: number
+          nome?: string
+          origem_id?: string
+          origem_tipo?: string
+          sub_kind?: string
+          tipo?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       cash_overrides: {
         Row: {
           categoria: string | null
@@ -1387,6 +1435,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tax_rate_history: {
+        Row: {
+          aliquota: number
+          created_at: string
+          id: string
+          vigente_desde: string
+        }
+        Insert: {
+          aliquota: number
+          created_at?: string
+          id?: string
+          vigente_desde: string
+        }
+        Update: {
+          aliquota?: number
+          created_at?: string
+          id?: string
+          vigente_desde?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
