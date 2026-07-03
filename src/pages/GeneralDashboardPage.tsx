@@ -13,6 +13,7 @@ import { useCashFlowYear } from "@/hooks/useCashFlow";
 import { categoryLabel } from "@/hooks/useCashExpenses";
 import { useInvestments } from "@/hooks/useInvestments";
 import { useFinancialSettings } from "@/hooks/useFinancialSettings";
+import { useTaxRateHistory, rateForMonth } from "@/hooks/useTaxRateHistory";
 import { useResultAllocations } from "@/hooks/useResultAllocations";
 import { getIcon } from "@/lib/icon-map";
 import { format } from "date-fns";
@@ -31,6 +32,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const { data: cashFlow } = useCashFlowYear(now.getFullYear(), isAdmin);
   const { investments, balances, totalSaldo } = useInvestments(isAdmin);
   const { taxRate } = useFinancialSettings(isAdmin);
+  const { data: taxHistory = [] } = useTaxRateHistory(isAdmin);
   const { allocations } = useResultAllocations(isAdmin);
   const [invDialogOpen, setInvDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -71,7 +73,8 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const monthData = cashFlow?.months[now.getMonth()];
   const despesasByCat = monthData?.byCategoryDespesa || {};
   const totalDespesasMes = Object.values(despesasByCat).reduce((s, v) => s + v, 0);
-  const impostos = totalRevenue * (Number(taxRate) / 100);
+  const currentMonthRate = rateForMonth(taxHistory, now.getFullYear(), now.getMonth(), Number(taxRate));
+  const impostos = totalRevenue * (currentMonthRate / 100);
   const faturamentoLiquido = totalRevenue - impostos;
   const resultado = faturamentoLiquido - totalDespesasMes;
   const margem = totalRevenue > 0 ? (resultado / totalRevenue) * 100 : 0;
@@ -127,7 +130,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
       {/* KPIs de resultado */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
         <StatCard
-          label={`Impostos (${Number(taxRate).toFixed(1)}%)`}
+          label={`Impostos (${currentMonthRate.toFixed(1)}%)`}
           value={fmt(impostos)}
           sub="Simples Nacional"
           colorClass="text-hef-warning"

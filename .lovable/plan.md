@@ -1,71 +1,54 @@
-## Objetivo
+## Problema
 
-Adicionar ao Dashboard Geral novos KPIs financeiros e um painel de alocação do resultado operacional em categorias customizáveis (ex.: Reserva, Capital de Giro, Infraestrutura, Bonificação), com % editáveis e persistidos no banco.
+Hoje, se você edita o valor de contrato/mensalidade de um cliente (ou a alíquota de imposto), o fluxo de caixa recalcula tudo — inclusive meses passados — porque a projeção lê o valor atual do cadastro.
 
-## Novos KPIs (linha do topo do Dashboard)
+## Solução: congelar automaticamente meses passados
 
-Calculados sobre o mês corrente:
+Regra:
+- Ao editar qualquer valor (cliente, despesa recorrente, imposto), o novo valor vale **do mês atual em diante**.
+- Todo mês que já passou vira "realizado" e não muda mais, mesmo que o cadastro seja alterado depois.
+- Imposto/Selic: mudança **nunca** afeta mês passado.
 
-- **Faturamento Bruto** — já existe como "Receita do Mês".
-- **Impostos (Simples ~6%)** — alíquota configurável, padrão 6%.
-- **Faturamento Líquido** = Bruto − Impostos.
-- **Despesas do Mês** — já existe.
-- **Resultado Operacional** = Líquido − Despesas.
-- **Margem de Lucro** = Resultado / Bruto (%).
+## Como funciona por trás
 
-Cor verde quando positivo, vermelho quando negativo.
+1. **Snapshot mensal automático**
+   - Nova tabela `cash_month_snapshots` guarda, por mês/cliente, o valor efetivamente usado (ticket, mensalidade, dia de pagamento).
+   - Sempre que o fluxo de caixa é aberto, meses **anteriores ao atual** que ainda não têm snapshot são congelados automaticamente com o valor vigente naquele momento.
+   - Meses futuros e o mês corrente continuam sendo projeção viva (recalculam ao editar o cadastro).
 
-## Painel "Alocação do Resultado"
+2. **Snapshot de imposto**
+   - Nova tabela `tax_rate_history` (data_vigencia, aliquota).
+   - O KPI de "Faturamento Líquido" usa a alíquota vigente **no mês de referência**, não a atual.
+   - Ao editar a alíquota em Configurações, ela passa a valer do mês atual em diante — histórico intacto.
 
-Card novo abaixo dos KPIs, ao lado (ou substituindo) o card de Investimentos atual:
+3. **Projeção**
+   - `useCashFlowYear`:
+     - Para cada mês < mês atual: se existe snapshot, usa o snapshot; se não existe, cria automaticamente com o valor vigente.
+     - Para mês atual e futuros: usa cadastro atual (comportamento de hoje).
+   - Overrides manuais continuam funcionando por cima do snapshot.
 
-- Mostra o Resultado Operacional do mês em destaque.
-- Lista as categorias cadastradas com: nome, %, valor calculado (R$ = resultado × %).
-- Barra horizontal empilhada com as fatias, mesma linguagem visual do painel "Despesas por Categoria".
-- Botão **Gerenciar categorias** abre um dialog onde o usuário:
-  - Adiciona / edita / remove categorias.
-  - Define nome, % e cor (paleta pré-definida).
-  - Vê a soma total das % com aviso se ≠ 100%.
-- Se resultado for negativo, mostra os valores em vermelho e um aviso "Resultado negativo — nenhuma alocação aplicada".
+4. **Dashboard**
+   - `impostos = Σ (receita_mês × alíquota_vigente_naquele_mês)` em vez de alíquota única × total.
 
-## Configurações financeiras
+## Estrutura técnica
 
-Um único dialog "Configurações financeiras" (ícone de engrenagem no topo do dashboard) contendo:
+**Migração:**
+- `cash_month_snapshots` (id, ano, mes, origem_tipo, origem_id, nome, valor, categoria, dia_pagamento, created_at) — único por (ano, mes, origem_tipo, origem_id)
+- `tax_rate_history` (id, vigente_desde YYYY-MM-01, aliquota numeric, created_at)
+- GRANTs + RLS admin-only
+- Seed: registra a alíquota atual (6%) como vigência inicial
 
-- Campo **Alíquota de impostos** (%) — padrão 6%.
-- Gerenciamento das categorias de alocação (mesmo componente do botão acima).
+**Código:**
+- `src/hooks/useCashFlow.ts`: ao carregar, dispara `ensureSnapshots(year)` que faz upsert dos meses passados sem snapshot; projeção passa a ler snapshot quando existir.
+- `src/hooks/useFinancialSettings.ts`: ao salvar nova alíquota, insere registro em `tax_rate_history` com `vigente_desde = 1º dia do mês atual`.
+- `src/hooks/useTaxRateHistory.ts` (novo): retorna alíquota por mês.
+- `src/pages/GeneralDashboardPage.tsx`: cálculo de impostos usa alíquota por mês.
+- `src/components/FinancialSettingsDialog.tsx`: aviso "mudanças valem a partir de MM/AAAA — meses anteriores permanecem com a alíquota antiga".
 
-## Detalhes técnicos
+**Sem alterações em:** cadastro de clientes, despesas ou lógica de overrides manuais.
 
-### Banco (migration)
+## O que o usuário vê
 
-Duas tabelas em `public`, ambas restritas a admins:
-
-```text
-financial_settings
-  id            uuid pk
-  key           text unique   -- ex.: 'tax_rate'
-  value         numeric
-  updated_at    timestamptz
-
-result_allocations
-  id            uuid pk
-  nome          text
-  percentual    numeric        -- 0..100
-  cor           text           -- classe tailwind ex.: 'bg-primary'
-  ordem         int
-  created_at, updated_at
-```
-
-RLS: SELECT/INSERT/UPDATE/DELETE apenas para usuários com role `admin` (via `has_role`). GRANT para `authenticated` e `service_role`. Trigger de `updated_at`.
-
-Seed opcional: 4 linhas em `result_allocations` (Reserva 30, Capital de Giro 30, Infraestrutura 20, Bonificação 20) e 1 linha em `financial_settings` (`tax_rate = 6`).
-
-### Frontend
-
-- Novo hook `useFinancialSettings` (React Query) para ler/gravar `tax_rate`.
-- Novo hook `useResultAllocations` para CRUD das categorias.
-- Novo componente `ResultAllocationCard` (exibição) e `FinancialSettingsDialog` (gerenciamento).
-- `GeneralDashboardPage.tsx` passa a calcular `impostos`, `liquido`, `resultado`, `margem` e renderiza a nova linha de KPIs + o card de alocação.
-
-Nenhuma alteração de lógica em outras páginas. Somente `GeneralDashboardPage.tsx` e arquivos novos.
+- Um pequeno selo "Fechado" nos meses passados do fluxo de caixa (opcional, indica que estão congelados).
+- Ao editar um ticket de cliente, fluxo passado fica igual; do mês atual em diante reflete o novo valor.
+- Ao mudar a alíquota, KPI do mês corrente/futuros muda; passado mantém o cálculo antigo.
