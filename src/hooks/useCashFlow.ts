@@ -331,10 +331,26 @@ export function useCashFlowYear(year: number, enabled: boolean) {
     queryKey: ["cash-flow", year],
     enabled,
     queryFn: async (): Promise<CashFlowYearData> => {
-      const { clients, expenses, overrides, settings } = await fetchAll(year);
-      const baseClientEntries = projectClientEntries(clients as any[], year);
-      const baseExpenseEntries = projectExpenseEntries(expenses as any[], year);
+      const { clients, expenses, overrides, settings, snapshots } = await fetchAll(year);
+      const now = new Date();
+      const snapshotMap = new Map<string, SnapshotRow>();
+      for (const s of snapshots as any[]) {
+        snapshotMap.set(
+          snapKey(s.ano, s.mes, s.origem_tipo, s.origem_id, s.sub_kind || "default"),
+          { ...s, valor: Number(s.valor) } as SnapshotRow,
+        );
+      }
+      const toCreate: SnapshotRow[] = [];
+      const baseClientEntries = projectClientEntries(clients as any[], year, now, snapshotMap, toCreate);
+      const baseExpenseEntries = projectExpenseEntries(expenses as any[], year, now, snapshotMap, toCreate);
       const allEntries = applyOverrides([...baseClientEntries, ...baseExpenseEntries], overrides as any[]);
+
+      // Persistir snapshots recém-criados de meses passados (fire-and-forget)
+      if (toCreate.length > 0) {
+        supabase.from("cash_month_snapshots").insert(toCreate as any).then(({ error }) => {
+          if (error) console.warn("[cash-flow] snapshot persist error:", error.message);
+        });
+      }
 
       const saldoInicial = Number((settings as any)?.saldo_inicial || 0);
       let running = saldoInicial;
