@@ -81,6 +81,9 @@ export default function FinancialSettingsDialog({ open, onOpenChange }: Props) {
             <p className="text-[11px] text-muted-foreground mt-1">
               Aplicada sobre a receita bruta para calcular o faturamento líquido.
             </p>
+            <p className="text-[11px] text-hef-warning mt-1">
+              A nova alíquota vale a partir do mês atual. Meses anteriores permanecem com a alíquota vigente na época.
+            </p>
           </div>
 
           <div>
