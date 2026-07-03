@@ -67,9 +67,41 @@ async function fetchAll(year: number) {
 
 const REVENUE_PRODUCTS = new Set(["hefsys", "consultoria-clix", "plataformas"]);
 
-function projectClientEntries(clients: any[], year: number): CashEntry[] {
+interface SnapshotRow {
+  id?: string;
+  ano: number;
+  mes: number;
+  origem_tipo: "cliente" | "despesa";
+  origem_id: string;
+  sub_kind: string; // 'default' | 'mensalidade' | 'implementacao'
+  tipo: "receita" | "despesa";
+  nome: string;
+  categoria: string | null;
+  valor: number;
+  dia_pagamento: number | null;
+  data: string;
+}
+
+function snapKey(ano: number, mes: number, origem_tipo: string, origem_id: string, sub_kind: string) {
+  return `${ano}|${mes}|${origem_tipo}|${origem_id}|${sub_kind}`;
+}
+
+function isPastMonth(year: number, month: number, now: Date) {
+  if (year < now.getFullYear()) return true;
+  if (year > now.getFullYear()) return false;
+  return month < now.getMonth();
+}
+
+function projectClientEntries(
+  clients: any[],
+  year: number,
+  now: Date,
+  snapshotMap: Map<string, SnapshotRow>,
+  toCreate: SnapshotRow[],
+): CashEntry[] {
   const out: CashEntry[] = [];
   for (let m = 0; m < 12; m++) {
+    const past = isPastMonth(year, m, now);
     const monthStart = new Date(year, m, 1);
     const monthEnd = new Date(year, m + 1, 0);
     for (const c of clients) {
@@ -82,39 +114,94 @@ function projectClientEntries(clients: any[], year: number): CashEntry[] {
       const dia = Number(c.dia_pagamento) || 5;
       const day = clampDay(year, m, dia);
       const date = toISO(year, m, day);
+      const pushWithSnapshot = (sub_kind: string, entry: CashEntry, snapValor: number, snapCategoria: string | null) => {
+        if (past) {
+          const key = snapKey(year, m, "cliente", c.id, sub_kind);
+          const snap = snapshotMap.get(key);
+          if (snap) {
+            if (snap.valor > 0) {
+              out.push({
+                ...entry,
+                valor: snap.valor,
+                categoria: snap.categoria || entry.categoria,
+                nome: snap.nome || entry.nome,
+                date: snap.data,
+                id: `snap-${snap.id}`,
+              });
+            }
+            return;
+          }
+          // Congelar agora: criar snapshot com o valor projetado atual
+          if (snapValor > 0) {
+            toCreate.push({
+              ano: year, mes: m, origem_tipo: "cliente", origem_id: c.id, sub_kind,
+              tipo: entry.tipo === "receita" ? "receita" : "despesa",
+              nome: entry.nome, categoria: snapCategoria, valor: snapValor,
+              dia_pagamento: dia, data: date,
+            });
+          }
+        }
+        if (snapValor > 0) out.push(entry);
+      };
+
       if (c.product_id === "hefsys") {
         const v = Number(c.faturamento || 0);
-        if (v > 0) out.push({ id: `cli-${c.id}-${date}`, tipo: "receita", date, nome: c.nome, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id });
+        pushWithSnapshot(
+          "default",
+          { id: `cli-${c.id}-${date}`, tipo: "receita", date, nome: c.nome, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id },
+          v,
+          c.product_id,
+        );
       } else if (c.product_id === "plataformas") {
         const di = c.data_implementacao ? new Date(c.data_implementacao + "T00:00:00") : null;
         // implementação no mês exato
         if (di && di >= monthStart && di <= monthEnd) {
           const v = Number(c.valor_implementacao || 0);
-          if (v > 0) {
-            const dateImpl = c.data_implementacao;
-            out.push({ id: `cli-impl-${c.id}-${dateImpl}`, tipo: "receita", date: dateImpl, nome: `${c.nome} (implementação)`, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id });
-          }
+          const dateImpl = c.data_implementacao;
+          pushWithSnapshot(
+            "implementacao",
+            { id: `cli-impl-${c.id}-${dateImpl}`, tipo: "receita", date: dateImpl, nome: `${c.nome} (implementação)`, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id },
+            v,
+            c.product_id,
+          );
         }
         // mensalidade no dia_pagamento, somente nos meses APÓS o da implementação
         if (c.tem_mensalidade) {
           const v = Number(c.valor_mensalidade || 0);
           const mensActive = di ? (di < monthStart || (di.getFullYear() === year && di.getMonth() < m)) : false;
-          if (v > 0 && mensActive) {
-            out.push({ id: `cli-mens-${c.id}-${date}`, tipo: "receita", date, nome: `${c.nome} (mensalidade)`, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id });
+          if (mensActive) {
+            pushWithSnapshot(
+              "mensalidade",
+              { id: `cli-mens-${c.id}-${date}`, tipo: "receita", date, nome: `${c.nome} (mensalidade)`, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id },
+              v,
+              c.product_id,
+            );
           }
         }
       } else if (c.product_id === "consultoria-clix") {
         const v = Number(c.valor_contrato || 0);
-        if (v > 0) out.push({ id: `cli-${c.id}-${date}`, tipo: "receita", date, nome: c.nome, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id });
+        pushWithSnapshot(
+          "default",
+          { id: `cli-${c.id}-${date}`, tipo: "receita", date, nome: c.nome, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id },
+          v,
+          c.product_id,
+        );
       }
     }
   }
   return out;
 }
 
-function projectExpenseEntries(expenses: any[], year: number): CashEntry[] {
+function projectExpenseEntries(
+  expenses: any[],
+  year: number,
+  now: Date,
+  snapshotMap: Map<string, SnapshotRow>,
+  toCreate: SnapshotRow[],
+): CashEntry[] {
   const out: CashEntry[] = [];
   for (let m = 0; m < 12; m++) {
+    const past = isPastMonth(year, m, now);
     const monthStartStr = toISO(year, m, 1);
     const monthEndStr = toISO(year, m, new Date(year, m + 1, 0).getDate());
     for (const e of expenses) {
@@ -126,8 +213,7 @@ function projectExpenseEntries(expenses: any[], year: number): CashEntry[] {
       const day = e.ultimo_dia_util ? lastBusinessDay(year, m) : clampDay(year, m, Number(e.dia_pagamento) || 5);
       const date = toISO(year, m, day);
       const v = Number(e.valor || 0);
-      if (v <= 0) continue;
-      out.push({
+      const entry: CashEntry = {
         id: `exp-${e.id}-${date}`,
         tipo: "despesa",
         date,
@@ -136,7 +222,25 @@ function projectExpenseEntries(expenses: any[], year: number): CashEntry[] {
         valor: v,
         origemTipo: "despesa",
         origemId: e.id,
-      });
+      };
+      if (past) {
+        const key = snapKey(year, m, "despesa", e.id, "default");
+        const snap = snapshotMap.get(key);
+        if (snap) {
+          if (snap.valor > 0) {
+            out.push({ ...entry, valor: snap.valor, categoria: snap.categoria || entry.categoria, nome: snap.nome || entry.nome, date: snap.data, id: `snap-${snap.id}` });
+          }
+          continue;
+        }
+        if (v > 0) {
+          toCreate.push({
+            ano: year, mes: m, origem_tipo: "despesa", origem_id: e.id, sub_kind: "default",
+            tipo: "despesa", nome: e.nome, categoria: e.categoria || "outros",
+            valor: v, dia_pagamento: Number(e.dia_pagamento) || null, data: date,
+          });
+        }
+      }
+      if (v > 0) out.push(entry);
     }
   }
   return out;
