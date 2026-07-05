@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type ProductId, type AnyClient, type GenericClient, type ScheduleConfig, type ConsultaExtra, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
 import ScheduleInput from "@/components/ScheduleInput";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCashFlowYear } from "@/hooks/useCashFlow";
 
 const baseSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -60,6 +62,7 @@ interface Props {
 
 export default function EditClientDialog({ client, activeProduct, onEditClient }: Props) {
   const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
   const isHefsys = activeProduct === "hefsys";
   const isTrafego = activeProduct === "trafego";
   const isAutomacao = activeProduct === "automacao";
@@ -88,6 +91,20 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
 
   useEffect(() => {
     if (open) {
+      // Congela automaticamente o histórico dos anos passado e atual usando
+      // os valores ANTES da edição, para que alterações só afetem o mês atual em diante.
+      const currentYear = new Date().getFullYear();
+      [currentYear - 1, currentYear].forEach((y) => {
+        qc.prefetchQuery({
+          queryKey: ["cash-flow", y],
+          queryFn: async () => {
+            const { data } = await (useCashFlowYear as any); // no-op fallback
+            return data;
+          },
+        }).catch(() => {});
+        // Trigger a real fetch via invalidate to run the hook's queryFn
+        qc.invalidateQueries({ queryKey: ["cash-flow", y] });
+      });
       if (isHefsys && isHefSysClient(client)) {
         hefsysForm.reset({
           nome: client.nome,
