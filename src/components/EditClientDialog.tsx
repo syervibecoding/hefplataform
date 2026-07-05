@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type ProductId, type AnyClient, type GenericClient, type ScheduleConfig, type ConsultaExtra, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
 import ScheduleInput from "@/components/ScheduleInput";
+import { freezeClientHistory } from "@/lib/freezeClientHistory";
 
 const baseSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -88,6 +89,11 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
 
   useEffect(() => {
     if (open) {
+      // Congela o histórico deste cliente com os valores ATUAIS (pré-edição),
+      // garantindo que alterações só afetem o mês atual em diante.
+      freezeClientHistory(client.id).catch((e) =>
+        console.warn("[freeze] falha ao congelar histórico:", e?.message)
+      );
       if (isHefsys && isHefSysClient(client)) {
         hefsysForm.reset({
           nome: client.nome,
