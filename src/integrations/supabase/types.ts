@@ -314,6 +314,41 @@ export type Database = {
           },
         ]
       }
+      client_value_adjustments: {
+        Row: {
+          client_id: string
+          created_at: string
+          data_inicio: string
+          id: string
+          novo_valor: number
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data_inicio: string
+          id?: string
+          novo_valor?: number
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data_inicio?: string
+          id?: string
+          novo_valor?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_value_adjustments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           agenda_caixas_postais: Json | null
