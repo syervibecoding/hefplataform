@@ -41,6 +41,8 @@ const genericSchema = baseSchema.extend({
   dataImplementacao: z.string().optional(),
   temMensalidade: z.boolean().optional(),
   valorMensalidade: z.coerce.number().min(0).optional(),
+  comissaoPercentual: z.coerce.number().min(0).max(100).optional(),
+  comissaoComercial: z.string().optional(),
 });
 
 const trafegoSchema = baseSchema.extend({
@@ -65,6 +67,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
   const isTrafego = activeProduct === "trafego";
   const isAutomacao = activeProduct === "automacao";
   const isPlataformas = activeProduct === "plataformas";
+  const isConsultoria = activeProduct === "consultoria-clix";
   const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
   const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
   const [rotinaConferencia, setRotinaConferencia] = useState<ScheduleConfig>({});
@@ -148,6 +151,8 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           dataImplementacao: client.dataImplementacao || "",
           temMensalidade: !!client.temMensalidade,
           valorMensalidade: client.valorMensalidade || 0,
+          comissaoPercentual: (client as any).comissaoPercentual || 0,
+          comissaoComercial: (client as any).comissaoComercial || "",
         });
       }
     }
@@ -189,6 +194,8 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
         dataImplementacao: data.dataImplementacao || null,
         temMensalidade: !!data.temMensalidade,
         valorMensalidade: data.temMensalidade ? (Number(data.valorMensalidade) || 0) : 0,
+        comissaoPercentual: Number(data.comissaoPercentual) || 0,
+        comissaoComercial: (data.comissaoComercial || "").trim() || null,
       });
     }
     setOpen(false);
@@ -449,6 +456,23 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                   <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
                   <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
                   {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
+                </div>
+              )}
+
+              {isConsultoria && (
+                <div className="space-y-3 p-3 bg-hef-warning/5 border border-hef-warning/20 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-hef-warning font-semibold">Comissão do Comercial</p>
+                  <p className="text-[10px] text-muted-foreground">Enquanto o cliente estiver ativo, gera uma despesa mensal = % × valor do contrato.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Percentual (%)</Label>
+                      <Input {...register("comissaoPercentual")} type="number" min={0} max={100} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Comercial responsável</Label>
+                      <Input {...register("comissaoComercial")} placeholder="Nome do comercial" className="mt-1 bg-secondary border-border" />
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -48,6 +48,8 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
     dataImplementacao: row.data_implementacao || null,
     temMensalidade: !!row.tem_mensalidade,
     valorMensalidade: Number(row.valor_mensalidade) || 0,
+    comissaoPercentual: Number(row.comissao_percentual) || 0,
+    comissaoComercial: row.comissao_comercial || null,
   } as GenericClient;
 }
 
@@ -109,6 +111,10 @@ export function useClients(productId: ProductId) {
           row.tem_mensalidade = !!clientData.temMensalidade;
           row.valor_mensalidade = clientData.temMensalidade ? (clientData.valorMensalidade || 0) : 0;
         }
+        if (productId === "consultoria-clix") {
+          row.comissao_percentual = Number(clientData.comissaoPercentual) || 0;
+          row.comissao_comercial = clientData.comissaoComercial || null;
+        }
       }
       const { error } = await supabase.from("clients").insert(row);
       if (error) throw error;
@@ -156,6 +162,10 @@ export function useClients(productId: ProductId) {
           row.data_implementacao = data.dataImplementacao || null;
           row.tem_mensalidade = !!data.temMensalidade;
           row.valor_mensalidade = data.temMensalidade ? (data.valorMensalidade || 0) : 0;
+        }
+        if (productId === "consultoria-clix") {
+          row.comissao_percentual = Number(data.comissaoPercentual) || 0;
+          row.comissao_comercial = data.comissaoComercial || null;
         }
       }
       const { error } = await supabase.from("clients").update(row).eq("id", id);
