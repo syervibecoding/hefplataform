@@ -5,6 +5,8 @@ import EditClientDialog from "@/components/EditClientDialog";
 import DeleteClientDialog from "@/components/DeleteClientDialog";
 import { type AnyClient, type ProductId, type GenericClient, isHefSysClient, FREQUENCIAS, TODAS_CONSULTAS } from "@/data/constants";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClientValueAdjustmentsForClients } from "@/hooks/useClientValueAdjustments";
+import { getValorEfetivo, type ValueAdjustment } from "@/lib/getValorEfetivo";
 
 interface Props {
   clients: AnyClient[];
@@ -19,6 +21,22 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
   const { isAdmin } = useAuth();
   const isHefsys = activeProduct === "hefsys";
   const isPlataformas = activeProduct === "plataformas";
+  const supportsValueAdjustments = activeProduct === "hefsys" || activeProduct === "consultoria-clix";
+  const { data: valueAdjustments = [] } = useClientValueAdjustmentsForClients(
+    supportsValueAdjustments ? clients.map((client) => client.id) : [],
+  );
+
+  const getCurrentValue = (client: AnyClient, baseValue: number) => {
+    const now = new Date();
+    const adjustments = valueAdjustments
+      .filter((adjustment) => adjustment.client_id === client.id)
+      .map<ValueAdjustment>((adjustment) => ({
+        data_inicio: adjustment.data_inicio,
+        novo_valor: adjustment.novo_valor,
+      }));
+
+    return getValorEfetivo(baseValue, adjustments, now.getFullYear(), now.getMonth());
+  };
 
   const headers = isHefsys
     ? isAdmin
@@ -68,7 +86,7 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                     {isAdmin && (
                       <>
                         <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-hef-success">
-                          R$ {(c.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          R$ {getCurrentValue(c, c.faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </td>
                         <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm text-hef-warning">
                           R$ {(c.custoAPI || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -107,7 +125,7 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                         </>
                       ) : (
                         <td className="px-4 py-3.5 border-b border-border/50 font-mono font-semibold text-sm">
-                          R$ {(c as GenericClient).valorContrato.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          R$ {getCurrentValue(c, (c as GenericClient).valorContrato).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </td>
                       )
                     )}
