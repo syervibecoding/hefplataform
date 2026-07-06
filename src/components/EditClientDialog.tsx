@@ -41,6 +41,8 @@ const genericSchema = baseSchema.extend({
   dataImplementacao: z.string().optional(),
   temMensalidade: z.boolean().optional(),
   valorMensalidade: z.coerce.number().min(0).optional(),
+  comissaoPercentual: z.coerce.number().min(0).max(100).optional(),
+  comissaoComercial: z.string().optional(),
 });
 
 const trafegoSchema = baseSchema.extend({
@@ -65,6 +67,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
   const isTrafego = activeProduct === "trafego";
   const isAutomacao = activeProduct === "automacao";
   const isPlataformas = activeProduct === "plataformas";
+  const isConsultoria = activeProduct === "consultoria-clix";
   const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
   const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
   const [rotinaConferencia, setRotinaConferencia] = useState<ScheduleConfig>({});
@@ -148,6 +151,8 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           dataImplementacao: client.dataImplementacao || "",
           temMensalidade: !!client.temMensalidade,
           valorMensalidade: client.valorMensalidade || 0,
+          comissaoPercentual: (client as any).comissaoPercentual || 0,
+          comissaoComercial: (client as any).comissaoComercial || "",
         });
       }
     }
@@ -189,6 +194,8 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
         dataImplementacao: data.dataImplementacao || null,
         temMensalidade: !!data.temMensalidade,
         valorMensalidade: data.temMensalidade ? (Number(data.valorMensalidade) || 0) : 0,
+        comissaoPercentual: Number(data.comissaoPercentual) || 0,
+        comissaoComercial: (data.comissaoComercial || "").trim() || null,
       });
     }
     setOpen(false);
