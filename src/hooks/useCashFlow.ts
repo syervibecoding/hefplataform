@@ -45,7 +45,7 @@ async function fetchAll(year: number) {
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
   const [clientsRes, expensesRes, overridesRes, settingsRes, snapshotsRes] = await Promise.all([
-    supabase.from("clients").select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio").eq("status", "ativo"),
+    supabase.from("clients").select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio, comissao_percentual, comissao_comercial").eq("status", "ativo"),
     supabase.from("cash_expenses").select("*").eq("ativo", true),
     supabase.from("cash_overrides").select("*").gte("data", yearStart).lte("data", yearEnd),
     supabase.from("cash_settings").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
@@ -186,6 +186,19 @@ function projectClientEntries(
           v,
           c.product_id,
         );
+        // Comissão do comercial (despesa mensal automática)
+        const pct = Number(c.comissao_percentual || 0);
+        if (pct > 0) {
+          const comissaoValor = +(v * pct / 100).toFixed(2);
+          const comercial = (c.comissao_comercial || "").trim();
+          const nomeDespesa = `Comissão ${comercial ? comercial + " · " : ""}${c.nome}`;
+          pushWithSnapshot(
+            "comissao",
+            { id: `cli-com-${c.id}-${date}`, tipo: "despesa", date, nome: nomeDespesa, categoria: "comissoes", valor: comissaoValor, origemTipo: "cliente", origemId: c.id },
+            comissaoValor,
+            "comissoes",
+          );
+        }
       }
     }
   }
