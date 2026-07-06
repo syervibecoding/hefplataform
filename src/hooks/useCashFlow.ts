@@ -352,8 +352,7 @@ export function useCashFlowYear(year: number, enabled: boolean) {
     queryKey: ["cash-flow", year],
     enabled,
     queryFn: async (): Promise<CashFlowYearData> => {
-      const { clients, expenses, overrides, settings, snapshots } = await fetchAll(year);
-      const { adjustments } = await fetchAll(year);
+      const { clients, expenses, overrides, settings, snapshots, adjustments } = await fetchAll(year);
       const now = new Date();
       const snapshotMap = new Map<string, SnapshotRow>();
       for (const s of snapshots as any[]) {
@@ -362,8 +361,14 @@ export function useCashFlowYear(year: number, enabled: boolean) {
           { ...s, valor: Number(s.valor) } as SnapshotRow,
         );
       }
+      const adjustmentsByClient = new Map<string, ValueAdjustment[]>();
+      for (const a of adjustments as any[]) {
+        const arr = adjustmentsByClient.get(a.client_id) || [];
+        arr.push({ data_inicio: a.data_inicio, novo_valor: Number(a.novo_valor) });
+        adjustmentsByClient.set(a.client_id, arr);
+      }
       const toCreate: SnapshotRow[] = [];
-      const baseClientEntries = projectClientEntries(clients as any[], year, now, snapshotMap, toCreate);
+      const baseClientEntries = projectClientEntries(clients as any[], year, now, snapshotMap, toCreate, adjustmentsByClient);
       const baseExpenseEntries = projectExpenseEntries(expenses as any[], year, now, snapshotMap, toCreate);
       const allEntries = applyOverrides([...baseClientEntries, ...baseExpenseEntries], overrides as any[]);
 
