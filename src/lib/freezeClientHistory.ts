@@ -28,7 +28,7 @@ interface SnapshotRow {
   origem_tipo: "cliente";
   origem_id: string;
   sub_kind: string;
-  tipo: "receita";
+  tipo: "receita" | "despesa";
   nome: string;
   categoria: string | null;
   valor: number;
@@ -40,7 +40,7 @@ export async function freezeClientHistory(clientId: string): Promise<void> {
   // Busca cliente
   const { data: c, error } = await supabase
     .from("clients")
-    .select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio")
+    .select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio, comissao_percentual, comissao_comercial")
     .eq("id", clientId)
     .maybeSingle();
   if (error || !c) return;
@@ -74,13 +74,13 @@ export async function freezeClientHistory(clientId: string): Promise<void> {
       const day = clampDay(year, m, dia);
       const date = toISO(year, m, day);
 
-      const push = (sub_kind: string, valor: number, nome: string, date2: string) => {
+      const push = (sub_kind: string, valor: number, nome: string, date2: string, tipo: "receita" | "despesa" = "receita", categoria: string | null = c.product_id) => {
         if (valor <= 0) return;
         const key = `${year}|${m}|${sub_kind}`;
         if (existingKeys.has(key)) return;
         toCreate.push({
           ano: year, mes: m, origem_tipo: "cliente", origem_id: c.id, sub_kind,
-          tipo: "receita", nome, categoria: c.product_id,
+          tipo, nome, categoria,
           valor, dia_pagamento: dia, data: date2,
         });
       };
@@ -88,7 +88,15 @@ export async function freezeClientHistory(clientId: string): Promise<void> {
       if (c.product_id === "hefsys") {
         push("default", Number(c.faturamento || 0), c.nome, date);
       } else if (c.product_id === "consultoria-clix") {
-        push("default", Number(c.valor_contrato || 0), c.nome, date);
+        const v = Number(c.valor_contrato || 0);
+        push("default", v, c.nome, date);
+        const pct = Number((c as any).comissao_percentual || 0);
+        if (pct > 0) {
+          const comissaoValor = +(v * pct / 100).toFixed(2);
+          const comercial = ((c as any).comissao_comercial || "").trim();
+          const nomeDespesa = `Comissão ${comercial ? comercial + " · " : ""}${c.nome}`;
+          push("comissao", comissaoValor, nomeDespesa, date, "despesa", "comissoes");
+        }
       } else if (c.product_id === "plataformas") {
         const di = c.data_implementacao ? new Date(c.data_implementacao + "T00:00:00") : null;
         const monthStart = new Date(year, m, 1);
