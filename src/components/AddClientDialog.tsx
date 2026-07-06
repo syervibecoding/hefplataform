@@ -45,6 +45,8 @@ const genericSchema = baseSchema.extend({
   dataImplementacao: z.string().optional(),
   temMensalidade: z.boolean().optional(),
   valorMensalidade: z.coerce.number().min(0).optional(),
+  comissaoPercentual: z.coerce.number().min(0).max(100).optional(),
+  comissaoComercial: z.string().optional(),
 });
 
 const trafegoSchema = baseSchema.extend({
@@ -72,6 +74,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
   const isTrafego = activeProduct === "trafego";
   const isAutomacao = activeProduct === "automacao";
   const isPlataformas = activeProduct === "plataformas";
+  const isConsultoria = activeProduct === "consultoria-clix";
   const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
   const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
   const [rotinaConferencia, setRotinaConferencia] = useState<ScheduleConfig>({});
@@ -89,7 +92,7 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
 
   const genericForm = useForm<GenericForm>({
     resolver: zodResolver(genericSchema),
-    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, diaPagamento: 5, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "", valorImplementacao: 0, dataImplementacao: "", temMensalidade: false, valorMensalidade: 0 },
+    defaultValues: { nome: "", contato: "", whatsapp: "", email: "", status: "ativo", valorContrato: 0, diaPagamento: 5, dataKickoff: "", nivelDificuldade: "", notasAutomacao: "", nomePlataforma: "", tipoPlataforma: "", valorImplementacao: 0, dataImplementacao: "", temMensalidade: false, valorMensalidade: 0, comissaoPercentual: 0, comissaoComercial: "" },
   });
 
   const trafegoForm = useForm<TrafegoForm>({
@@ -139,6 +142,8 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
         dataImplementacao: data.dataImplementacao || null,
         temMensalidade: !!data.temMensalidade,
         valorMensalidade: data.temMensalidade ? (Number(data.valorMensalidade) || 0) : 0,
+        comissaoPercentual: Number(data.comissaoPercentual) || 0,
+        comissaoComercial: (data.comissaoComercial || "").trim() || null,
       });
     }
     reset();
