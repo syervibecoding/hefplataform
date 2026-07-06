@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getValorEfetivo, type ValueAdjustment } from "@/lib/getValorEfetivo";
 
 export type EntryType = "receita" | "despesa" | "investimento" | "aporte" | "retirada";
 
@@ -44,24 +45,27 @@ function toISO(year: number, month: number, day: number) {
 async function fetchAll(year: number) {
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
-  const [clientsRes, expensesRes, overridesRes, settingsRes, snapshotsRes] = await Promise.all([
+  const [clientsRes, expensesRes, overridesRes, settingsRes, snapshotsRes, adjustmentsRes] = await Promise.all([
     supabase.from("clients").select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio, comissao_percentual, comissao_comercial").eq("status", "ativo"),
     supabase.from("cash_expenses").select("*").eq("ativo", true),
     supabase.from("cash_overrides").select("*").gte("data", yearStart).lte("data", yearEnd),
     supabase.from("cash_settings").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("cash_month_snapshots").select("*").eq("ano", year),
+    supabase.from("client_value_adjustments").select("client_id, data_inicio, novo_valor"),
   ]);
   if (clientsRes.error) throw clientsRes.error;
   if (expensesRes.error) throw expensesRes.error;
   if (overridesRes.error) throw overridesRes.error;
   if (settingsRes.error) throw settingsRes.error;
   if (snapshotsRes.error) throw snapshotsRes.error;
+  if (adjustmentsRes.error) throw adjustmentsRes.error;
   return {
     clients: clientsRes.data || [],
     expenses: expensesRes.data || [],
     overrides: overridesRes.data || [],
     settings: settingsRes.data || { saldo_inicial: 0, data_saldo_inicial: yearStart },
     snapshots: snapshotsRes.data || [],
+    adjustments: adjustmentsRes.data || [],
   };
 }
 
@@ -98,6 +102,7 @@ function projectClientEntries(
   now: Date,
   snapshotMap: Map<string, SnapshotRow>,
   toCreate: SnapshotRow[],
+  adjustmentsByClient: Map<string, ValueAdjustment[]>,
 ): CashEntry[] {
   const out: CashEntry[] = [];
   for (let m = 0; m < 12; m++) {
@@ -114,6 +119,7 @@ function projectClientEntries(
       const dia = Number(c.dia_pagamento) || 5;
       const day = clampDay(year, m, dia);
       const date = toISO(year, m, day);
+      const adjs = adjustmentsByClient.get(c.id) || [];
       const pushWithSnapshot = (sub_kind: string, entry: CashEntry, snapValor: number, snapCategoria: string | null) => {
         if (past) {
           const key = snapKey(year, m, "cliente", c.id, sub_kind);
@@ -145,7 +151,8 @@ function projectClientEntries(
       };
 
       if (c.product_id === "hefsys") {
-        const v = Number(c.faturamento || 0);
+        const base = Number(c.faturamento || 0);
+        const v = getValorEfetivo(base, adjs, year, m);
         pushWithSnapshot(
           "default",
           { id: `cli-${c.id}-${date}`, tipo: "receita", date, nome: c.nome, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id },
@@ -179,7 +186,8 @@ function projectClientEntries(
           }
         }
       } else if (c.product_id === "consultoria-clix") {
-        const v = Number(c.valor_contrato || 0);
+        const base = Number(c.valor_contrato || 0);
+        const v = getValorEfetivo(base, adjs, year, m);
         pushWithSnapshot(
           "default",
           { id: `cli-${c.id}-${date}`, tipo: "receita", date, nome: c.nome, categoria: c.product_id, valor: v, origemTipo: "cliente", origemId: c.id },
@@ -344,7 +352,7 @@ export function useCashFlowYear(year: number, enabled: boolean) {
     queryKey: ["cash-flow", year],
     enabled,
     queryFn: async (): Promise<CashFlowYearData> => {
-      const { clients, expenses, overrides, settings, snapshots } = await fetchAll(year);
+      const { clients, expenses, overrides, settings, snapshots, adjustments } = await fetchAll(year);
       const now = new Date();
       const snapshotMap = new Map<string, SnapshotRow>();
       for (const s of snapshots as any[]) {
@@ -353,8 +361,14 @@ export function useCashFlowYear(year: number, enabled: boolean) {
           { ...s, valor: Number(s.valor) } as SnapshotRow,
         );
       }
+      const adjustmentsByClient = new Map<string, ValueAdjustment[]>();
+      for (const a of adjustments as any[]) {
+        const arr = adjustmentsByClient.get(a.client_id) || [];
+        arr.push({ data_inicio: a.data_inicio, novo_valor: Number(a.novo_valor) });
+        adjustmentsByClient.set(a.client_id, arr);
+      }
       const toCreate: SnapshotRow[] = [];
-      const baseClientEntries = projectClientEntries(clients as any[], year, now, snapshotMap, toCreate);
+      const baseClientEntries = projectClientEntries(clients as any[], year, now, snapshotMap, toCreate, adjustmentsByClient);
       const baseExpenseEntries = projectExpenseEntries(expenses as any[], year, now, snapshotMap, toCreate);
       const allEntries = applyOverrides([...baseClientEntries, ...baseExpenseEntries], overrides as any[]);
 

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { type ProductId, type AnyClient, type GenericClient, type ScheduleConfig, type ConsultaExtra, isHefSysClient, CONSULTAS_CERTIDOES, CONSULTAS_CAIXAS, FREQUENCIAS } from "@/data/constants";
 import ScheduleInput from "@/components/ScheduleInput";
 import { freezeClientHistory } from "@/lib/freezeClientHistory";
+import ClientValueAdjustmentsSection from "@/components/ClientValueAdjustmentsSection";
 
 const baseSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -322,6 +323,8 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                 </div>
               </div>
 
+              <ClientValueAdjustmentsSection clientId={client.id} label="Reajustes de faturamento" />
+
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">Consultas / Certidões</Label>
                 <div className="space-y-3">
@@ -457,6 +460,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                   <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
                   {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
                 </div>
+              )}
+
+              {isConsultoria && (
+                <ClientValueAdjustmentsSection clientId={client.id} label="Reajustes do valor do contrato" />
               )}
 
               {isConsultoria && (
