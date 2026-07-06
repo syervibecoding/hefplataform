@@ -97,6 +97,9 @@ export interface GenericClient extends BaseClient {
   dataImplementacao?: string | null;
   temMensalidade?: boolean;
   valorMensalidade?: number;
+  // Consultoria - comissão comercial
+  comissaoPercentual?: number;
+  comissaoComercial?: string | null;
 }
 
 // Keep backward compat
