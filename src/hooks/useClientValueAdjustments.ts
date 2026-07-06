@@ -26,8 +26,9 @@ export function useClientValueAdjustments(clientId: string | undefined) {
   });
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["client-value-adjustments", clientId] });
+    qc.invalidateQueries({ queryKey: ["client-value-adjustments"] });
     qc.invalidateQueries({ queryKey: ["cash-flow"] });
+    qc.invalidateQueries({ queryKey: ["clients"] });
   };
 
   const addAdjustment = useMutation({
@@ -62,4 +63,22 @@ export function useClientValueAdjustments(clientId: string | undefined) {
   });
 
   return { ...query, addAdjustment, updateAdjustment, deleteAdjustment };
+}
+
+export function useClientValueAdjustmentsForClients(clientIds: string[]) {
+  const uniqueClientIds = Array.from(new Set(clientIds)).sort();
+
+  return useQuery({
+    queryKey: ["client-value-adjustments", "clients", uniqueClientIds],
+    enabled: uniqueClientIds.length > 0,
+    queryFn: async (): Promise<ClientValueAdjustment[]> => {
+      const { data, error } = await supabase
+        .from("client_value_adjustments")
+        .select("id, client_id, data_inicio, novo_valor")
+        .in("client_id", uniqueClientIds)
+        .order("data_inicio", { ascending: true });
+      if (error) throw error;
+      return (data || []).map((r: any) => ({ ...r, novo_valor: Number(r.novo_valor) }));
+    },
+  });
 }
