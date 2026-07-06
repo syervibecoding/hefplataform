@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTodayChecklists } from "@/hooks/useTodayChecklists";
 import { useFinancialOverview, type ProductFinancial } from "@/hooks/useFinancialOverview";
 import { type Product } from "@/hooks/useProducts";
+import { useClientValueAdjustmentsForClients } from "@/hooks/useClientValueAdjustments";
+import { getValorEfetivo } from "@/lib/getValorEfetivo";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -67,22 +69,35 @@ export default function DashboardPage({ clients, melhorias, activeProduct, produ
 
   const { data: todayChecklists } = useTodayChecklists(hefsysActiveClients, canEditChecklist && isHefsys);
   const { data: financialOverview } = useFinancialOverview(isAdmin);
+  const { data: allAdjustments } = useClientValueAdjustmentsForClients(clients.map((c) => c.id));
+
+  const now = new Date();
+  const yNow = now.getFullYear();
+  const mNow = now.getMonth();
+  const adjustmentsByClient = new Map<string, { data_inicio: string; novo_valor: number }[]>();
+  for (const a of allAdjustments || []) {
+    const arr = adjustmentsByClient.get(a.client_id) || [];
+    arr.push({ data_inicio: a.data_inicio, novo_valor: a.novo_valor });
+    adjustmentsByClient.set(a.client_id, arr);
+  }
 
   const hefsysMetrics = () => {
     const hefsysClients = clients.filter(isHefSysClient);
     const totalCnpjs = hefsysClients.reduce((s, c) => s + c.cnpjs, 0);
-    const totalFaturamento = hefsysClients.filter((c) => c.status === "ativo").reduce((s, c) => s + (c.faturamento || 0), 0);
+    const totalFaturamento = hefsysClients
+      .filter((c) => c.status === "ativo")
+      .reduce((s, c) => s + getValorEfetivo(c.faturamento || 0, adjustmentsByClient.get(c.id), yNow, mNow), 0);
     const totalCustoAPI = hefsysClients.filter((c) => c.status === "ativo").reduce((s, c) => s + (c.custoAPI || 0), 0);
     return { totalCnpjs, totalFaturamento, totalCustoAPI };
   };
 
   const genericMetrics = () => {
     const genericClients = clients.filter((c) => !isHefSysClient(c)) as any[];
-    const receita = genericClients.filter((c) => c.status === "ativo").reduce((s: number, c: any) => s + (c.valorContrato || 0), 0);
+    const receita = genericClients
+      .filter((c) => c.status === "ativo")
+      .reduce((s: number, c: any) => s + getValorEfetivo(c.valorContrato || 0, adjustmentsByClient.get(c.id), yNow, mNow), 0);
     return { receita };
   };
-
-  const now = new Date();
 
   const statusIcon = (status: string) => {
     switch (status) {
