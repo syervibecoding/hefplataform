@@ -1,60 +1,59 @@
+
 ## Objetivo
 
-Adicionar, no cadastro de clientes de **Consultoria** (`consultoria-clix`), campos de **% de comissão** e **nome do comercial**. Enquanto o cliente estiver ativo, uma **despesa mensal automática** = `valor_contrato × %` entra no Fluxo de Caixa, congelando no histórico como as demais entradas.
+Permitir cadastrar reajustes futuros (aumento ou redução) do valor mensal de um cliente sem alterar o histórico de fluxo de caixa. Aplica-se a:
+- Consultoria (Valor do Contrato)
+- Heffsys (Faturamento)
 
-## Escopo e regras
+Comissão do comercial (consultoria) recalcula automaticamente a partir do novo valor.
 
-- Campos aparecem só quando o produto ativo for `consultoria-clix` (no Add e no Edit).
-- Comissão só é gerada se `status = ativo`, `comissao_percentual > 0` e o mês for igual/posterior ao `data_inicio` do cliente.
-- Data da despesa no mês = mesmo `dia_pagamento` do cliente.
-- Meses passados congelam via `cash_month_snapshots` (mesmo mecanismo já existente).
-- Se o cliente for desativado, deixa de gerar comissão dos meses futuros (histórico congelado permanece).
+## Como o usuário vai usar
 
-## Alterações
+No dialog de Edição do cliente, abaixo do campo de valor (Faturamento / Valor do Contrato), aparece um bloco "Reajustes de valor" com uma lista de linhas:
 
-### 1. Banco (`clients`)
-Nova migração adicionando duas colunas:
-- `comissao_percentual numeric NOT NULL DEFAULT 0`
-- `comissao_comercial text`
+- Data de início (a partir de qual mês vale o novo valor)
+- Novo valor (R$/mês)
+- Botão remover
 
-### 2. Formulários
-`src/components/AddClientDialog.tsx` e `src/components/EditClientDialog.tsx`:
-- Estender o `genericSchema` com `comissaoPercentual` (0–100) e `comissaoComercial` (texto opcional).
-- Renderizar bloco "Comissão comercial" **somente quando `activeProduct === "consultoria-clix"`**, com dois inputs (% e nome).
-- Passar os novos campos para `onAddClient` / `onEditClient`.
+Botão "Adicionar reajuste". Aviso curto: "Meses passados já lançados no fluxo permanecem congelados. Reajustes valem para os meses ainda não fechados."
 
-### 3. Persistência
-`src/hooks/useClients.ts`: mapear os novos campos entre camelCase (front) e snake_case (banco) nos métodos de create/update.
+## Modelo de dados
 
-### 4. Fluxo de Caixa
-`src/hooks/useCashFlow.ts`:
-- No SELECT de clientes, incluir `comissao_percentual, comissao_comercial`.
-- Dentro do bloco `consultoria-clix` de `projectClientEntries`, além da receita, projetar uma segunda entrada do tipo `despesa` quando `comissao_percentual > 0`:
-  - `valor = valor_contrato × comissao_percentual / 100`
-  - `nome = "Comissão {comercial|"—"} · {cliente}"`
-  - `categoria = "comissoes"`
-  - `sub_kind = "comissao"` (nova chave de snapshot, independente do "default")
-  - Segue o mesmo `pushWithSnapshot` para congelar meses passados.
+Nova tabela `client_value_adjustments`:
 
-### 5. Congelar histórico
-`src/lib/freezeClientHistory.ts`: incluir também a projeção de snapshots com `sub_kind = "comissao"` para clientes `consultoria-clix` que já tenham % configurado, usando a mesma regra (dia_pagamento, valor = contrato × %).
+- `client_id` (FK clients, cascade)
+- `data_inicio` date — primeiro dia em que o novo valor vale
+- `novo_valor` numeric
+- índice em (client_id, data_inicio)
 
-## Detalhes técnicos
+RLS igual às demais tabelas do time interno (SELECT/INSERT/UPDATE/DELETE para authenticated, ALL para service_role; policies via `is_internal_team()`).
 
-```text
-consultoria-clix cliente ativo, comissao_percentual > 0
-  ├─ receita mensal  (sub_kind "default")     — já existe
-  └─ despesa mensal  (sub_kind "comissao")    — NOVO
-       valor = valor_contrato * comissao_percentual / 100
-       data  = dia_pagamento do cliente
-       nome  = "Comissão {comercial} · {nome_cliente}"
-       past? → grava/lê cash_month_snapshots
-```
+## Regra de projeção
 
-Não altera outros produtos, não muda o cálculo de receita nem mexe em despesas cadastradas manualmente.
+Para cada mês `m` do ano projetado:
+
+1. Buscar o reajuste mais recente com `data_inicio <= último dia do mês m` para aquele cliente.
+2. Se existir, `valorEfetivo = novo_valor`. Caso contrário, usa `valor_contrato` (consultoria) ou `faturamento` (hefsys).
+3. Meses passados já preservam o comportamento atual via `cash_month_snapshots` — nada muda no histórico.
+4. Comissão consultoria: `comissao = valorEfetivo × comissao_percentual / 100` (recalcula com o reajuste vigente).
+
+Isso vale tanto em `useCashFlow.ts` quanto em `freezeClientHistory.ts` (para congelar corretamente quando um mês passa a ser histórico).
+
+## Arquivos afetados
+
+- Migration: cria `client_value_adjustments` com GRANTs + RLS.
+- `src/hooks/useClients.ts`: nada muda (reajustes têm hook próprio).
+- Novo `src/hooks/useClientValueAdjustments.ts`: CRUD + invalidação de `["cash-flow"]` e `["clients"]`.
+- `src/components/EditClientDialog.tsx`: novo bloco "Reajustes de valor" visível para `hefsys` e `consultoria-clix`, abaixo do input de valor.
+- `src/hooks/useCashFlow.ts`:
+  - incluir `client_value_adjustments` no `fetchAll`.
+  - função helper `getValorEfetivo(client, adjustments, year, month)`.
+  - usar em `hefsys` (default), `consultoria-clix` (default + comissão).
+- `src/lib/freezeClientHistory.ts`: mesma helper para congelar meses passados com o valor vigente na época.
+- `src/integrations/supabase/types.ts`: regenerado pela migration.
 
 ## Fora de escopo
 
-- Comissão sobre implementação/mensalidade de plataformas.
-- Cadastro estruturado de comerciais (uma tabela própria) — por ora texto livre.
-- Data de fim de contrato (usuário optou por "indeterminado até desativar").
+- Reajustes em Plataformas (implementação/mensalidade).
+- Aviso/preview em tela dos próximos reajustes fora do dialog.
+- Histórico auditável de quem criou cada reajuste.
