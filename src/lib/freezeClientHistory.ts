@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getValorEfetivo, type ValueAdjustment } from "@/lib/getValorEfetivo";
 
 // Reutiliza a lógica de projeção mínima para congelar meses passados de UM cliente.
 // Usa os valores ATUAIS do cliente no banco (antes de qualquer edição).
@@ -46,6 +47,16 @@ export async function freezeClientHistory(clientId: string): Promise<void> {
   if (error || !c) return;
   if (!REVENUE_PRODUCTS.has(c.product_id)) return;
 
+  // Carrega reajustes deste cliente
+  const { data: adjData } = await supabase
+    .from("client_value_adjustments")
+    .select("data_inicio, novo_valor")
+    .eq("client_id", clientId);
+  const adjustments: ValueAdjustment[] = (adjData || []).map((a: any) => ({
+    data_inicio: a.data_inicio,
+    novo_valor: Number(a.novo_valor),
+  }));
+
   const now = new Date();
   const startYear = c.data_inicio ? new Date(c.data_inicio + "T00:00:00").getFullYear() : now.getFullYear() - 1;
   const endYear = now.getFullYear();
@@ -86,9 +97,9 @@ export async function freezeClientHistory(clientId: string): Promise<void> {
       };
 
       if (c.product_id === "hefsys") {
-        push("default", Number(c.faturamento || 0), c.nome, date);
+        push("default", getValorEfetivo(Number(c.faturamento || 0), adjustments, year, m), c.nome, date);
       } else if (c.product_id === "consultoria-clix") {
-        const v = Number(c.valor_contrato || 0);
+        const v = getValorEfetivo(Number(c.valor_contrato || 0), adjustments, year, m);
         push("default", v, c.nome, date);
         const pct = Number((c as any).comissao_percentual || 0);
         if (pct > 0) {
