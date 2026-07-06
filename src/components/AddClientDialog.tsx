@@ -501,6 +501,23 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
                 </div>
               )}
 
+              {isConsultoria && (
+                <div className="space-y-3 p-3 bg-hef-warning/5 border border-hef-warning/20 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-hef-warning font-semibold">Comissão do Comercial</p>
+                  <p className="text-[10px] text-muted-foreground">Enquanto o cliente estiver ativo, gera uma despesa mensal = % × valor do contrato.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Percentual (%)</Label>
+                      <Input {...register("comissaoPercentual")} type="number" min={0} max={100} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Comercial responsável</Label>
+                      <Input {...register("comissaoComercial")} placeholder="Nome do comercial" className="mt-1 bg-secondary border-border" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {isAutomacao && (
                 <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
                   <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Automação IA</p>
