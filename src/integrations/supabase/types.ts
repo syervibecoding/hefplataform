@@ -319,6 +319,8 @@ export type Database = {
           agenda_caixas_postais: Json | null
           agenda_certidoes: Json | null
           cnpjs: number | null
+          comissao_comercial: string | null
+          comissao_percentual: number
           consultas: string[] | null
           consultas_extras: Json | null
           contato: string
@@ -358,6 +360,8 @@ export type Database = {
           agenda_caixas_postais?: Json | null
           agenda_certidoes?: Json | null
           cnpjs?: number | null
+          comissao_comercial?: string | null
+          comissao_percentual?: number
           consultas?: string[] | null
           consultas_extras?: Json | null
           contato?: string
@@ -397,6 +401,8 @@ export type Database = {
           agenda_caixas_postais?: Json | null
           agenda_certidoes?: Json | null
           cnpjs?: number | null
+          comissao_comercial?: string | null
+          comissao_percentual?: number
           consultas?: string[] | null
           consultas_extras?: Json | null
           contato?: string
