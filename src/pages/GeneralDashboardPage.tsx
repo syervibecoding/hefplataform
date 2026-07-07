@@ -8,6 +8,7 @@ import { type Melhoria } from "@/data/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllClients, clientMonthlyRevenue, type ClientRow } from "@/hooks/useAllClients";
 import { useFinancialOverview } from "@/hooks/useFinancialOverview";
+import { useClientValueAdjustmentsForClients } from "@/hooks/useClientValueAdjustments";
 import { type Product } from "@/hooks/useProducts";
 import { useCashFlowYear } from "@/hooks/useCashFlow";
 import { categoryLabel } from "@/hooks/useCashExpenses";
@@ -28,6 +29,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const { isAdmin } = useAuth();
   const { data: allClients = [] } = useAllClients(isAdmin);
   const { data: financialOverview = [] } = useFinancialOverview(isAdmin);
+  const { data: allAdjustments = [] } = useClientValueAdjustmentsForClients(allClients.map((c) => c.id));
   const now = new Date();
   const { data: cashFlow } = useCashFlowYear(now.getFullYear(), isAdmin);
   const { investments, balances, totalSaldo } = useInvestments(isAdmin);
@@ -45,6 +47,14 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     );
   }
 
+  const adjustmentsByClient = new Map<string, { data_inicio: string; novo_valor: number }[]>();
+  for (const a of allAdjustments) {
+    const arr = adjustmentsByClient.get(a.client_id) || [];
+    arr.push({ data_inicio: a.data_inicio, novo_valor: a.novo_valor });
+    adjustmentsByClient.set(a.client_id, arr);
+  }
+  const revenueFor = (c: ClientRow) => clientMonthlyRevenue(c, now, adjustmentsByClient.get(c.id));
+
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
@@ -58,7 +68,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     return new Date(c.data_implementacao + "T00:00:00") <= monthEnd;
   };
   const recurringActiveClients = activeClients.filter(isRecurringActive);
-  const totalRevenue = activeClients.reduce((s, c) => s + clientMonthlyRevenue(c, now), 0);
+  const totalRevenue = activeClients.reduce((s, c) => s + revenueFor(c), 0);
   const totalRevenueAll = financialOverview.reduce((s, o) => s + o.totalRevenue, 0);
   const emDev = melhorias.filter((m) => m.status === "em_desenvolvimento").length;
 
@@ -423,7 +433,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
                           <div className="text-[10px] text-muted-foreground truncate">{c.contato}</div>
                         </div>
                         <div className="text-[11px] font-mono font-semibold text-hef-success ml-2 whitespace-nowrap">
-                          R$ {clientMonthlyRevenue(c, now).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          R$ {revenueFor(c).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
                       </div>
                     ))
