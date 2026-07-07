@@ -29,6 +29,8 @@ export function useClientValueAdjustments(clientId: string | undefined) {
     qc.invalidateQueries({ queryKey: ["client-value-adjustments"] });
     qc.invalidateQueries({ queryKey: ["cash-flow"] });
     qc.invalidateQueries({ queryKey: ["clients"] });
+    qc.invalidateQueries({ queryKey: ["all_clients"] });
+    qc.invalidateQueries({ queryKey: ["financial-overview"] });
   };
 
   const addAdjustment = useMutation({
