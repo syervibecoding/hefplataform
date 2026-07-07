@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getValorEfetivo, type ValueAdjustment } from "@/lib/getValorEfetivo";
 
 export interface ClientRow {
   id: string;
@@ -81,10 +82,16 @@ export function useAllClients(productFilter?: string | null | boolean) {
   });
 }
 
-export function clientMonthlyRevenue(c: ClientRow, now = new Date()): number {
+export function clientMonthlyRevenue(
+  c: ClientRow,
+  now = new Date(),
+  adjustments?: ValueAdjustment[],
+): number {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  if (c.product_id === "hefsys") return c.faturamento || 0;
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  if (c.product_id === "hefsys") return getValorEfetivo(c.faturamento || 0, adjustments, y, m);
   if (c.product_id === "plataformas") {
     let v = 0;
     const di = c.data_implementacao ? new Date(c.data_implementacao + "T00:00:00") : null;
@@ -92,5 +99,5 @@ export function clientMonthlyRevenue(c: ClientRow, now = new Date()): number {
     if (c.tem_mensalidade && di && di <= monthEnd) v += c.valor_mensalidade;
     return v;
   }
-  return c.valor_contrato || 0;
+  return getValorEfetivo(c.valor_contrato || 0, adjustments, y, m);
 }
