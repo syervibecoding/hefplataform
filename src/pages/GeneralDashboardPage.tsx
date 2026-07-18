@@ -89,6 +89,33 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const resultado = faturamentoLiquido - totalDespesasMes;
   const margem = totalRevenue > 0 ? (resultado / totalRevenue) * 100 : 0;
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
+  // Previsão anual mês a mês
+  const currentMonthIdx = now.getMonth();
+  const yearForecast = (cashFlow?.months || []).map((m, i) => {
+    const rate = rateForMonth(taxHistory, now.getFullYear(), i, Number(taxRate));
+    const bruto = m.receitas;
+    const imp = bruto * (rate / 100);
+    const liquido = bruto - imp;
+    const desp = m.despesas;
+    const res = liquido - desp;
+    const mg = bruto > 0 ? (res / bruto) * 100 : 0;
+    return { i, rate, bruto, imp, liquido, desp, res, mg };
+  });
+  const annual = yearForecast.reduce(
+    (acc, m) => ({
+      bruto: acc.bruto + m.bruto,
+      imp: acc.imp + m.imp,
+      liquido: acc.liquido + m.liquido,
+      desp: acc.desp + m.desp,
+      res: acc.res + m.res,
+    }),
+    { bruto: 0, imp: 0, liquido: 0, desp: 0, res: 0 },
+  );
+  const annualMargem = annual.bruto > 0 ? (annual.res / annual.bruto) * 100 : 0;
+  const maxAbsRes = Math.max(1, ...yearForecast.map((m) => Math.abs(m.res)));
+  const MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
   const categoriasOrdenadas = Object.entries(despesasByCat)
     .map(([id, valor]) => ({ id, label: categoryLabel(id), valor, pct: totalDespesasMes > 0 ? (valor / totalDespesasMes) * 100 : 0 }))
     .sort((a, b) => b.valor - a.valor);

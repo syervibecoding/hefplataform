@@ -1,59 +1,41 @@
+# Previsão Anual no Dashboard Geral
 
-## Objetivo
+Hoje o Dashboard Geral só mostra os KPIs do **mês corrente** (Faturamento Bruto, Impostos, Líquido, Resultado, Margem). Vamos adicionar uma seção de **previsão anual** usando o fluxo de caixa que já é carregado para os 12 meses do ano (`useCashFlowYear`), que já projeta receita e despesas mês a mês (respeitando reajustes de ticket, congelamento de meses passados e alíquota vigente).
 
-Permitir cadastrar reajustes futuros (aumento ou redução) do valor mensal de um cliente sem alterar o histórico de fluxo de caixa. Aplica-se a:
-- Consultoria (Valor do Contrato)
-- Heffsys (Faturamento)
+## O que será adicionado
 
-Comissão do comercial (consultoria) recalcula automaticamente a partir do novo valor.
+Nova seção "Previsão Anual · {ano}" logo abaixo do bloco de Alocação do Resultado, contendo:
 
-## Como o usuário vai usar
+**1. Cards de totais anuais (4 cards)**
+- Faturamento Bruto Anual (soma das receitas dos 12 meses)
+- Impostos Anuais (soma mês a mês, cada um com sua alíquota vigente via `rateForMonth`)
+- Resultado Operacional Anual (Líquido − Despesas anuais)
+- Margem Média Anual (Resultado Anual / Bruto Anual)
 
-No dialog de Edição do cliente, abaixo do campo de valor (Faturamento / Valor do Contrato), aparece um bloco "Reajustes de valor" com uma lista de linhas:
+**2. Tabela mensal (Jan → Dez)**
 
-- Data de início (a partir de qual mês vale o novo valor)
-- Novo valor (R$/mês)
-- Botão remover
+Colunas: Mês · Bruto · Impostos (% vigente) · Líquido · Despesas · Resultado · Margem %
 
-Botão "Adicionar reajuste". Aviso curto: "Meses passados já lançados no fluxo permanecem congelados. Reajustes valem para os meses ainda não fechados."
+- Linhas passadas: usam os snapshots já congelados (vêm prontos do `cashFlow.months`).
+- Mês atual: destacado visualmente.
+- Meses futuros: projeção viva.
+- Linha "Total" no rodapé com os agregados anuais.
+- Scroll horizontal em mobile (padrão já usado nas outras tabelas).
 
-## Modelo de dados
+**3. Mini-gráfico de barras**
 
-Nova tabela `client_value_adjustments`:
+Barras horizontais compactas comparando Resultado por mês (verde para positivo, vermelho para negativo), para o admin bater o olho na sazonalidade sem sair da página.
 
-- `client_id` (FK clients, cascade)
-- `data_inicio` date — primeiro dia em que o novo valor vale
-- `novo_valor` numeric
-- índice em (client_id, data_inicio)
+## Detalhes técnicos
 
-RLS igual às demais tabelas do time interno (SELECT/INSERT/UPDATE/DELETE para authenticated, ALL para service_role; policies via `is_internal_team()`).
+- Arquivo alterado: `src/pages/GeneralDashboardPage.tsx`.
+- Fonte de dados: `cashFlow.months[i].receitas` e `cashFlow.months[i].despesas` (já disponíveis via `useCashFlowYear`).
+- Impostos por mês: `receitas[i] * rateForMonth(taxHistory, ano, i, taxRate) / 100` — respeita as vigências que já implementamos.
+- Nenhuma nova query, nenhuma migração — apenas nova UI usando dados já em memória.
+- Sem mudanças em regras de negócio, hooks ou banco.
 
-## Regra de projeção
+## Fora do escopo (posso fazer em seguida se quiser)
 
-Para cada mês `m` do ano projetado:
-
-1. Buscar o reajuste mais recente com `data_inicio <= último dia do mês m` para aquele cliente.
-2. Se existir, `valorEfetivo = novo_valor`. Caso contrário, usa `valor_contrato` (consultoria) ou `faturamento` (hefsys).
-3. Meses passados já preservam o comportamento atual via `cash_month_snapshots` — nada muda no histórico.
-4. Comissão consultoria: `comissao = valorEfetivo × comissao_percentual / 100` (recalcula com o reajuste vigente).
-
-Isso vale tanto em `useCashFlow.ts` quanto em `freezeClientHistory.ts` (para congelar corretamente quando um mês passa a ser histórico).
-
-## Arquivos afetados
-
-- Migration: cria `client_value_adjustments` com GRANTs + RLS.
-- `src/hooks/useClients.ts`: nada muda (reajustes têm hook próprio).
-- Novo `src/hooks/useClientValueAdjustments.ts`: CRUD + invalidação de `["cash-flow"]` e `["clients"]`.
-- `src/components/EditClientDialog.tsx`: novo bloco "Reajustes de valor" visível para `hefsys` e `consultoria-clix`, abaixo do input de valor.
-- `src/hooks/useCashFlow.ts`:
-  - incluir `client_value_adjustments` no `fetchAll`.
-  - função helper `getValorEfetivo(client, adjustments, year, month)`.
-  - usar em `hefsys` (default), `consultoria-clix` (default + comissão).
-- `src/lib/freezeClientHistory.ts`: mesma helper para congelar meses passados com o valor vigente na época.
-- `src/integrations/supabase/types.ts`: regenerado pela migration.
-
-## Fora de escopo
-
-- Reajustes em Plataformas (implementação/mensalidade).
-- Aviso/preview em tela dos próximos reajustes fora do dialog.
-- Histórico auditável de quem criou cada reajuste.
+- Previsão de anos futuros (2027+) — hoje `useCashFlowYear` é por ano; dá para adicionar um seletor.
+- Projeção da Alocação do Resultado ao longo do ano.
+- Incluir custo de API dos clientes HefSys na projeção (é o outro ponto que você levantou antes — segue pendente e não entra neste plano, aviso caso queira que eu inclua).
