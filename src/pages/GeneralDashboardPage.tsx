@@ -260,6 +260,136 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         )}
       </div>
 
+      {/* Previsão Anual */}
+      <div className="mb-7 bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold">Previsão Anual · {now.getFullYear()}</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Meses passados congelados · mês atual e futuros projetados
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          <div className="bg-secondary/40 border border-border rounded-lg p-3">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Bruto anual</div>
+            <div className="text-base font-bold font-mono text-hef-success mt-1">{fmt(annual.bruto)}</div>
+          </div>
+          <div className="bg-secondary/40 border border-border rounded-lg p-3">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Impostos anuais</div>
+            <div className="text-base font-bold font-mono text-hef-warning mt-1">{fmt(annual.imp)}</div>
+          </div>
+          <div className="bg-secondary/40 border border-border rounded-lg p-3">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Resultado anual</div>
+            <div className={`text-base font-bold font-mono mt-1 ${annual.res >= 0 ? "text-hef-success" : "text-destructive"}`}>
+              {fmt(annual.res)}
+            </div>
+          </div>
+          <div className="bg-secondary/40 border border-border rounded-lg p-3">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Margem média</div>
+            <div className={`text-base font-bold font-mono mt-1 ${annualMargem >= 0 ? "text-hef-success" : "text-destructive"}`}>
+              {annualMargem.toFixed(1)}%
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs min-w-[720px]">
+            <thead>
+              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
+                <th className="text-left font-semibold py-2 pr-3">Mês</th>
+                <th className="text-right font-semibold py-2 px-2">Bruto</th>
+                <th className="text-right font-semibold py-2 px-2">Impostos</th>
+                <th className="text-right font-semibold py-2 px-2">Líquido</th>
+                <th className="text-right font-semibold py-2 px-2">Despesas</th>
+                <th className="text-right font-semibold py-2 px-2">Resultado</th>
+                <th className="text-right font-semibold py-2 pl-2">Margem</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yearForecast.map((m) => {
+                const isCurrent = m.i === currentMonthIdx;
+                const isPast = m.i < currentMonthIdx;
+                return (
+                  <tr
+                    key={m.i}
+                    className={`border-b border-border/40 ${isCurrent ? "bg-primary/5" : ""} ${isPast ? "text-muted-foreground" : ""}`}
+                  >
+                    <td className="py-2 pr-3 font-semibold">
+                      {MESES_ABREV[m.i]}
+                      {isCurrent && <span className="ml-1.5 text-[9px] text-primary font-bold">ATUAL</span>}
+                    </td>
+                    <td className="text-right font-mono tabular-nums py-2 px-2">{fmt(m.bruto)}</td>
+                    <td className="text-right font-mono tabular-nums py-2 px-2">
+                      {fmt(m.imp)}
+                      <span className="text-[9px] text-muted-foreground ml-1">({m.rate.toFixed(1)}%)</span>
+                    </td>
+                    <td className="text-right font-mono tabular-nums py-2 px-2">{fmt(m.liquido)}</td>
+                    <td className="text-right font-mono tabular-nums py-2 px-2">{fmt(m.desp)}</td>
+                    <td className={`text-right font-mono tabular-nums py-2 px-2 font-semibold ${m.res >= 0 ? "text-hef-success" : "text-destructive"}`}>
+                      {fmt(m.res)}
+                    </td>
+                    <td className={`text-right font-mono tabular-nums py-2 pl-2 ${m.mg >= 0 ? "text-hef-success" : "text-destructive"}`}>
+                      {m.mg.toFixed(1)}%
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-border font-semibold">
+                <td className="py-2 pr-3">Total</td>
+                <td className="text-right font-mono tabular-nums py-2 px-2 text-hef-success">{fmt(annual.bruto)}</td>
+                <td className="text-right font-mono tabular-nums py-2 px-2 text-hef-warning">{fmt(annual.imp)}</td>
+                <td className="text-right font-mono tabular-nums py-2 px-2">{fmt(annual.liquido)}</td>
+                <td className="text-right font-mono tabular-nums py-2 px-2">{fmt(annual.desp)}</td>
+                <td className={`text-right font-mono tabular-nums py-2 px-2 ${annual.res >= 0 ? "text-hef-success" : "text-destructive"}`}>
+                  {fmt(annual.res)}
+                </td>
+                <td className={`text-right font-mono tabular-nums py-2 pl-2 ${annualMargem >= 0 ? "text-hef-success" : "text-destructive"}`}>
+                  {annualMargem.toFixed(1)}%
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* Mini-gráfico de resultado por mês */}
+        <div className="mt-5 pt-4 border-t border-border">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">
+            Resultado por mês
+          </div>
+          <div className="space-y-1.5">
+            {yearForecast.map((m) => {
+              const pct = (Math.abs(m.res) / maxAbsRes) * 100;
+              const positive = m.res >= 0;
+              return (
+                <div key={m.i} className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold w-8 text-muted-foreground">{MESES_ABREV[m.i]}</span>
+                  <div className="flex-1 flex items-center h-4">
+                    <div className="flex-1 flex justify-end pr-1">
+                      {!positive && (
+                        <div className="h-2.5 bg-destructive/70 rounded-l-sm" style={{ width: `${pct}%` }} />
+                      )}
+                    </div>
+                    <div className="w-px h-3 bg-border" />
+                    <div className="flex-1 pl-1">
+                      {positive && (
+                        <div className="h-2.5 bg-hef-success/70 rounded-r-sm" style={{ width: `${pct}%` }} />
+                      )}
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-mono tabular-nums w-24 text-right ${positive ? "text-hef-success" : "text-destructive"}`}>
+                    {fmt(m.res)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Despesas por categoria + Investimentos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-7">
         <div className="bg-card border border-border rounded-xl p-5">
