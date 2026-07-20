@@ -40,6 +40,7 @@ export interface BaseClient {
   whatsapp: string;
   email: string;
   status: ClientStatus;
+  contratoAssinado?: boolean;
 }
 
 // Schedule config for flexible scheduling
