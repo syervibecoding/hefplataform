@@ -54,7 +54,7 @@ export function useAllClients(productFilter?: string | null | boolean) {
     queryFn: async (): Promise<ClientRow[]> => {
       let query = supabase
         .from("clients")
-        .select("id, nome, contato, whatsapp, email, status, product_id, valor_contrato, faturamento, nivel_dificuldade, data_golive, data_kickoff, created_at, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao")
+        .select("id, nome, contato, whatsapp, email, status, product_id, valor_contrato, faturamento, nivel_dificuldade, data_golive, data_kickoff, created_at, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, contrato_assinado")
         .order("nome");
       if (filter) query = query.eq("product_id", filter);
       const { data, error } = await query;
