@@ -12,6 +12,7 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
       email: row.email,
       status: row.status,
       cnpjs: row.cnpjs || 0,
+      contratoAssinado: !!row.contrato_assinado,
       consultas: row.consultas || [],
       frequencia: row.frequencia || "1x",
       agendaCertidoes: row.agenda_certidoes || {},
@@ -30,6 +31,7 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
     whatsapp: row.whatsapp,
     email: row.email,
     status: row.status,
+    contratoAssinado: !!row.contrato_assinado,
     valorContrato: Number(row.valor_contrato) || 0,
     diaPagamento: Number(row.dia_pagamento) || 5,
     dataInicio: row.data_inicio || null,
@@ -79,6 +81,7 @@ export function useClients(productId: ProductId) {
         email: clientData.email,
         status: clientData.status,
       };
+      row.contrato_assinado = !!clientData.contratoAssinado;
       if (productId === "hefsys") {
         row.cnpjs = clientData.cnpjs;
         row.consultas = clientData.consultas;
@@ -131,6 +134,7 @@ export function useClients(productId: ProductId) {
         email: data.email,
         status: data.status,
       };
+      row.contrato_assinado = !!data.contratoAssinado;
       if (productId === "hefsys") {
         row.cnpjs = data.cnpjs;
         row.consultas = data.consultas;

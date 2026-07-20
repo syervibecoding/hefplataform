@@ -359,6 +359,7 @@ export type Database = {
           consultas: string[] | null
           consultas_extras: Json | null
           contato: string
+          contrato_assinado: boolean
           created_at: string
           custo_api: number | null
           data_deposito: string | null
@@ -400,6 +401,7 @@ export type Database = {
           consultas?: string[] | null
           consultas_extras?: Json | null
           contato?: string
+          contrato_assinado?: boolean
           created_at?: string
           custo_api?: number | null
           data_deposito?: string | null
@@ -441,6 +443,7 @@ export type Database = {
           consultas?: string[] | null
           consultas_extras?: Json | null
           contato?: string
+          contrato_assinado?: boolean
           created_at?: string
           custo_api?: number | null
           data_deposito?: string | null

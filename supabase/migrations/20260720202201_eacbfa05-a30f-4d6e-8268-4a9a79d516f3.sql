@@ -1,0 +1,1 @@
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS contrato_assinado boolean NOT NULL DEFAULT false;
