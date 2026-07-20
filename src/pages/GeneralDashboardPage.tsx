@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, Settings, SlidersHorizontal } from "lucide-react";
+import { Wallet, Settings, SlidersHorizontal, FileWarning } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import StatusTag from "@/components/StatusTag";
 import InvestmentsManagerDialog from "@/components/InvestmentsManagerDialog";
@@ -68,6 +68,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     return new Date(c.data_implementacao + "T00:00:00") <= monthEnd;
   };
   const recurringActiveClients = activeClients.filter(isRecurringActive);
+  const unsignedClients = activeClients.filter((c) => !c.contrato_assinado);
   const totalRevenue = activeClients.reduce((s, c) => s + revenueFor(c), 0);
   const totalRevenueAll = financialOverview.reduce((s, o) => s + o.totalRevenue, 0);
   const emDev = melhorias.filter((m) => m.status === "em_desenvolvimento").length;
@@ -141,6 +142,20 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
           <SlidersHorizontal size={13} /> Configurações
         </button>
       </div>
+
+      {unsignedClients.length > 0 && (
+        <div className="mb-5 bg-hef-warning/10 border border-hef-warning/20 rounded-xl p-4 flex items-start gap-3">
+          <FileWarning size={18} className="text-hef-warning shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-hef-warning">
+              {unsignedClients.length} contrato{unsignedClients.length > 1 ? "s" : ""} pendente{unsignedClients.length > 1 ? "s" : ""} de assinatura
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+              {unsignedClients.map((c) => c.nome).join(" · ")}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
         <StatCard label="Clientes Ativos" value={recurringActiveClients.length} sub="recorrentes (sem projetos)" colorClass="text-primary" />

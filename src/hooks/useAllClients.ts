@@ -20,6 +20,7 @@ export interface ClientRow {
   valor_mensalidade: number;
   tem_mensalidade: boolean;
   data_implementacao: string | null;
+  contrato_assinado: boolean;
 }
 
 export type AllClientRow = ClientRow;
@@ -76,6 +77,7 @@ export function useAllClients(productFilter?: string | null | boolean) {
         valor_mensalidade: Number(r.valor_mensalidade) || 0,
         tem_mensalidade: !!r.tem_mensalidade,
         data_implementacao: r.data_implementacao || null,
+        contrato_assinado: !!r.contrato_assinado,
       }));
     },
     staleTime: 30000,
