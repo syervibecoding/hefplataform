@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, Settings, SlidersHorizontal } from "lucide-react";
+import { Wallet, Settings, SlidersHorizontal, FileWarning } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import StatusTag from "@/components/StatusTag";
 import InvestmentsManagerDialog from "@/components/InvestmentsManagerDialog";
