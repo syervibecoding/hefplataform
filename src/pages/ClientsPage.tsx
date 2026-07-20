@@ -1,4 +1,4 @@
-import { ChevronRight, FileWarning, FileCheck2 } from "lucide-react";
+import { ChevronRight, FileWarning } from "lucide-react";
 import StatusTag from "@/components/StatusTag";
 import AddClientDialog from "@/components/AddClientDialog";
 import EditClientDialog from "@/components/EditClientDialog";
