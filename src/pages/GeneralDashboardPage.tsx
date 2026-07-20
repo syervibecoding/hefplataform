@@ -68,7 +68,8 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     return new Date(c.data_implementacao + "T00:00:00") <= monthEnd;
   };
   const recurringActiveClients = activeClients.filter(isRecurringActive);
-  const unsignedClients = activeClients.filter((c) => !c.contrato_assinado);
+  // Plataformas de IA são projetos pontuais — não exigem controle de contrato.
+  const unsignedClients = activeClients.filter((c) => c.product_id !== "plataformas" && !c.contrato_assinado);
   const totalRevenue = activeClients.reduce((s, c) => s + revenueFor(c), 0);
   const totalRevenueAll = financialOverview.reduce((s, o) => s + o.totalRevenue, 0);
   const emDev = melhorias.filter((m) => m.status === "em_desenvolvimento").length;

@@ -27,7 +27,7 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
   );
 
   const unsignedClients = clients.filter(
-    (c) => c.status === "ativo" && !(c as any).contratoAssinado,
+    (c) => c.status === "ativo" && c.product_id !== "plataformas" && !(c as any).contratoAssinado,
   );
 
   const getCurrentValue = (client: AnyClient, baseValue: number) => {
