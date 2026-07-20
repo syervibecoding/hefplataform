@@ -26,9 +26,9 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
     supportsValueAdjustments ? clients.map((client) => client.id) : [],
   );
 
-  const unsignedClients = clients.filter(
-    (c) => c.status === "ativo" && c.product_id !== "plataformas" && !(c as any).contratoAssinado,
-  );
+  const unsignedClients = activeProduct === "plataformas"
+    ? []
+    : clients.filter((c) => c.status === "ativo" && !(c as any).contratoAssinado);
 
   const getCurrentValue = (client: AnyClient, baseValue: number) => {
     const now = new Date();
