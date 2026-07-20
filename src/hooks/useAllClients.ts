@@ -20,6 +20,7 @@ export interface ClientRow {
   valor_mensalidade: number;
   tem_mensalidade: boolean;
   data_implementacao: string | null;
+  contrato_assinado: boolean;
 }
 
 export type AllClientRow = ClientRow;
