@@ -17,6 +17,7 @@ const baseSchema = z.object({
   whatsapp: z.string().trim().min(1, "WhatsApp é obrigatório").max(20),
   email: z.string().trim().email("Email inválido").max(255),
   status: z.enum(["ativo", "inativo"]),
+  contratoAssinado: z.boolean().optional(),
 });
 
 const hefsysSchema = baseSchema.extend({
@@ -105,6 +106,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           whatsapp: client.whatsapp,
           email: client.email,
           status: client.status,
+          contratoAssinado: !!(client as any).contratoAssinado,
           cnpjs: client.cnpjs,
           consultas: client.consultas,
           frequencia: client.frequencia,
@@ -124,6 +126,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           whatsapp: gc.whatsapp,
           email: gc.email,
           status: gc.status,
+          contratoAssinado: !!(gc as any).contratoAssinado,
           valorContrato: gc.valorContrato,
           diaPagamento: gc.diaPagamento || 5,
           dataInicio: gc.dataInicio || "",
@@ -140,6 +143,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           whatsapp: client.whatsapp,
           email: client.email,
           status: client.status,
+          contratoAssinado: !!(client as any).contratoAssinado,
           valorContrato: client.valorContrato,
           diaPagamento: client.diaPagamento || 5,
           dataInicio: (client as any).dataInicio || "",
@@ -262,6 +266,21 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
               <option value="ativo">Ativo</option>
               <option value="inativo">Inativo</option>
             </select>
+          </div>
+
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-border bg-secondary/30">
+            <input
+              id="edit-contrato-assinado"
+              type="checkbox"
+              {...register("contratoAssinado")}
+              className="mt-0.5 h-4 w-4 rounded border-border accent-hef-success"
+            />
+            <label htmlFor="edit-contrato-assinado" className="text-xs cursor-pointer">
+              <span className="font-semibold">Contrato assinado</span>
+              <span className="block text-[10px] text-muted-foreground mt-0.5">
+                Desmarque para receber alerta de cobrança de assinatura na lista de clientes.
+              </span>
+            </label>
           </div>
 
           <div>
