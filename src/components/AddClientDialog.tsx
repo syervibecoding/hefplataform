@@ -306,6 +306,21 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
             </select>
           </div>
 
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-border bg-secondary/30">
+            <input
+              id="add-contrato-assinado"
+              type="checkbox"
+              {...register("contratoAssinado")}
+              className="mt-0.5 h-4 w-4 rounded border-border accent-hef-success"
+            />
+            <label htmlFor="add-contrato-assinado" className="text-xs cursor-pointer">
+              <span className="font-semibold">Contrato assinado</span>
+              <span className="block text-[10px] text-muted-foreground mt-0.5">
+                Desmarque para receber alerta de cobrança de assinatura na lista de clientes.
+              </span>
+            </label>
+          </div>
+
           <div>
             <Label className="text-xs text-muted-foreground">Dia de pagamento (1–31)</Label>
             <Input {...register("diaPagamento")} type="number" min={1} max={31} className="mt-1 bg-secondary border-border" />
