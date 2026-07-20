@@ -92,7 +92,7 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                     <td className="px-4 py-3.5 border-b border-border/50">
                       <div className="font-semibold text-sm">{c.nome}</div>
                       <div className="text-xs text-muted-foreground">{c.contato}</div>
-                      {c.status === "ativo" && !(c as any).contratoAssinado && (
+                      {c.status === "ativo" && activeProduct !== "plataformas" && !(c as any).contratoAssinado && (
                         <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-hef-warning/15 text-hef-warning">
                           <FileWarning size={10} /> Contrato pendente
                         </span>
@@ -122,7 +122,7 @@ export default function ClientsPage({ clients, activeProduct, onSelectClient, on
                     <td className="px-4 py-3.5 border-b border-border/50">
                       <div className="font-semibold text-sm">{c.nome}</div>
                       <div className="text-xs text-muted-foreground">{c.email}</div>
-                      {c.status === "ativo" && !(c as any).contratoAssinado && (
+                      {c.status === "ativo" && activeProduct !== "plataformas" && !(c as any).contratoAssinado && (
                         <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-hef-warning/15 text-hef-warning">
                           <FileWarning size={10} /> Contrato pendente
                         </span>
