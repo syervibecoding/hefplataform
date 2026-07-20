@@ -20,6 +20,7 @@ const baseSchema = z.object({
   whatsapp: z.string().trim().min(1, "WhatsApp é obrigatório").max(20),
   email: z.string().trim().email("Email inválido").max(255),
   status: z.enum(["ativo", "inativo"]),
+  contratoAssinado: z.boolean().optional(),
 });
 
 const hefsysSchema = baseSchema.extend({
