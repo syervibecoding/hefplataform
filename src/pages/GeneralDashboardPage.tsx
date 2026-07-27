@@ -171,7 +171,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         <StatCard
           label="Faturamento Bruto"
           value={fmt(totalRevenue)}
-          sub="consolidado"
+          sub="MRR consolidado (clientes)"
           colorClass="text-hef-success"
         />
         <StatCard
@@ -193,13 +193,13 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         <StatCard
           label={`Impostos (${currentMonthRate.toFixed(1)}%)`}
           value={fmt(impostos)}
-          sub="Simples Nacional"
+          sub={impostosIsReal ? "DAS lançado no fluxo" : "estimado · sem DAS lançado"}
           colorClass="text-hef-warning"
         />
         <StatCard
           label="Faturamento Líquido"
           value={fmt(faturamentoLiquido)}
-          sub="após impostos"
+          sub={`base: ${fmt(faturamentoBrutoMes)} (fluxo)`}
           colorClass="text-hef-info"
         />
         <StatCard
