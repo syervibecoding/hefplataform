@@ -86,10 +86,17 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const despesasByCat = monthData?.byCategoryDespesa || {};
   const totalDespesasMes = Object.values(despesasByCat).reduce((s, v) => s + v, 0);
   const currentMonthRate = rateForMonth(taxHistory, now.getFullYear(), now.getMonth(), Number(taxRate));
-  const impostos = totalRevenue * (currentMonthRate / 100);
-  const faturamentoLiquido = totalRevenue - impostos;
-  const resultado = faturamentoLiquido - totalDespesasMes;
-  const margem = totalRevenue > 0 ? (resultado / totalRevenue) * 100 : 0;
+  // Faturamento bruto do mês vem das receitas reais lançadas no Fluxo de Caixa
+  const faturamentoBrutoMes = monthData?.receitas ?? 0;
+  // Imposto: usa o DAS lançado no fluxo (categoria "impostos"); fallback = alíquota × receita
+  const impostoLancado = despesasByCat["impostos"] || 0;
+  const impostosIsReal = impostoLancado > 0;
+  const impostos = impostosIsReal ? impostoLancado : faturamentoBrutoMes * (currentMonthRate / 100);
+  const faturamentoLiquido = faturamentoBrutoMes - impostos;
+  // Evita contar imposto duas vezes (ele já está em totalDespesasMes)
+  const despesasSemImpostos = totalDespesasMes - impostoLancado;
+  const resultado = faturamentoLiquido - despesasSemImpostos;
+  const margem = faturamentoBrutoMes > 0 ? (resultado / faturamentoBrutoMes) * 100 : 0;
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
   // Previsão anual mês a mês
@@ -97,12 +104,13 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const yearForecast = (cashFlow?.months || []).map((m, i) => {
     const rate = rateForMonth(taxHistory, now.getFullYear(), i, Number(taxRate));
     const bruto = m.receitas;
-    const imp = bruto * (rate / 100);
+    const impLancado = m.byCategoryDespesa?.["impostos"] || 0;
+    const imp = impLancado > 0 ? impLancado : bruto * (rate / 100);
     const liquido = bruto - imp;
-    const desp = m.despesas;
+    const desp = m.despesas - impLancado; // não duplicar imposto
     const res = liquido - desp;
     const mg = bruto > 0 ? (res / bruto) * 100 : 0;
-    return { i, rate, bruto, imp, liquido, desp, res, mg };
+    return { i, rate, bruto, imp, liquido, desp, res, mg, impReal: impLancado > 0 };
   });
   const annual = yearForecast.reduce(
     (acc, m) => ({
