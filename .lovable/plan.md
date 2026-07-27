@@ -1,34 +1,28 @@
-## Objetivo
-Fazer o Dashboard Geral refletir a realidade financeira do mês em curso, usando o que está lançado no Fluxo de Caixa em vez de recalcular por cliente.
+## Problema
+1. O card "Faturamento Bruto" ainda mostra `totalRevenue` (soma do MRR dos clientes via `revenueFor`), não `faturamentoBrutoMes` (receitas do mês no fluxo). Por isso não reflete Julho — mostra o MRR "atualizado" independente do mês.
+2. Não há como navegar entre meses para ver a previsão de meses futuros/passados nos KPIs.
 
-## Mudanças
+## Mudanças (`src/pages/GeneralDashboardPage.tsx`)
 
-### 1. Faturamento Bruto do mês (card + KPIs de resultado)
-- Trocar a base de cálculo `totalRevenue` (hoje `activeClients.reduce(revenueFor)`) por: **soma das entradas de receita do mês atual no Fluxo de Caixa** — `cashFlow.months[now.getMonth()].receitas`.
-- Isso já respeita snapshots de meses passados, projeções vivas do mês atual e overrides.
-- Card "Faturamento Bruto" passa a mostrar esse valor e ganha sub-texto "receitas do mês (fluxo)".
+### 1. Trocar fonte do card "Faturamento Bruto"
+- Usar `faturamentoBrutoMes` (já calculado a partir de `monthData.receitas`) no card, com sub-texto "receitas do mês (fluxo)".
+- Manter `totalRevenue` (MRR) apenas para o breakdown por produto, se necessário.
 
-### 2. Impostos — puxar DAS real do fluxo, com fallback
-- Novo cálculo de `impostos` no mês atual:
-  - Somar `monthData.byCategoryDespesa["impostos"]` (categoria já usada em `cash_expenses`/`overrides`).
-  - Se `> 0` → usar esse valor real; sub-texto: "DAS lançado no fluxo".
-  - Se `= 0` → fallback ao cálculo atual `totalRevenue × alíquota%`; sub-texto: "estimado · sem DAS lançado".
-- Como a despesa de imposto já compõe `totalDespesasMes`, subtrair ela do bloco de despesas para não duplicar no cálculo de resultado:
-  - `despesasSemImpostos = totalDespesasMes − impostoLancadoNoFluxo`
-  - `resultado = faturamentoLiquido − despesasSemImpostos`
-- Card "Despesas do Mês" continua mostrando o total bruto (comportamento inalterado).
+### 2. Navegação de mês nos KPIs do mês
+- Adicionar estado `selectedMonth` (0-11) iniciando em `now.getMonth()` e `selectedYear` iniciando em `now.getFullYear()`.
+- Botões ‹ / › ao lado do título da seção de KPIs, com label "mês/ano" (ex.: "Julho de 2026") e botão "Hoje" quando fora do mês corrente.
+- Recalcular tudo que hoje usa `now.getMonth()` a partir do mês selecionado:
+  - `monthData = cashFlow?.months[selectedMonth]` (quando `selectedYear === cashFlow.year`)
+  - `currentMonthRate`, `impostoLancado`, `impostos`, `faturamentoLiquido`, `despesasSemImpostos`, `resultado`, `margem`, `despesasByCat`, `categoriasOrdenadas`, `plataformasMes`.
+- Se `selectedYear` diferir do ano do `cashFlow` carregado, buscar via `useCashFlowYear(selectedYear, isAdmin)` — usar hook adicional condicional/segundo hook.
+- Indicador visual: badge "projeção" quando `selectedMonth > mês atual` ou ano futuro; "congelado" quando passado.
 
-### 3. Previsão Anual (tabela mês a mês)
-- Aplicar a mesma regra por mês: se houver despesa `impostos` lançada naquele mês, usar como imposto real; caso contrário, usar alíquota vigente × receita.
-- Ajustar `desp` do mês para não contar a categoria `impostos` duas vezes.
-- Total anual recalculado a partir dos meses.
-
-### 4. Sem mudanças de banco
-Nenhuma migração necessária — a categoria `impostos` já existe no schema de `cash_expenses`/`cash_overrides`.
+### 3. Escopo intocado
+- Previsão Anual (tabela mês a mês) segue mostrando o ano inteiro — não muda.
+- Alertas, alocação do resultado, cards "Clientes Ativos" e "Investido" seguem baseados em `now` (não fazem sentido navegar por mês).
 
 ## Arquivos afetados
 - `src/pages/GeneralDashboardPage.tsx` — única alteração.
 
-## Detalhes técnicos
-- `useFinancialOverview` continua servindo os cards por produto (breakdown por produto abaixo dos KPIs), pois ali faz sentido mostrar o MRR por linha de negócio. Só o card consolidado "Faturamento Bruto" e os KPIs derivados mudam de fonte.
-- Chave da categoria de imposto: `"impostos"` (mesma string usada em `categoryLabel` e nos selects de despesa).
+## Sem mudanças de banco
+Nenhuma.

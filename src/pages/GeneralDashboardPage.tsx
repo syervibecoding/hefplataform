@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, Settings, SlidersHorizontal, FileWarning } from "lucide-react";
+import { Wallet, Settings, SlidersHorizontal, FileWarning, ChevronLeft, ChevronRight } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import StatusTag from "@/components/StatusTag";
 import InvestmentsManagerDialog from "@/components/InvestmentsManagerDialog";
@@ -31,7 +31,9 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const { data: financialOverview = [] } = useFinancialOverview(isAdmin);
   const { data: allAdjustments = [] } = useClientValueAdjustmentsForClients(allClients.map((c) => c.id));
   const now = new Date();
-  const { data: cashFlow } = useCashFlowYear(now.getFullYear(), isAdmin);
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const { data: cashFlow } = useCashFlowYear(selectedYear, isAdmin);
   const { investments, balances, totalSaldo } = useInvestments(isAdmin);
   const { taxRate } = useFinancialSettings(isAdmin);
   const { data: taxHistory = [] } = useTaxRateHistory(isAdmin);
@@ -55,8 +57,11 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   }
   const revenueFor = (c: ClientRow) => clientMonthlyRevenue(c, now, adjustmentsByClient.get(c.id));
 
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const monthStart = new Date(selectedYear, selectedMonth, 1);
+  const monthEnd = new Date(selectedYear, selectedMonth + 1, 0);
+  const isCurrentRealMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+  const isPastMonth = selectedYear < now.getFullYear() || (selectedYear === now.getFullYear() && selectedMonth < now.getMonth());
+  const isFutureMonth = !isCurrentRealMonth && !isPastMonth;
 
   const activeClients = allClients.filter((c) => c.status === "ativo");
   // Plataformas de IA são projetos pontuais/realizados — não contam como
@@ -82,10 +87,10 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     return di >= monthStart && di <= monthEnd;
   });
 
-  const monthData = cashFlow?.months[now.getMonth()];
+  const monthData = cashFlow?.months[selectedMonth];
   const despesasByCat = monthData?.byCategoryDespesa || {};
   const totalDespesasMes = Object.values(despesasByCat).reduce((s, v) => s + v, 0);
-  const currentMonthRate = rateForMonth(taxHistory, now.getFullYear(), now.getMonth(), Number(taxRate));
+  const currentMonthRate = rateForMonth(taxHistory, selectedYear, selectedMonth, Number(taxRate));
   // Faturamento bruto do mês vem das receitas reais lançadas no Fluxo de Caixa
   const faturamentoBrutoMes = monthData?.receitas ?? 0;
   // Imposto: usa o DAS lançado no fluxo (categoria "impostos"); fallback = alíquota × receita
@@ -100,9 +105,9 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
   // Previsão anual mês a mês
-  const currentMonthIdx = now.getMonth();
+  const currentMonthIdx = selectedYear === now.getFullYear() ? now.getMonth() : -1;
   const yearForecast = (cashFlow?.months || []).map((m, i) => {
-    const rate = rateForMonth(taxHistory, now.getFullYear(), i, Number(taxRate));
+    const rate = rateForMonth(taxHistory, selectedYear, i, Number(taxRate));
     const bruto = m.receitas;
     const impLancado = m.byCategoryDespesa?.["impostos"] || 0;
     const imp = impLancado > 0 ? impLancado : bruto * (rate / 100);
@@ -112,6 +117,17 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     const mg = bruto > 0 ? (res / bruto) * 100 : 0;
     return { i, rate, bruto, imp, liquido, desp, res, mg, impReal: impLancado > 0 };
   });
+
+  const goPrevMonth = () => {
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(selectedYear - 1); }
+    else setSelectedMonth(selectedMonth - 1);
+  };
+  const goNextMonth = () => {
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(selectedYear + 1); }
+    else setSelectedMonth(selectedMonth + 1);
+  };
+  const goToday = () => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); };
+  const selectedDate = new Date(selectedYear, selectedMonth, 1);
   const annual = yearForecast.reduce(
     (acc, m) => ({
       bruto: acc.bruto + m.bruto,
@@ -166,12 +182,50 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         </div>
       )}
 
+      {/* Navegador de mês para KPIs do mês */}
+      <div className="mb-3 flex items-center justify-between gap-3 bg-card border border-border rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goPrevMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground"
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <div className="text-sm font-semibold capitalize min-w-[160px] text-center">
+            {format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR })}
+          </div>
+          <button
+            onClick={goNextMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight size={16} />
+          </button>
+          {isCurrentRealMonth ? (
+            <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">Atual</span>
+          ) : isFutureMonth ? (
+            <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-hef-info bg-hef-info/10 px-1.5 py-0.5 rounded">Projeção</span>
+          ) : (
+            <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">Congelado</span>
+          )}
+        </div>
+        {!isCurrentRealMonth && (
+          <button
+            onClick={goToday}
+            className="text-xs text-primary hover:underline"
+          >
+            Ir para hoje
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
         <StatCard label="Clientes Ativos" value={recurringActiveClients.length} sub="recorrentes (sem projetos)" colorClass="text-primary" />
         <StatCard
           label="Faturamento Bruto"
-          value={fmt(totalRevenue)}
-          sub="MRR consolidado (clientes)"
+          value={fmt(faturamentoBrutoMes)}
+          sub="receitas do mês (fluxo)"
           colorClass="text-hef-success"
         />
         <StatCard
@@ -288,7 +342,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
       <div className="mb-7 bg-card border border-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-sm font-semibold">Previsão Anual · {now.getFullYear()}</h2>
+            <h2 className="text-sm font-semibold">Previsão Anual · {selectedYear}</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               Meses passados congelados · mês atual e futuros projetados
             </p>
@@ -420,7 +474,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-7">
         <div className="bg-card border border-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold">Despesas por Categoria · {format(now, "MMM/yy", { locale: ptBR })}</h2>
+            <h2 className="text-sm font-semibold">Despesas por Categoria · {format(selectedDate, "MMM/yy", { locale: ptBR })}</h2>
             <span className="text-[11px] text-muted-foreground font-mono">
               R$ {totalDespesasMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
