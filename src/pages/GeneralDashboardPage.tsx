@@ -182,12 +182,50 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         </div>
       )}
 
+      {/* Navegador de mês para KPIs do mês */}
+      <div className="mb-3 flex items-center justify-between gap-3 bg-card border border-border rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goPrevMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground"
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <div className="text-sm font-semibold capitalize min-w-[160px] text-center">
+            {format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR })}
+          </div>
+          <button
+            onClick={goNextMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight size={16} />
+          </button>
+          {isCurrentRealMonth ? (
+            <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">Atual</span>
+          ) : isFutureMonth ? (
+            <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-hef-info bg-hef-info/10 px-1.5 py-0.5 rounded">Projeção</span>
+          ) : (
+            <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">Congelado</span>
+          )}
+        </div>
+        {!isCurrentRealMonth && (
+          <button
+            onClick={goToday}
+            className="text-xs text-primary hover:underline"
+          >
+            Ir para hoje
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
         <StatCard label="Clientes Ativos" value={recurringActiveClients.length} sub="recorrentes (sem projetos)" colorClass="text-primary" />
         <StatCard
           label="Faturamento Bruto"
-          value={fmt(totalRevenue)}
-          sub="MRR consolidado (clientes)"
+          value={fmt(faturamentoBrutoMes)}
+          sub="receitas do mês (fluxo)"
           colorClass="text-hef-success"
         />
         <StatCard
@@ -304,7 +342,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
       <div className="mb-7 bg-card border border-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-sm font-semibold">Previsão Anual · {now.getFullYear()}</h2>
+            <h2 className="text-sm font-semibold">Previsão Anual · {selectedYear}</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               Meses passados congelados · mês atual e futuros projetados
             </p>
@@ -436,7 +474,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-7">
         <div className="bg-card border border-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold">Despesas por Categoria · {format(now, "MMM/yy", { locale: ptBR })}</h2>
+            <h2 className="text-sm font-semibold">Despesas por Categoria · {format(selectedDate, "MMM/yy", { locale: ptBR })}</h2>
             <span className="text-[11px] text-muted-foreground font-mono">
               R$ {totalDespesasMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
