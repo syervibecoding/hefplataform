@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, Settings, SlidersHorizontal, FileWarning } from "lucide-react";
+import { Wallet, Settings, SlidersHorizontal, FileWarning, ChevronLeft, ChevronRight } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import StatusTag from "@/components/StatusTag";
 import InvestmentsManagerDialog from "@/components/InvestmentsManagerDialog";
@@ -31,7 +31,9 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const { data: financialOverview = [] } = useFinancialOverview(isAdmin);
   const { data: allAdjustments = [] } = useClientValueAdjustmentsForClients(allClients.map((c) => c.id));
   const now = new Date();
-  const { data: cashFlow } = useCashFlowYear(now.getFullYear(), isAdmin);
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const { data: cashFlow } = useCashFlowYear(selectedYear, isAdmin);
   const { investments, balances, totalSaldo } = useInvestments(isAdmin);
   const { taxRate } = useFinancialSettings(isAdmin);
   const { data: taxHistory = [] } = useTaxRateHistory(isAdmin);
@@ -55,8 +57,11 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   }
   const revenueFor = (c: ClientRow) => clientMonthlyRevenue(c, now, adjustmentsByClient.get(c.id));
 
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const monthStart = new Date(selectedYear, selectedMonth, 1);
+  const monthEnd = new Date(selectedYear, selectedMonth + 1, 0);
+  const isCurrentRealMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+  const isPastMonth = selectedYear < now.getFullYear() || (selectedYear === now.getFullYear() && selectedMonth < now.getMonth());
+  const isFutureMonth = !isCurrentRealMonth && !isPastMonth;
 
   const activeClients = allClients.filter((c) => c.status === "ativo");
   // Plataformas de IA são projetos pontuais/realizados — não contam como
@@ -82,10 +87,10 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     return di >= monthStart && di <= monthEnd;
   });
 
-  const monthData = cashFlow?.months[now.getMonth()];
+  const monthData = cashFlow?.months[selectedMonth];
   const despesasByCat = monthData?.byCategoryDespesa || {};
   const totalDespesasMes = Object.values(despesasByCat).reduce((s, v) => s + v, 0);
-  const currentMonthRate = rateForMonth(taxHistory, now.getFullYear(), now.getMonth(), Number(taxRate));
+  const currentMonthRate = rateForMonth(taxHistory, selectedYear, selectedMonth, Number(taxRate));
   // Faturamento bruto do mês vem das receitas reais lançadas no Fluxo de Caixa
   const faturamentoBrutoMes = monthData?.receitas ?? 0;
   // Imposto: usa o DAS lançado no fluxo (categoria "impostos"); fallback = alíquota × receita
@@ -100,9 +105,9 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
   // Previsão anual mês a mês
-  const currentMonthIdx = now.getMonth();
+  const currentMonthIdx = selectedYear === now.getFullYear() ? now.getMonth() : -1;
   const yearForecast = (cashFlow?.months || []).map((m, i) => {
-    const rate = rateForMonth(taxHistory, now.getFullYear(), i, Number(taxRate));
+    const rate = rateForMonth(taxHistory, selectedYear, i, Number(taxRate));
     const bruto = m.receitas;
     const impLancado = m.byCategoryDespesa?.["impostos"] || 0;
     const imp = impLancado > 0 ? impLancado : bruto * (rate / 100);
@@ -112,6 +117,17 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     const mg = bruto > 0 ? (res / bruto) * 100 : 0;
     return { i, rate, bruto, imp, liquido, desp, res, mg, impReal: impLancado > 0 };
   });
+
+  const goPrevMonth = () => {
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(selectedYear - 1); }
+    else setSelectedMonth(selectedMonth - 1);
+  };
+  const goNextMonth = () => {
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(selectedYear + 1); }
+    else setSelectedMonth(selectedMonth + 1);
+  };
+  const goToday = () => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); };
+  const selectedDate = new Date(selectedYear, selectedMonth, 1);
   const annual = yearForecast.reduce(
     (acc, m) => ({
       bruto: acc.bruto + m.bruto,
