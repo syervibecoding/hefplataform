@@ -191,7 +191,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
       {/* KPIs de resultado */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
         <StatCard
-          label={`Impostos (${currentMonthRate.toFixed(1)}%)`}
+          label={impostosIsReal ? "Impostos (real)" : `Impostos (${currentMonthRate.toFixed(1)}%)`}
           value={fmt(impostos)}
           sub={impostosIsReal ? "DAS lançado no fluxo" : "estimado · sem DAS lançado"}
           colorClass="text-hef-warning"
@@ -347,7 +347,9 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
                     <td className="text-right font-mono tabular-nums py-2 px-2">{fmt(m.bruto)}</td>
                     <td className="text-right font-mono tabular-nums py-2 px-2">
                       {fmt(m.imp)}
-                      <span className="text-[9px] text-muted-foreground ml-1">({m.rate.toFixed(1)}%)</span>
+                      <span className="text-[9px] text-muted-foreground ml-1">
+                        {m.impReal ? "(real)" : `(${m.rate.toFixed(1)}%)`}
+                      </span>
                     </td>
                     <td className="text-right font-mono tabular-nums py-2 px-2">{fmt(m.liquido)}</td>
                     <td className="text-right font-mono tabular-nums py-2 px-2">{fmt(m.desp)}</td>
