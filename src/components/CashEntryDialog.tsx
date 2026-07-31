@@ -20,7 +20,7 @@ interface Props {
 const TYPES: { id: OverrideTipo; label: string; hint: string }[] = [
   { id: "receita", label: "Receita", hint: "Entrada operacional" },
   { id: "despesa", label: "Despesa", hint: "Saída operacional" },
-  { id: "investimento", label: "Investimento", hint: "CAPEX / aquisição" },
+  { id: "investimento", label: "Investimento", hint: "Aplicação financeira ou CAPEX (bens de longo prazo)" },
   { id: "aporte", label: "Aporte de sócio", hint: "Entrada de capital" },
   { id: "retirada", label: "Retirada de sócio", hint: "Pró-labore / distribuição" },
 ];
