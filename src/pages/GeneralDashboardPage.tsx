@@ -399,43 +399,77 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
           </div>
         ) : (
           <>
-            <div className="flex h-2 rounded-full overflow-hidden bg-secondary mb-4">
-              {allocations.map((a) => (
-                <div
-                  key={a.id}
-                  className={a.cor}
-                  style={{ width: `${a.percentual}%` }}
-                  title={`${a.nome}: ${a.percentual}%`}
-                />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-              {allocations.map((a) => {
-                const valor = resultado * (a.percentual / 100);
-                const isInvestBucket = /invest|aplica|reserva/i.test(a.nome);
-                const realizado = isInvestBucket ? Math.min(investimentosMes, valor) : 0;
-                const falta = Math.max(0, valor - realizado);
-                return (
-                  <div key={a.id} className="flex items-center gap-3">
-                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${a.cor}`} />
-                    <span className="text-xs flex-1 truncate">
-                      {a.nome}
-                      {isInvestBucket && investimentosMes > 0 && (
-                        <span className="ml-2 text-[10px] text-hef-info font-mono">
-                          aplicado {fmt(realizado)} · falta {fmt(falta)}
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground tabular-nums">
-                      {a.percentual.toFixed(1)}%
-                    </span>
-                    <span className="text-xs font-mono font-semibold tabular-nums w-28 text-right">
-                      {fmt(valor)}
-                    </span>
+            {(() => {
+              const isInvest = (n: string) => /invest|aplica|reserva/i.test(n);
+              const aDistribuir = Math.max(0, resultado - investimentosMes);
+              const outras = allocations.filter((a) => !isInvest(a.nome));
+              const somaOutras = outras.reduce((s, a) => s + a.percentual, 0);
+              const linhas = allocations.map((a) => {
+                const metaPct = a.percentual;
+                const meta = resultado * (metaPct / 100);
+                if (isInvest(a.nome)) {
+                  const realizado = Math.min(investimentosMes, meta);
+                  return {
+                    a,
+                    valor: investimentosMes,
+                    pctEfetivo: resultado > 0 ? (investimentosMes / resultado) * 100 : 0,
+                    invest: true as const,
+                    realizado,
+                    falta: Math.max(0, meta - realizado),
+                  };
+                }
+                const valor = somaOutras > 0 ? aDistribuir * (metaPct / somaOutras) : 0;
+                return {
+                  a,
+                  valor,
+                  pctEfetivo: resultado > 0 ? (valor / resultado) * 100 : 0,
+                  invest: false as const,
+                  realizado: 0,
+                  falta: 0,
+                };
+              });
+              return (
+                <>
+                  <div className="flex h-2 rounded-full overflow-hidden bg-secondary mb-4">
+                    {linhas.map((l) => (
+                      <div
+                        key={l.a.id}
+                        className={l.a.cor}
+                        style={{ width: `${Math.max(0, l.pctEfetivo)}%` }}
+                        title={`${l.a.nome}: ${l.pctEfetivo.toFixed(1)}%`}
+                      />
+                    ))}
                   </div>
-                );
-              })}
-            </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                    {linhas.map((l) => (
+                      <div key={l.a.id} className="flex items-center gap-3">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${l.a.cor}`} />
+                        <span className="text-xs flex-1 truncate">
+                          {l.a.nome}
+                          {l.invest ? (
+                            <span className="ml-2 text-[10px] text-hef-info font-mono">
+                              já aplicado{l.falta > 0 ? ` · falta ${fmt(l.falta)}` : ""}
+                            </span>
+                          ) : (
+                            investimentosMes > 0 && (
+                              <span className="ml-2 text-[10px] text-muted-foreground font-mono">
+                                sobre o saldo a distribuir
+                              </span>
+                            )
+                          )}
+                        </span>
+                        <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                          {l.a.percentual.toFixed(1)}%
+                        </span>
+                        <span className="text-xs font-mono font-semibold tabular-nums w-28 text-right">
+                          {fmt(l.valor)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
             {investimentosMes > 0 && !allocations.some((a) => /invest|aplica|reserva/i.test(a.nome)) && (
               <p className="mt-3 text-[11px] text-muted-foreground">
                 Foram aplicados {fmt(investimentosMes)} em investimentos neste mês, mas não há uma categoria de alocação
