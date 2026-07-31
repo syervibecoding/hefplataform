@@ -367,6 +367,25 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
           </span>
         </div>
 
+        {resultado > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-xs">
+            <div className="bg-secondary/40 rounded-md px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Resultado do mês</p>
+              <p className="font-mono font-bold">{fmt(resultado)}</p>
+            </div>
+            <div className="bg-secondary/40 rounded-md px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">(−) Já aplicado</p>
+              <p className="font-mono font-bold text-hef-info">{fmt(investimentosMes)}</p>
+            </div>
+            <div className="bg-secondary/40 rounded-md px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">= A distribuir</p>
+              <p className={`font-mono font-bold ${resultado - investimentosMes >= 0 ? "text-hef-success" : "text-destructive"}`}>
+                {fmt(resultado - investimentosMes)}
+              </p>
+            </div>
+          </div>
+        )}
+
         {allocations.length === 0 ? (
           <div className="text-center text-sm text-muted-foreground py-6">
             Nenhuma categoria cadastrada.{" "}
@@ -393,10 +412,20 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
               {allocations.map((a) => {
                 const valor = resultado * (a.percentual / 100);
+                const isInvestBucket = /invest|aplica|reserva/i.test(a.nome);
+                const realizado = isInvestBucket ? Math.min(investimentosMes, valor) : 0;
+                const falta = Math.max(0, valor - realizado);
                 return (
                   <div key={a.id} className="flex items-center gap-3">
                     <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${a.cor}`} />
-                    <span className="text-xs flex-1 truncate">{a.nome}</span>
+                    <span className="text-xs flex-1 truncate">
+                      {a.nome}
+                      {isInvestBucket && investimentosMes > 0 && (
+                        <span className="ml-2 text-[10px] text-hef-info font-mono">
+                          aplicado {fmt(realizado)} · falta {fmt(falta)}
+                        </span>
+                      )}
+                    </span>
                     <span className="text-xs font-mono text-muted-foreground tabular-nums">
                       {a.percentual.toFixed(1)}%
                     </span>
@@ -407,6 +436,18 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
                 );
               })}
             </div>
+            {investimentosMes > 0 && !allocations.some((a) => /invest|aplica|reserva/i.test(a.nome)) && (
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                Foram aplicados {fmt(investimentosMes)} em investimentos neste mês, mas não há uma categoria de alocação
+                de investimento cadastrada — crie uma em "Gerenciar" para o abatimento automático aparecer por linha.
+              </p>
+            )}
+            {investimentosMes > resultado && (
+              <p className="mt-3 text-[11px] text-hef-warning">
+                As aplicações do mês ({fmt(investimentosMes)}) superam o resultado operacional — o excedente veio do caixa
+                acumulado, não do resultado deste mês.
+              </p>
+            )}
           </>
         )}
       </div>
