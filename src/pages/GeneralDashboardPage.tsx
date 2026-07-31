@@ -458,8 +458,13 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
                             )
                           )}
                         </span>
-                        <span className="text-xs font-mono text-muted-foreground tabular-nums">
-                          {l.a.percentual.toFixed(1)}%
+                        <span className="text-xs font-mono tabular-nums text-right">
+                          <span className="font-semibold">{l.pctEfetivo.toFixed(1)}%</span>
+                          {Math.abs(l.pctEfetivo - l.a.percentual) > 0.05 && (
+                            <span className="ml-1 text-[10px] text-muted-foreground line-through">
+                              {l.a.percentual.toFixed(1)}%
+                            </span>
+                          )}
                         </span>
                         <span className="text-xs font-mono font-semibold tabular-nums w-28 text-right">
                           {fmt(l.valor)}
