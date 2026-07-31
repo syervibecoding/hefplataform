@@ -62,6 +62,37 @@ export interface PeriodOverlap {
   import: FinancialImport;
 }
 
+const INVESTMENT_KEYWORDS = [
+  "CDB", "LCI", "LCA", "RDB", "TESOURO", "APLICACAO", "APLICAÇÃO", "APLIC AUT",
+  "APLIC.", "RESGATE", "FUNDO", "POUPANCA", "POUPANÇA", "INVEST", "LIM.GARANT",
+  "LIM GARANT", "RENDA FIXA",
+];
+
+export interface InvestmentMatch {
+  investmentId: string | null;
+  matchedTerm: string;
+}
+
+export function detectInvestment(
+  descricao: string,
+  investments: Array<{ id: string; nome: string; aliases?: string[]; ativo?: boolean }>,
+): InvestmentMatch | null {
+  const desc = (descricao || "").toUpperCase();
+  if (!desc) return null;
+  for (const inv of investments) {
+    if (inv.ativo === false) continue;
+    const terms = [inv.nome, ...(inv.aliases || [])].filter(Boolean).map((s) => s.toUpperCase());
+    for (const term of terms) {
+      if (term.length < 3) continue;
+      if (desc.includes(term)) return { investmentId: inv.id, matchedTerm: term };
+    }
+  }
+  for (const kw of INVESTMENT_KEYWORDS) {
+    if (desc.includes(kw)) return { investmentId: null, matchedTerm: kw };
+  }
+  return null;
+}
+
 function overlaps(aStart: string | null, aEnd: string | null, bStart: string | null, bEnd: string | null): boolean {
   if (!aStart || !aEnd || !bStart || !bEnd) return false;
   return aStart <= bEnd && bStart <= aEnd;
