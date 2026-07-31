@@ -45,6 +45,7 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
     data_inicial: new Date().toISOString().slice(0, 10),
     ativo: true,
     notas: "",
+    aliases: [],
   });
 
   const [txForms, setTxForms] = useState<Record<string, { data: string; tipo: "aporte" | "resgate" | "rendimento"; valor: number }>>({});
@@ -74,6 +75,7 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
       data_inicial: new Date().toISOString().slice(0, 10),
       ativo: true,
       notas: "",
+      aliases: [],
     });
 
   const handleAdd = async () => {
@@ -148,6 +150,14 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                 <div>
                   <label className="text-xs text-muted-foreground">Rendimento anual estimado (%)</label>
                   <Input type="number" step="0.01" value={form.rendimento_anual} onChange={(e) => setForm({ ...form, rendimento_anual: Number(e.target.value) || 0 })} />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-muted-foreground">Apelidos no extrato (separados por vírgula)</label>
+                  <Input
+                    value={form.aliases.join(", ")}
+                    onChange={(e) => setForm({ ...form, aliases: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                    placeholder="CDB C6, C6 LIM.GARANT."
+                  />
                 </div>
               </div>
               <div className="flex gap-2 justify-end">

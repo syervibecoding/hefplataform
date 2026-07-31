@@ -17,6 +17,7 @@ export interface ParsedTransaction {
   valor: number;
   tipo: "receita" | "despesa";
   categoria_sugerida: string;
+  investimento?: boolean;
 }
 
 export interface ConfirmedTransaction extends ParsedTransaction {
@@ -54,6 +55,7 @@ export function useFinancialImports(enabled: boolean) {
         categoria: string | null;
         origem_tipo?: "avulso" | "despesa";
         origem_id?: string | null;
+        investment?: { investment_id: string; tipo: "aporte" | "resgate" | "rendimento" } | null;
       }>;
     }) => {
       const { data: imp, error: impErr } = await supabase
@@ -83,16 +85,38 @@ export function useFinancialImports(enabled: boolean) {
         const { error: insErr } = await supabase.from("cash_overrides").insert(rows as any);
         if (insErr) throw insErr;
       }
+
+      const invRows = payload.transactions
+        .filter((t) => t.investment?.investment_id)
+        .map((t) => ({
+          investment_id: t.investment!.investment_id,
+          data: t.data,
+          tipo: t.investment!.tipo,
+          valor: t.valor,
+          notas: `Importado de ${payload.sourceName}`,
+          import_id: imp.id,
+        }));
+      if (invRows.length > 0) {
+        const { error: invErr } = await supabase.from("investment_transactions").insert(invRows as any);
+        if (invErr) throw invErr;
+      }
       return imp.id as string;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financial_imports"] });
       qc.invalidateQueries({ queryKey: ["cash-flow"] });
+      qc.invalidateQueries({ queryKey: ["investments"] });
+      qc.invalidateQueries({ queryKey: ["investment_transactions"] });
     },
   });
 
   const revertImport = useMutation({
     mutationFn: async (importId: string) => {
+      const { error: delInv } = await supabase
+        .from("investment_transactions")
+        .delete()
+        .eq("import_id", importId);
+      if (delInv) throw delInv;
       const { error: delOv } = await supabase
         .from("cash_overrides")
         .delete()
@@ -107,6 +131,8 @@ export function useFinancialImports(enabled: boolean) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["financial_imports"] });
       qc.invalidateQueries({ queryKey: ["cash-flow"] });
+      qc.invalidateQueries({ queryKey: ["investments"] });
+      qc.invalidateQueries({ queryKey: ["investment_transactions"] });
     },
   });
 

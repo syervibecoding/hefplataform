@@ -12,6 +12,7 @@ export interface Investment {
   data_inicial: string;
   ativo: boolean;
   notas: string | null;
+  aliases: string[];
 }
 
 export interface InvestmentTransaction {
@@ -21,6 +22,7 @@ export interface InvestmentTransaction {
   tipo: "aporte" | "resgate" | "rendimento";
   valor: number;
   notas: string | null;
+  import_id?: string | null;
 }
 
 export const INVESTMENT_TYPES = [
@@ -61,6 +63,7 @@ export function useInvestments(enabled: boolean) {
         data_inicial: r.data_inicial,
         ativo: !!r.ativo,
         notas: r.notas,
+        aliases: Array.isArray(r.aliases) ? r.aliases : [],
       }));
     },
   });
@@ -81,6 +84,7 @@ export function useInvestments(enabled: boolean) {
         tipo: r.tipo,
         valor: Number(r.valor) || 0,
         notas: r.notas,
+        import_id: r.import_id ?? null,
       }));
     },
   });
@@ -92,8 +96,9 @@ export function useInvestments(enabled: boolean) {
 
   const addInvestment = useMutation({
     mutationFn: async (v: Omit<Investment, "id">) => {
-      const { error } = await supabase.from("investments").insert(v as any);
+      const { data, error } = await supabase.from("investments").insert(v as any).select("id").single();
       if (error) throw error;
+      return data.id as string;
     },
     onSuccess: invalidate,
   });

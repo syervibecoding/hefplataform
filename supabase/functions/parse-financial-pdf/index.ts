@@ -10,7 +10,8 @@ REGRAS:
 - "tipo" deve ser "receita" para entradas e "despesa" para saídas.
 - Datas em formato ISO YYYY-MM-DD. Se faltar ano, assuma o ano do período do documento.
 - "valor" sempre positivo (sem sinal).
-- "categoria_sugerida" deve ser UMA das: pessoal, infraestrutura, software, marketing, educacao, administrativo, impostos, outros. Use "outros" se incerto. Para receitas, use "outros".
+- "categoria_sugerida" deve ser UMA das: pessoal, infraestrutura, software, marketing, educacao, administrativo, impostos, investimentos, outros. Use "outros" se incerto. Para receitas, use "outros".
+- "investimento" = true quando a linha for aplicação/resgate/rendimento de investimento (CDB, LCI, LCA, RDB, Tesouro, fundos, poupança, "APLIC AUT", "RESGATE", "LIM.GARANT."). Nesses casos use categoria_sugerida "investimentos". Caso contrário, false.
 - Para FATURA DE CARTÃO: cada compra vira uma linha de despesa com a data da compra. IGNORE linhas como "Pagamento recebido", "Saldo anterior", "Saldo a pagar", "Total da fatura", crédito de estorno informativo — qualquer coisa que não seja uma compra real.
 - Para EXTRATO BANCÁRIO: extraia cada movimentação (PIX, TED, boleto, débito, tarifa). IGNORE "Saldo do dia", "Saldo anterior", linhas de saldo.
 - "origem" = banco/bandeira detectado no cabeçalho (ex: "Inter", "Nubank Mastercard", "Itaú"). Se não souber, deixe vazio.
@@ -37,8 +38,9 @@ const SCHEMA = {
           valor: { type: 'number' },
           tipo: { type: 'string', enum: ['receita', 'despesa'] },
           categoria_sugerida: { type: 'string' },
+          investimento: { type: 'boolean' },
         },
-        required: ['data', 'descricao', 'valor', 'tipo', 'categoria_sugerida'],
+        required: ['data', 'descricao', 'valor', 'tipo', 'categoria_sugerida', 'investimento'],
       },
     },
   },

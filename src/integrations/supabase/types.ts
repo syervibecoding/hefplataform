@@ -624,6 +624,7 @@ export type Database = {
           created_at: string
           data: string
           id: string
+          import_id: string | null
           investment_id: string
           notas: string | null
           tipo: string
@@ -633,6 +634,7 @@ export type Database = {
           created_at?: string
           data?: string
           id?: string
+          import_id?: string | null
           investment_id: string
           notas?: string | null
           tipo?: string
@@ -642,12 +644,20 @@ export type Database = {
           created_at?: string
           data?: string
           id?: string
+          import_id?: string | null
           investment_id?: string
           notas?: string | null
           tipo?: string
           valor?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "investment_transactions_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "financial_imports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "investment_transactions_investment_id_fkey"
             columns: ["investment_id"]
@@ -659,6 +669,7 @@ export type Database = {
       }
       investments: {
         Row: {
+          aliases: string[]
           ativo: boolean
           created_at: string
           data_inicial: string
@@ -673,6 +684,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          aliases?: string[]
           ativo?: boolean
           created_at?: string
           data_inicial?: string
@@ -687,6 +699,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          aliases?: string[]
           ativo?: boolean
           created_at?: string
           data_inicial?: string

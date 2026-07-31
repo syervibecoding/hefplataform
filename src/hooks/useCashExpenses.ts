@@ -23,6 +23,7 @@ export const EXPENSE_CATEGORIES = [
   { id: "educacao", label: "Educação/Eventos" },
   { id: "administrativo", label: "Administrativo" },
   { id: "impostos", label: "Impostos" },
+  { id: "investimentos", label: "Investimentos" },
   { id: "outros", label: "Outros" },
 ];
 

@@ -8,11 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { extractPdfText, PdfPasswordRequiredError } from "@/lib/pdf-extract";
 import { useFinancialImports, type ConfirmedTransaction } from "@/hooks/useFinancialImports";
 import { EXPENSE_CATEGORIES, useCashExpenses, type CashExpense } from "@/hooks/useCashExpenses";
+import { useInvestments } from "@/hooks/useInvestments";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   detectDuplicates,
   findPeriodOverlap,
+  detectInvestment,
   type ExistingTx,
 } from "@/lib/import-validation";
 import type { FinancialImport } from "@/hooks/useFinancialImports";
@@ -52,6 +54,14 @@ type Step = "upload" | "password" | "loading" | "review";
 
 type RecurringAction = "substitute" | "ignore" | "keep_both";
 
+type Destino = "fluxo" | "investimento";
+
+interface InvestLink {
+  investmentId: string; // "" = não escolhido, "__new__" = criar novo
+  movimento: "aporte" | "resgate" | "rendimento";
+  novoNome: string;
+}
+
 interface RecurringConflict {
   expenseId: string;
   expenseName: string;
@@ -68,6 +78,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const { confirmImport, data: allImports = [] } = useFinancialImports(true);
   const { expenses: recurringExpenses } = useCashExpenses(true);
+  const { investments, addInvestment } = useInvestments(true);
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
@@ -83,12 +94,16 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const [overlapping, setOverlapping] = useState<FinancialImport[]>([]);
   const [conflicts, setConflicts] = useState<Array<RecurringConflict | null>>([]);
   const [actions, setActions] = useState<Array<RecurringAction | null>>([]);
+  const [destinos, setDestinos] = useState<Destino[]>([]);
+  const [investLinks, setInvestLinks] = useState<InvestLink[]>([]);
+  const [investDetected, setInvestDetected] = useState<Array<string | null>>([]);
 
   const reset = () => {
     setStep("upload"); setFile(null); setPassword(""); setPasswordError(null);
     setError(null); setHint("auto"); setRows([]); setOrigem("");
     setPeriodStart(null); setPeriodEnd(null);
     setDuplicates([]); setOverlapping([]); setConflicts([]); setActions([]);
+    setDestinos([]); setInvestLinks([]); setInvestDetected([]);
   };
 
   const close = () => { reset(); onOpenChange(false); };
@@ -155,6 +170,20 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
     setConflicts(recurringConflicts);
     setActions(recurringConflicts.map((c) => (c ? null : null)));
 
+    // investimentos (keywords + apelidos)
+    const invMatches = parsedRows.map((row) => detectInvestment(row.descricao, investments));
+    setInvestDetected(invMatches.map((m) => (m ? m.matchedTerm : null)));
+    setDestinos(
+      parsedRows.map((row, i) => (row.investimento || invMatches[i] ? "investimento" : "fluxo")),
+    );
+    setInvestLinks(
+      parsedRows.map((row, i) => ({
+        investmentId: invMatches[i]?.investmentId || "",
+        movimento: row.tipo === "receita" ? ("resgate" as const) : ("aporte" as const),
+        novoNome: row.descricao,
+      })),
+    );
+
     // duplicates vs existing cash_overrides
     if (pStart && pEnd && parsedRows.length > 0) {
       const { data, error } = await supabase
@@ -203,6 +232,17 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
 
   const toggleAll = (v: boolean) => setRows((r) => r.map((row) => ({ ...row, include: v })));
 
+  const setDestino = (i: number, d: Destino) => {
+    setDestinos((arr) => arr.map((x, idx) => (idx === i ? d : x)));
+    if (d === "investimento") {
+      setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, categoria_sugerida: "investimentos" } : r)));
+    }
+  };
+
+  const setInvestLink = (i: number, patch: Partial<InvestLink>) => {
+    setInvestLinks((arr) => arr.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  };
+
   const uncheckDuplicates = () => {
     setRows((rs) => rs.map((r, i) => duplicates[i] ? { ...r, include: false } : r));
   };
@@ -225,7 +265,41 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
       });
       return;
     }
+    const invMissing = rows
+      .map((r, i) => ({ r, i }))
+      .filter(({ r, i }) => r.include && destinos[i] === "investimento" && !investLinks[i]?.investmentId);
+    if (invMissing.length > 0) {
+      toast({
+        title: "Escolha o investimento",
+        description: `${invMissing.length} linha(s) marcada(s) como investimento ainda não têm aplicação selecionada.`,
+        variant: "destructive",
+      });
+      return;
+    }
     try {
+      // cria investimentos novos antes de salvar
+      const resolvedIds: Record<number, string> = {};
+      for (let i = 0; i < rows.length; i++) {
+        if (!rows[i].include || destinos[i] !== "investimento") continue;
+        const link = investLinks[i];
+        if (link.investmentId === "__new__") {
+          const newId = await addInvestment.mutateAsync({
+            nome: link.novoNome || rows[i].descricao,
+            instituicao: origem || null,
+            tipo: "outros",
+            liquidez: "diaria",
+            rendimento_anual: 0,
+            saldo_inicial: 0,
+            data_inicial: rows[i].data,
+            ativo: true,
+            notas: null,
+            aliases: [rows[i].descricao],
+          });
+          resolvedIds[i] = newId as string;
+        } else {
+          resolvedIds[i] = link.investmentId;
+        }
+      }
       await confirmImport.mutateAsync({
         kind: detectedKind,
         sourceName: origem ? `${origem} — ${file?.name || ""}`.trim() : (file?.name || "Importação"),
@@ -237,14 +311,18 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
             const conflict = conflicts[i];
             const action = actions[i];
             const substitute = conflict && action === "substitute";
+            const isInvest = destinos[i] === "investimento";
             return {
               data: t.data,
               nome: t.descricao,
               valor: t.valor,
               tipo: t.tipo,
-              categoria: t.categoria_sugerida,
+              categoria: isInvest ? "investimentos" : t.categoria_sugerida,
               origem_tipo: substitute ? ("despesa" as const) : ("avulso" as const),
               origem_id: substitute ? conflict!.expenseId : null,
+              investment: isInvest
+                ? { investment_id: resolvedIds[i], tipo: investLinks[i].movimento }
+                : null,
             };
           }),
       });
@@ -262,6 +340,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const dupSelected = rows.filter((r, i) => r.include && duplicates[i]).length;
   const conflictCount = conflicts.filter(Boolean).length;
   const conflictUnresolved = rows.filter((r, i) => r.include && conflicts[i] && !actions[i]).length;
+  const investCount = rows.filter((r, i) => r.include && destinos[i] === "investimento").length;
+  const investUnresolved = rows.filter(
+    (r, i) => r.include && destinos[i] === "investimento" && !investLinks[i]?.investmentId,
+  ).length;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) close(); else onOpenChange(true); }}>
@@ -402,6 +484,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                   <> · <span className="text-orange-300">{conflictCount} recorrente(s)</span>
                   {conflictUnresolved > 0 && <span className="text-orange-300"> ({conflictUnresolved} sem decisão)</span>}</>
                 )}
+                {investCount > 0 && (
+                  <> · <span className="text-violet-300">{investCount} investimento(s)</span>
+                  {investUnresolved > 0 && <span className="text-violet-300"> ({investUnresolved} sem aplicação)</span>}</>
+                )}
               </span>
             </div>
 
@@ -414,6 +500,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                     <th className="px-2 py-1.5 text-left font-semibold">Descrição</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-44">Status / Conflito</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-24">Tipo</th>
+                    <th className="px-2 py-1.5 text-left font-semibold w-56">Destino</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-36">Categoria</th>
                     <th className="px-2 py-1.5 text-right font-semibold w-28">Valor (R$)</th>
                     <th className="px-2 py-1.5 w-8"></th>
@@ -474,6 +561,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                        ) : destinos[i] === "investimento" ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-500/15 border border-violet-500/40 text-violet-200 w-fit">
+                            Investimento{investDetected[i] ? ` · ${investDetected[i]}` : ""}
+                          </span>
                         ) : (
                           <span className="text-[10px] text-muted-foreground">—</span>
                         )}
@@ -485,6 +576,58 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                           <option value="receita">Receita</option>
                           <option value="despesa">Despesa</option>
                         </select>
+                      </td>
+                      <td className="px-2 py-1">
+                        <div className="flex flex-col gap-1">
+                          <select
+                            value={destinos[i] || "fluxo"}
+                            onChange={(e) => setDestino(i, e.target.value as Destino)}
+                            className={`h-7 w-full rounded-md border px-1 text-[11px] ${
+                              destinos[i] === "investimento"
+                                ? "border-violet-500/60 bg-violet-500/10 text-violet-100"
+                                : "border-border bg-secondary"
+                            }`}
+                          >
+                            <option value="fluxo">Fluxo de caixa</option>
+                            <option value="investimento">Fluxo + Investimento</option>
+                          </select>
+                          {destinos[i] === "investimento" && (
+                            <>
+                              <select
+                                value={investLinks[i]?.investmentId || ""}
+                                onChange={(e) => setInvestLink(i, { investmentId: e.target.value })}
+                                className={`h-6 w-full rounded-md border px-1 text-[10px] ${
+                                  investLinks[i]?.investmentId
+                                    ? "border-border bg-secondary"
+                                    : "border-violet-500/60 bg-violet-500/10 text-violet-100"
+                                }`}
+                              >
+                                <option value="" disabled>Escolha a aplicação…</option>
+                                {investments.filter((inv) => inv.ativo).map((inv) => (
+                                  <option key={inv.id} value={inv.id}>{inv.nome}</option>
+                                ))}
+                                <option value="__new__">+ Criar nova aplicação</option>
+                              </select>
+                              {investLinks[i]?.investmentId === "__new__" && (
+                                <Input
+                                  value={investLinks[i]?.novoNome || ""}
+                                  onChange={(e) => setInvestLink(i, { novoNome: e.target.value })}
+                                  placeholder="Nome da nova aplicação"
+                                  className="h-6 bg-secondary border-border text-[10px]"
+                                />
+                              )}
+                              <select
+                                value={investLinks[i]?.movimento || "aporte"}
+                                onChange={(e) => setInvestLink(i, { movimento: e.target.value as any })}
+                                className="h-6 w-full rounded-md border border-border bg-secondary px-1 text-[10px]"
+                              >
+                                <option value="aporte">Aporte</option>
+                                <option value="resgate">Resgate</option>
+                                <option value="rendimento">Rendimento</option>
+                              </select>
+                            </>
+                          )}
+                        </div>
                       </td>
                       <td className="px-2 py-1">
                         <select value={r.categoria_sugerida}
@@ -507,7 +650,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                     </tr>
                   ))}
                   {rows.length === 0 && (
-                    <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Nenhuma transação encontrada.</td></tr>
+                    <tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">Nenhuma transação encontrada.</td></tr>
                   )}
                 </tbody>
               </table>
