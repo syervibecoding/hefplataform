@@ -40,6 +40,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const { allocations } = useResultAllocations(isAdmin);
   const [invDialogOpen, setInvDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [topScope, setTopScope] = useState<"mes" | "ano">("mes");
 
   if (!isAdmin) {
     return (
