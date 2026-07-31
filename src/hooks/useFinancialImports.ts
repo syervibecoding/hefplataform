@@ -51,7 +51,7 @@ export function useFinancialImports(enabled: boolean) {
         data: string;
         nome: string;
         valor: number;
-        tipo: "receita" | "despesa";
+        tipo: "receita" | "despesa" | "investimento";
         categoria: string | null;
         origem_tipo?: "avulso" | "despesa";
         origem_id?: string | null;
@@ -77,7 +77,7 @@ export function useFinancialImports(enabled: boolean) {
           origem_tipo: t.origem_tipo || "avulso",
           origem_id: t.origem_id ?? null,
           nome: t.nome,
-          categoria: t.tipo === "despesa" ? (t.categoria || "outros") : null,
+          categoria: t.tipo === "receita" ? null : (t.categoria || "outros"),
           data: t.data,
           valor: t.valor,
           import_id: imp.id,

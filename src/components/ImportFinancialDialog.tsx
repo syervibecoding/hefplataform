@@ -146,7 +146,11 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
       setOrigem(parsed.origem || "");
       setPeriodStart(parsed.periodo_inicio || null);
       setPeriodEnd(parsed.periodo_fim || null);
-      const parsedRows = (parsed.transacoes || []).map((t) => ({ ...t, include: true }));
+      const parsedRows = (parsed.transacoes || []).map((t) => ({
+        ...t,
+        descricao: cleanBankDescription(t.descricao),
+        include: true,
+      }));
       setRows(parsedRows);
       setStep("review");
       // run validations
@@ -337,7 +341,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
               data: t.data,
               nome: t.descricao,
               valor: t.valor,
-              tipo: t.tipo,
+              tipo: isInvest ? ("investimento" as const) : t.tipo,
               categoria: isInvest ? "investimentos" : t.categoria_sugerida,
               origem_tipo: substitute ? ("despesa" as const) : ("avulso" as const),
               origem_id: substitute ? conflict!.expenseId : null,
