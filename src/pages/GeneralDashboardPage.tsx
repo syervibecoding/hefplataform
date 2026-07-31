@@ -280,6 +280,33 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         />
       </div>
 
+      {/* Movimentações após o resultado — não afetam margem */}
+      <div className="mb-7 bg-card border border-border rounded-xl p-4">
+        <p className="text-[11px] text-muted-foreground mb-3">
+          Abaixo da linha do resultado — investimentos e movimentações de sócios <strong>não</strong> entram no custo nem na margem.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Resultado operacional</p>
+            <p className={`font-mono font-bold ${resultado >= 0 ? "text-hef-success" : "text-destructive"}`}>{fmt(resultado)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">(−) Investimentos do mês</p>
+            <p className="font-mono font-bold text-hef-info">{fmt(investimentosMes)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Aportes / Retiradas</p>
+            <p className="font-mono font-bold text-muted-foreground">
+              +{fmt(aportesMes)} / −{fmt(retiradasMes)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Variação de caixa</p>
+            <p className={`font-mono font-bold ${variacaoCaixaMes >= 0 ? "text-hef-success" : "text-destructive"}`}>{fmt(variacaoCaixaMes)}</p>
+          </div>
+        </div>
+      </div>
+
       {/* Alocação do resultado */}
       <div className="mb-7 bg-card border border-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
