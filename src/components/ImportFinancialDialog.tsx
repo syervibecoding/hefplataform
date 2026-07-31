@@ -170,6 +170,20 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
     setConflicts(recurringConflicts);
     setActions(recurringConflicts.map((c) => (c ? null : null)));
 
+    // investimentos (keywords + apelidos)
+    const invMatches = parsedRows.map((row) => detectInvestment(row.descricao, investments));
+    setInvestDetected(invMatches.map((m) => (m ? m.matchedTerm : null)));
+    setDestinos(
+      parsedRows.map((row, i) => (row.investimento || invMatches[i] ? "investimento" : "fluxo")),
+    );
+    setInvestLinks(
+      parsedRows.map((row, i) => ({
+        investmentId: invMatches[i]?.investmentId || "",
+        movimento: row.tipo === "receita" ? ("resgate" as const) : ("aporte" as const),
+        novoNome: row.descricao,
+      })),
+    );
+
     // duplicates vs existing cash_overrides
     if (pStart && pEnd && parsedRows.length > 0) {
       const { data, error } = await supabase
@@ -218,6 +232,17 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
 
   const toggleAll = (v: boolean) => setRows((r) => r.map((row) => ({ ...row, include: v })));
 
+  const setDestino = (i: number, d: Destino) => {
+    setDestinos((arr) => arr.map((x, idx) => (idx === i ? d : x)));
+    if (d === "investimento") {
+      setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, categoria_sugerida: "investimentos" } : r)));
+    }
+  };
+
+  const setInvestLink = (i: number, patch: Partial<InvestLink>) => {
+    setInvestLinks((arr) => arr.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  };
+
   const uncheckDuplicates = () => {
     setRows((rs) => rs.map((r, i) => duplicates[i] ? { ...r, include: false } : r));
   };
@@ -240,7 +265,41 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
       });
       return;
     }
+    const invMissing = rows
+      .map((r, i) => ({ r, i }))
+      .filter(({ r, i }) => r.include && destinos[i] === "investimento" && !investLinks[i]?.investmentId);
+    if (invMissing.length > 0) {
+      toast({
+        title: "Escolha o investimento",
+        description: `${invMissing.length} linha(s) marcada(s) como investimento ainda não têm aplicação selecionada.`,
+        variant: "destructive",
+      });
+      return;
+    }
     try {
+      // cria investimentos novos antes de salvar
+      const resolvedIds: Record<number, string> = {};
+      for (let i = 0; i < rows.length; i++) {
+        if (!rows[i].include || destinos[i] !== "investimento") continue;
+        const link = investLinks[i];
+        if (link.investmentId === "__new__") {
+          const newId = await addInvestment.mutateAsync({
+            nome: link.novoNome || rows[i].descricao,
+            instituicao: origem || null,
+            tipo: "outros",
+            liquidez: "diaria",
+            rendimento_anual: 0,
+            saldo_inicial: 0,
+            data_inicial: rows[i].data,
+            ativo: true,
+            notas: null,
+            aliases: [rows[i].descricao],
+          });
+          resolvedIds[i] = newId as string;
+        } else {
+          resolvedIds[i] = link.investmentId;
+        }
+      }
       await confirmImport.mutateAsync({
         kind: detectedKind,
         sourceName: origem ? `${origem} — ${file?.name || ""}`.trim() : (file?.name || "Importação"),
@@ -252,14 +311,18 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
             const conflict = conflicts[i];
             const action = actions[i];
             const substitute = conflict && action === "substitute";
+            const isInvest = destinos[i] === "investimento";
             return {
               data: t.data,
               nome: t.descricao,
               valor: t.valor,
               tipo: t.tipo,
-              categoria: t.categoria_sugerida,
+              categoria: isInvest ? "investimentos" : t.categoria_sugerida,
               origem_tipo: substitute ? ("despesa" as const) : ("avulso" as const),
               origem_id: substitute ? conflict!.expenseId : null,
+              investment: isInvest
+                ? { investment_id: resolvedIds[i], tipo: investLinks[i].movimento }
+                : null,
             };
           }),
       });
