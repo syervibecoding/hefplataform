@@ -209,6 +209,15 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
             const tipoLabel = INVESTMENT_TYPES.find((t) => t.id === inv.tipo)?.label || inv.tipo;
             const liqLabel = LIQUIDEZ_OPTIONS.find((t) => t.id === inv.liquidez)?.label || inv.liquidez;
             const txForm = txForms[inv.id] || { data: new Date().toISOString().slice(0, 10), tipo: "aporte" as const, valor: 0 };
+            const rendAcum = txs.filter((t) => t.tipo === "rendimento").reduce((s, t) => s + t.valor, 0);
+            const aplicado = inv.saldo_inicial
+              + txs.filter((t) => t.tipo === "aporte").reduce((s, t) => s + t.valor, 0)
+              - txs.filter((t) => t.tipo === "resgate").reduce((s, t) => s + t.valor, 0);
+            const rendPct = aplicado > 0 ? (rendAcum / aplicado) * 100 : 0;
+            const balForm = balanceForms[inv.id];
+            const balPreview = balForm
+              ? Number((Number(String(balForm.valor).replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, "")) - saldo).toFixed(2))
+              : 0;
             return (
               <div key={inv.id} className="bg-card border border-border rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
