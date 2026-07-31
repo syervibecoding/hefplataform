@@ -361,11 +361,15 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                           <span className="text-muted-foreground font-mono">{new Date(t.data + "T00:00:00").toLocaleDateString("pt-BR")}</span>
                           <span className={
                             t.tipo === "resgate" ? "text-hef-warning font-semibold" :
+                            t.valor < 0 ? "text-hef-warning font-semibold" :
                             t.tipo === "rendimento" ? "text-hef-info font-semibold" :
                             "text-hef-success font-semibold"
                           }>
                             {t.tipo}
                           </span>
+                          {t.notas === "Ajuste de saldo bruto" && (
+                            <span className="text-[10px] text-muted-foreground">ajuste de saldo</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-semibold">{brl(t.valor)}</span>
