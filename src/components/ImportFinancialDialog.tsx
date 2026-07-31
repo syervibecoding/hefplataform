@@ -561,6 +561,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                        ) : destinos[i] === "investimento" ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-500/15 border border-violet-500/40 text-violet-200 w-fit">
+                            Investimento{investDetected[i] ? ` · ${investDetected[i]}` : ""}
+                          </span>
                         ) : (
                           <span className="text-[10px] text-muted-foreground">—</span>
                         )}
