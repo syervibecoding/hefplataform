@@ -422,7 +422,7 @@ export default function CashFlowPage() {
               {hasInvest && (
                 <>
                   <tr className="bg-amber-500/5">
-                    <td colSpan={14} className="px-3 py-1.5 text-[10px] uppercase tracking-wider font-bold text-amber-500">Investimentos (CAPEX)</td>
+                    <td colSpan={14} className="px-3 py-1.5 text-[10px] uppercase tracking-wider font-bold text-amber-500">Investimentos (aplicações financeiras e CAPEX)</td>
                   </tr>
                   {investTree.map((d) => {
                     const open = expandedInv.has(d.categoria);
