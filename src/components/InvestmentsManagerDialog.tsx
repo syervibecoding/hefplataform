@@ -50,6 +50,36 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
 
   const [txForms, setTxForms] = useState<Record<string, { data: string; tipo: "aporte" | "resgate" | "rendimento"; valor: number }>>({});
   const [editingRate, setEditingRate] = useState<Record<string, string>>({});
+  const [balanceForms, setBalanceForms] = useState<Record<string, { valor: string; data: string }>>({});
+
+  const saveBalance = async (invId: string, saldoAtual: number) => {
+    const f = balanceForms[invId];
+    if (!f) return;
+    const novo = Number(String(f.valor).replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, ""));
+    if (!isFinite(novo)) {
+      toast.error("Informe um saldo válido");
+      return;
+    }
+    const delta = Number((novo - saldoAtual).toFixed(2));
+    if (delta === 0) {
+      toast.info("Saldo já está atualizado");
+      setBalanceForms((s) => { const ns = { ...s }; delete ns[invId]; return ns; });
+      return;
+    }
+    try {
+      await addTransaction.mutateAsync({
+        investment_id: invId,
+        data: f.data,
+        tipo: "rendimento",
+        valor: delta,
+        notas: "Ajuste de saldo bruto",
+      });
+      toast.success(delta > 0 ? `Rendimento de ${brl(delta)} registrado` : `Ajuste negativo de ${brl(delta)} registrado`);
+      setBalanceForms((s) => { const ns = { ...s }; delete ns[invId]; return ns; });
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + (e?.message || "desconhecido"));
+    }
+  };
 
   const saveRate = async (id: string) => {
     const raw = editingRate[id];
@@ -179,6 +209,15 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
             const tipoLabel = INVESTMENT_TYPES.find((t) => t.id === inv.tipo)?.label || inv.tipo;
             const liqLabel = LIQUIDEZ_OPTIONS.find((t) => t.id === inv.liquidez)?.label || inv.liquidez;
             const txForm = txForms[inv.id] || { data: new Date().toISOString().slice(0, 10), tipo: "aporte" as const, valor: 0 };
+            const rendAcum = txs.filter((t) => t.tipo === "rendimento").reduce((s, t) => s + t.valor, 0);
+            const aplicado = inv.saldo_inicial
+              + txs.filter((t) => t.tipo === "aporte").reduce((s, t) => s + t.valor, 0)
+              - txs.filter((t) => t.tipo === "resgate").reduce((s, t) => s + t.valor, 0);
+            const rendPct = aplicado > 0 ? (rendAcum / aplicado) * 100 : 0;
+            const balForm = balanceForms[inv.id];
+            const balPreview = balForm
+              ? Number((Number(String(balForm.valor).replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, "")) - saldo).toFixed(2))
+              : 0;
             return (
               <div key={inv.id} className="bg-card border border-border rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
@@ -230,6 +269,20 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                   <div className="text-right ml-3">
                     <div className="text-xs text-muted-foreground">Saldo atual</div>
                     <div className="text-lg font-bold font-mono text-hef-success">{brl(saldo)}</div>
+                    <div className="text-[11px] text-muted-foreground font-mono">
+                      Rend. acum. <span className={rendAcum < 0 ? "text-hef-warning" : "text-hef-info"}>{brl(rendAcum)}</span>
+                      {aplicado > 0 ? ` (${rendPct.toFixed(2)}%)` : ""}
+                    </div>
+                    {!balForm && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 mt-1 text-[10px]"
+                        onClick={() => setBalanceForms((s) => ({ ...s, [inv.id]: { valor: "", data: new Date().toISOString().slice(0, 10) } }))}
+                      >
+                        Atualizar saldo
+                      </Button>
+                    )}
                   </div>
                   <button
                     onClick={() => { if (confirm("Excluir esta aplicação e seu histórico?")) removeInvestment.mutate(inv.id); }}
@@ -239,6 +292,49 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                     <Trash2 size={14} />
                   </button>
                 </div>
+
+                {balForm && (
+                  <div className="bg-secondary/40 rounded-md p-3 space-y-2 mb-3">
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Saldo bruto atual (extrato)</div>
+                    <div className="flex flex-wrap gap-2 items-end">
+                      <Input
+                        type="date"
+                        value={balForm.data}
+                        onChange={(e) => setBalanceForms((s) => ({ ...s, [inv.id]: { ...balForm, data: e.target.value } }))}
+                        className="h-9 w-[140px]"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        autoFocus
+                        placeholder="Saldo bruto"
+                        value={balForm.valor}
+                        onChange={(e) => setBalanceForms((s) => ({ ...s, [inv.id]: { ...balForm, valor: e.target.value } }))}
+                        onKeyDown={(e) => { if (e.key === "Enter") saveBalance(inv.id, saldo); }}
+                        className="h-9 w-[160px]"
+                      />
+                      <Button size="sm" onClick={() => saveBalance(inv.id, saldo)}>Salvar</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setBalanceForms((s) => { const ns = { ...s }; delete ns[inv.id]; return ns; })}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                    {balForm.valor !== "" && (
+                      <div className="text-xs font-mono">
+                        {balPreview > 0 ? (
+                          <span className="text-hef-info">Rendimento apurado: {brl(balPreview)}</span>
+                        ) : balPreview < 0 ? (
+                          <span className="text-hef-warning">Ajuste negativo: {brl(balPreview)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Sem diferença — nada será lançado</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="bg-secondary/40 rounded-md p-3 space-y-2">
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Lançamento</div>
@@ -265,11 +361,15 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
                           <span className="text-muted-foreground font-mono">{new Date(t.data + "T00:00:00").toLocaleDateString("pt-BR")}</span>
                           <span className={
                             t.tipo === "resgate" ? "text-hef-warning font-semibold" :
+                            t.valor < 0 ? "text-hef-warning font-semibold" :
                             t.tipo === "rendimento" ? "text-hef-info font-semibold" :
                             "text-hef-success font-semibold"
                           }>
                             {t.tipo}
                           </span>
+                          {t.notas === "Ajuste de saldo bruto" && (
+                            <span className="text-[10px] text-muted-foreground">ajuste de saldo</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-semibold">{brl(t.valor)}</span>
