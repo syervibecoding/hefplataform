@@ -62,6 +62,40 @@ export interface PeriodOverlap {
   import: FinancialImport;
 }
 
+const BANK_PREFIXES = [
+  /^sa[ií]da\s+pix\s+pix\s+enviado\s+para\s+/i,
+  /^entrada\s+pix\s+pix\s+recebido\s+de\s+/i,
+  /^pix\s+enviado\s+para\s+/i,
+  /^pix\s+recebido\s+de\s+/i,
+  /^sa[ií]da\s+pix\s+/i,
+  /^entrada\s+pix\s+/i,
+  /^compra\s+no\s+d[eé]bito\s+/i,
+  /^compra\s+com\s+cart[aã]o\s+/i,
+  /^pagamento\s+de\s+boleto\s+/i,
+  /^pagamento\s+efetuado\s+/i,
+  /^d[eé]bito\s+autom[aá]tico\s+/i,
+  /^transfer[eê]ncia\s+enviada\s+/i,
+  /^transfer[eê]ncia\s+recebida\s+/i,
+  /^ted\s+enviada\s+/i,
+];
+
+const CORP_SUFFIX = /\s+(ltda|me|epp|s\.?a\.?|eireli|sa)\.?$/i;
+
+/** Limpa prefixos de extrato e sufixos societários da descrição. */
+export function cleanBankDescription(s: string): string {
+  let out = (s || "").replace(/\s+/g, " ").trim();
+  for (const re of BANK_PREFIXES) {
+    if (re.test(out)) { out = out.replace(re, "").trim(); break; }
+  }
+  out = out.replace(/^\*+|\*+$/g, "").trim();
+  out = out.replace(CORP_SUFFIX, "").trim();
+  return out || (s || "").trim();
+}
+
+export function isIOF(descricao: string): boolean {
+  return /\biof\b/i.test(descricao || "");
+}
+
 const INVESTMENT_KEYWORDS = [
   "CDB", "LCI", "LCA", "RDB", "TESOURO", "APLICACAO", "APLICAÇÃO", "APLIC AUT",
   "APLIC.", "RESGATE", "FUNDO", "POUPANCA", "POUPANÇA", "INVEST", "LIM.GARANT",
