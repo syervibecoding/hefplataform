@@ -637,6 +637,61 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         </div>
       </div>
 
+      {/* Principais despesas por fornecedor */}
+      <div className="bg-card border border-border rounded-xl p-5 mb-7">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div>
+            <h2 className="text-sm font-semibold">Principais Despesas por Fornecedor</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {topScope === "ano" ? `Acumulado ${selectedYear}` : format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR })}
+              {" · "}Total {fmt(totalVendors)}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+            {(["mes", "ano"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setTopScope(s)}
+                className={`text-[11px] px-3 py-1 rounded-md transition-colors ${
+                  topScope === s ? "bg-card text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s === "mes" ? "Mês" : "Ano"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {topVendors.length === 0 ? (
+          <div className="text-center text-sm text-muted-foreground py-8">Sem despesas no período</div>
+        ) : (
+          <div className="space-y-2.5">
+            {topVendors.map((v, i) => (
+              <div key={v.nome} className="flex items-center gap-3">
+                <span className="text-[11px] text-muted-foreground font-mono w-5 shrink-0">{i + 1}</span>
+                <div className="w-32 md:w-44 shrink-0 min-w-0">
+                  <div className="text-xs font-medium truncate" title={v.nome}>{v.nome}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">
+                    {categoryLabel(v.categoria)} · {v.count}x
+                  </div>
+                </div>
+                <div className="flex-1 h-3 bg-secondary rounded-full overflow-hidden min-w-[40px]">
+                  <div
+                    className={`h-full rounded-full ${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}`}
+                    style={{ width: `${(v.valor / maxVendor) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs font-mono font-semibold tabular-nums w-24 md:w-28 text-right shrink-0">
+                  {fmt(v.valor)}
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground tabular-nums w-12 text-right shrink-0">
+                  {v.pct.toFixed(1)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Visão Financeira por Produto */}
       <div className="mb-7">
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
