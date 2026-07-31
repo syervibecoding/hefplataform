@@ -642,6 +642,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
           Visão Financeira por Produto
         </h2>
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {products.map((p) => {
             const data = financialOverview.find((o) => o.productId === p.id);
