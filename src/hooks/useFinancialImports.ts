@@ -17,6 +17,7 @@ export interface ParsedTransaction {
   valor: number;
   tipo: "receita" | "despesa";
   categoria_sugerida: string;
+  investimento?: boolean;
 }
 
 export interface ConfirmedTransaction extends ParsedTransaction {
