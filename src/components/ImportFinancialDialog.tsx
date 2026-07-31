@@ -8,11 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { extractPdfText, PdfPasswordRequiredError } from "@/lib/pdf-extract";
 import { useFinancialImports, type ConfirmedTransaction } from "@/hooks/useFinancialImports";
 import { EXPENSE_CATEGORIES, useCashExpenses, type CashExpense } from "@/hooks/useCashExpenses";
+import { useInvestments } from "@/hooks/useInvestments";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   detectDuplicates,
   findPeriodOverlap,
+  detectInvestment,
   type ExistingTx,
 } from "@/lib/import-validation";
 import type { FinancialImport } from "@/hooks/useFinancialImports";
@@ -52,6 +54,14 @@ type Step = "upload" | "password" | "loading" | "review";
 
 type RecurringAction = "substitute" | "ignore" | "keep_both";
 
+type Destino = "fluxo" | "investimento";
+
+interface InvestLink {
+  investmentId: string; // "" = não escolhido, "__new__" = criar novo
+  movimento: "aporte" | "resgate" | "rendimento";
+  novoNome: string;
+}
+
 interface RecurringConflict {
   expenseId: string;
   expenseName: string;
@@ -68,6 +78,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const { confirmImport, data: allImports = [] } = useFinancialImports(true);
   const { expenses: recurringExpenses } = useCashExpenses(true);
+  const { investments, addInvestment } = useInvestments(true);
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
@@ -83,12 +94,16 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const [overlapping, setOverlapping] = useState<FinancialImport[]>([]);
   const [conflicts, setConflicts] = useState<Array<RecurringConflict | null>>([]);
   const [actions, setActions] = useState<Array<RecurringAction | null>>([]);
+  const [destinos, setDestinos] = useState<Destino[]>([]);
+  const [investLinks, setInvestLinks] = useState<InvestLink[]>([]);
+  const [investDetected, setInvestDetected] = useState<Array<string | null>>([]);
 
   const reset = () => {
     setStep("upload"); setFile(null); setPassword(""); setPasswordError(null);
     setError(null); setHint("auto"); setRows([]); setOrigem("");
     setPeriodStart(null); setPeriodEnd(null);
     setDuplicates([]); setOverlapping([]); setConflicts([]); setActions([]);
+    setDestinos([]); setInvestLinks([]); setInvestDetected([]);
   };
 
   const close = () => { reset(); onOpenChange(false); };
