@@ -340,6 +340,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
   const dupSelected = rows.filter((r, i) => r.include && duplicates[i]).length;
   const conflictCount = conflicts.filter(Boolean).length;
   const conflictUnresolved = rows.filter((r, i) => r.include && conflicts[i] && !actions[i]).length;
+  const investCount = rows.filter((r, i) => r.include && destinos[i] === "investimento").length;
+  const investUnresolved = rows.filter(
+    (r, i) => r.include && destinos[i] === "investimento" && !investLinks[i]?.investmentId,
+  ).length;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) close(); else onOpenChange(true); }}>
@@ -480,6 +484,10 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                   <> · <span className="text-orange-300">{conflictCount} recorrente(s)</span>
                   {conflictUnresolved > 0 && <span className="text-orange-300"> ({conflictUnresolved} sem decisão)</span>}</>
                 )}
+                {investCount > 0 && (
+                  <> · <span className="text-violet-300">{investCount} investimento(s)</span>
+                  {investUnresolved > 0 && <span className="text-violet-300"> ({investUnresolved} sem aplicação)</span>}</>
+                )}
               </span>
             </div>
 
@@ -492,6 +500,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                     <th className="px-2 py-1.5 text-left font-semibold">Descrição</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-44">Status / Conflito</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-24">Tipo</th>
+                    <th className="px-2 py-1.5 text-left font-semibold w-56">Destino</th>
                     <th className="px-2 py-1.5 text-left font-semibold w-36">Categoria</th>
                     <th className="px-2 py-1.5 text-right font-semibold w-28">Valor (R$)</th>
                     <th className="px-2 py-1.5 w-8"></th>
@@ -565,6 +574,58 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                         </select>
                       </td>
                       <td className="px-2 py-1">
+                        <div className="flex flex-col gap-1">
+                          <select
+                            value={destinos[i] || "fluxo"}
+                            onChange={(e) => setDestino(i, e.target.value as Destino)}
+                            className={`h-7 w-full rounded-md border px-1 text-[11px] ${
+                              destinos[i] === "investimento"
+                                ? "border-violet-500/60 bg-violet-500/10 text-violet-100"
+                                : "border-border bg-secondary"
+                            }`}
+                          >
+                            <option value="fluxo">Fluxo de caixa</option>
+                            <option value="investimento">Fluxo + Investimento</option>
+                          </select>
+                          {destinos[i] === "investimento" && (
+                            <>
+                              <select
+                                value={investLinks[i]?.investmentId || ""}
+                                onChange={(e) => setInvestLink(i, { investmentId: e.target.value })}
+                                className={`h-6 w-full rounded-md border px-1 text-[10px] ${
+                                  investLinks[i]?.investmentId
+                                    ? "border-border bg-secondary"
+                                    : "border-violet-500/60 bg-violet-500/10 text-violet-100"
+                                }`}
+                              >
+                                <option value="" disabled>Escolha a aplicação…</option>
+                                {investments.filter((inv) => inv.ativo).map((inv) => (
+                                  <option key={inv.id} value={inv.id}>{inv.nome}</option>
+                                ))}
+                                <option value="__new__">+ Criar nova aplicação</option>
+                              </select>
+                              {investLinks[i]?.investmentId === "__new__" && (
+                                <Input
+                                  value={investLinks[i]?.novoNome || ""}
+                                  onChange={(e) => setInvestLink(i, { novoNome: e.target.value })}
+                                  placeholder="Nome da nova aplicação"
+                                  className="h-6 bg-secondary border-border text-[10px]"
+                                />
+                              )}
+                              <select
+                                value={investLinks[i]?.movimento || "aporte"}
+                                onChange={(e) => setInvestLink(i, { movimento: e.target.value as any })}
+                                className="h-6 w-full rounded-md border border-border bg-secondary px-1 text-[10px]"
+                              >
+                                <option value="aporte">Aporte</option>
+                                <option value="resgate">Resgate</option>
+                                <option value="rendimento">Rendimento</option>
+                              </select>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-2 py-1">
                         <select value={r.categoria_sugerida}
                           onChange={(e) => updateRow(i, { categoria_sugerida: e.target.value })}
                           className="h-7 w-full rounded-md border border-border bg-secondary px-1 text-xs">
@@ -585,7 +646,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
                     </tr>
                   ))}
                   {rows.length === 0 && (
-                    <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Nenhuma transação encontrada.</td></tr>
+                    <tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">Nenhuma transação encontrada.</td></tr>
                   )}
                 </tbody>
               </table>
