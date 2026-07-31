@@ -15,6 +15,8 @@ import {
   detectDuplicates,
   findPeriodOverlap,
   detectInvestment,
+  cleanBankDescription,
+  isIOF,
   type ExistingTx,
 } from "@/lib/import-validation";
 import type { FinancialImport } from "@/hooks/useFinancialImports";
@@ -144,7 +146,11 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
       setOrigem(parsed.origem || "");
       setPeriodStart(parsed.periodo_inicio || null);
       setPeriodEnd(parsed.periodo_fim || null);
-      const parsedRows = (parsed.transacoes || []).map((t) => ({ ...t, include: true }));
+      const parsedRows = (parsed.transacoes || []).map((t) => ({
+        ...t,
+        descricao: cleanBankDescription(t.descricao),
+        include: true,
+      }));
       setRows(parsedRows);
       setStep("review");
       // run validations
@@ -169,6 +175,25 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
     const recurringConflicts = parsedRows.map((row) => detectRecurringConflict(row, recurringExpenses));
     setConflicts(recurringConflicts);
     setActions(recurringConflicts.map((c) => (c ? null : null)));
+
+    // nome canônico + categoria herdada da recorrente casada; IOF nunca é imposto sobre faturamento
+    const normalized = parsedRows.map((row, i) => {
+      const conflict = recurringConflicts[i];
+      const iof = isIOF(row.descricao);
+      let descricao = row.descricao;
+      let categoria = row.categoria_sugerida;
+      if (conflict) {
+        descricao = iof ? `${conflict.expenseName} — IOF` : conflict.expenseName;
+        const exp = recurringExpenses.find((e) => e.id === conflict.expenseId);
+        if (exp?.categoria) categoria = exp.categoria;
+      }
+      if (iof && categoria === "impostos") categoria = "software";
+      return { ...row, descricao, categoria_sugerida: categoria };
+    });
+    if (normalized.some((r, i) => r.descricao !== parsedRows[i].descricao || r.categoria_sugerida !== parsedRows[i].categoria_sugerida)) {
+      setRows(normalized);
+      parsedRows = normalized;
+    }
 
     // investimentos (keywords + apelidos)
     const invMatches = parsedRows.map((row) => detectInvestment(row.descricao, investments));
@@ -316,7 +341,7 @@ export default function ImportFinancialDialog({ open, onOpenChange }: Props) {
               data: t.data,
               nome: t.descricao,
               valor: t.valor,
-              tipo: t.tipo,
+              tipo: isInvest ? ("investimento" as const) : t.tipo,
               categoria: isInvest ? "investimentos" : t.categoria_sugerida,
               origem_tipo: substitute ? ("despesa" as const) : ("avulso" as const),
               origem_id: substitute ? conflict!.expenseId : null,
