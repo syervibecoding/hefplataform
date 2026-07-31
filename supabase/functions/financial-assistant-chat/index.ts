@@ -1,7 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
-const AI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-const MODEL = 'google/gemini-3.6-flash';
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const MODEL = 'gpt-5-mini';
 
 const SYSTEM_PROMPT = `Você é um assistente financeiro sênior da HefSys, especializado em análise de fluxo de caixa, projeções e tomada de decisão para um negócio de software/consultoria brasileiro.
 
@@ -126,9 +126,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY não configurada.' }), {
+      return new Response(JSON.stringify({ error: 'OPENAI_API_KEY não configurada.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -153,21 +153,21 @@ Deno.serve(async (req) => {
       ],
     };
 
-    const aiRes = await fetch(AI_URL, {
+    const aiRes = await fetch(OPENAI_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Lovable-API-Key': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify(payload),
     });
 
     if (!aiRes.ok || !aiRes.body) {
       const errText = await aiRes.text();
-      const status = aiRes.status === 429 ? 429 : aiRes.status === 402 ? 402 : 502;
-      const msg = status === 429 ? 'Muitas requisições em sequência. Tente novamente em alguns instantes.'
-        : status === 402 ? 'Créditos de IA esgotados. Adicione créditos em Settings → Plans & credits.'
-        : `Falha na IA: ${errText.slice(0, 500)}`;
+      const status = aiRes.status === 429 ? 429 : aiRes.status === 401 ? 401 : 502;
+      const msg = status === 429 ? 'Limite/quota da OpenAI atingido. Verifique o saldo da conta ou tente em alguns instantes.'
+        : status === 401 ? 'OPENAI_API_KEY inválida ou expirada.'
+        : `Falha na OpenAI: ${errText.slice(0, 500)}`;
       return new Response(JSON.stringify({ error: msg }), {
         status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
