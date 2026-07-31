@@ -93,8 +93,11 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const currentMonthRate = rateForMonth(taxHistory, selectedYear, selectedMonth, Number(taxRate));
   // Faturamento bruto do mês vem das receitas reais lançadas no Fluxo de Caixa
   const faturamentoBrutoMes = monthData?.receitas ?? 0;
-  // Imposto: usa o DAS lançado no fluxo (categoria "impostos"); fallback = alíquota × receita
-  const impostoLancado = despesasByCat["impostos"] || 0;
+  // Imposto: usa o DAS lançado no fluxo (categoria "impostos"), ignorando IOF de
+  // compras internacionais — IOF é custo da compra, não imposto sobre faturamento.
+  const impostoLancado = (monthData?.entries || [])
+    .filter((e) => e.tipo === "despesa" && (e.categoria || "") === "impostos" && !/\biof\b/i.test(e.nome || ""))
+    .reduce((s, e) => s + e.valor, 0);
   const impostosIsReal = impostoLancado > 0;
   const impostos = impostosIsReal ? impostoLancado : faturamentoBrutoMes * (currentMonthRate / 100);
   const faturamentoLiquido = faturamentoBrutoMes - impostos;
@@ -102,6 +105,11 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const despesasSemImpostos = totalDespesasMes - impostoLancado;
   const resultado = faturamentoLiquido - despesasSemImpostos;
   const margem = faturamentoBrutoMes > 0 ? (resultado / faturamentoBrutoMes) * 100 : 0;
+  // Investimentos/aportes/retiradas ficam FORA do resultado operacional e da margem.
+  const investimentosMes = monthData?.investimentos ?? 0;
+  const aportesMes = monthData?.aportes ?? 0;
+  const retiradasMes = monthData?.retiradas ?? 0;
+  const variacaoCaixaMes = resultado - investimentosMes + aportesMes - retiradasMes;
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
   // Previsão anual mês a mês
@@ -109,7 +117,9 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const yearForecast = (cashFlow?.months || []).map((m, i) => {
     const rate = rateForMonth(taxHistory, selectedYear, i, Number(taxRate));
     const bruto = m.receitas;
-    const impLancado = m.byCategoryDespesa?.["impostos"] || 0;
+    const impLancado = (m.entries || [])
+      .filter((e) => e.tipo === "despesa" && (e.categoria || "") === "impostos" && !/\biof\b/i.test(e.nome || ""))
+      .reduce((s, e) => s + e.valor, 0);
     const imp = impLancado > 0 ? impLancado : bruto * (rate / 100);
     const liquido = bruto - imp;
     const desp = m.despesas - impLancado; // não duplicar imposto
