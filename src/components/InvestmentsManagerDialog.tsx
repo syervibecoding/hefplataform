@@ -50,6 +50,36 @@ export default function InvestmentsManagerDialog({ open, onOpenChange }: Props) 
 
   const [txForms, setTxForms] = useState<Record<string, { data: string; tipo: "aporte" | "resgate" | "rendimento"; valor: number }>>({});
   const [editingRate, setEditingRate] = useState<Record<string, string>>({});
+  const [balanceForms, setBalanceForms] = useState<Record<string, { valor: string; data: string }>>({});
+
+  const saveBalance = async (invId: string, saldoAtual: number) => {
+    const f = balanceForms[invId];
+    if (!f) return;
+    const novo = Number(String(f.valor).replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, ""));
+    if (!isFinite(novo)) {
+      toast.error("Informe um saldo válido");
+      return;
+    }
+    const delta = Number((novo - saldoAtual).toFixed(2));
+    if (delta === 0) {
+      toast.info("Saldo já está atualizado");
+      setBalanceForms((s) => { const ns = { ...s }; delete ns[invId]; return ns; });
+      return;
+    }
+    try {
+      await addTransaction.mutateAsync({
+        investment_id: invId,
+        data: f.data,
+        tipo: "rendimento",
+        valor: delta,
+        notas: "Ajuste de saldo bruto",
+      });
+      toast.success(delta > 0 ? `Rendimento de ${brl(delta)} registrado` : `Ajuste negativo de ${brl(delta)} registrado`);
+      setBalanceForms((s) => { const ns = { ...s }; delete ns[invId]; return ns; });
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + (e?.message || "desconhecido"));
+    }
+  };
 
   const saveRate = async (id: string) => {
     const raw = editingRate[id];
