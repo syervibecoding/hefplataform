@@ -40,6 +40,7 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const { allocations } = useResultAllocations(isAdmin);
   const [invDialogOpen, setInvDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [topScope, setTopScope] = useState<"mes" | "ano">("mes");
 
   if (!isAdmin) {
     return (
@@ -155,6 +156,41 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const categoriasOrdenadas = Object.entries(despesasByCat)
     .map(([id, valor]) => ({ id, label: categoryLabel(id), valor, pct: totalDespesasMes > 0 ? (valor / totalDespesasMes) * 100 : 0 }))
     .sort((a, b) => b.valor - a.valor);
+
+  // ---- Principais despesas por fornecedor (mês ou ano) ----
+  // Agrupa variações do mesmo fornecedor (Uber, 99, IOF etc.) em um único nome.
+  const canonicalVendor = (nome: string): string => {
+    const n = (nome || "").trim();
+    const u = n.toUpperCase();
+    if (u.includes("UBER")) return "Uber";
+    if (/^99\b|99APP|99 TECNOLOGIA|99POP/.test(u)) return "99";
+    if (u.includes("LOVABLE")) return "Lovable";
+    if (u.includes("OPENAI") || u.includes("CHATGPT") || u.includes("GPT")) return "OpenAI / ChatGPT";
+    if (u.includes("INFOSIMPLES")) return "Infosimples";
+    if (u.includes("SERPRO") || u.includes("SERVICO FEDERAL DE PROCESSAMENTO")) return "Serpro";
+    if (u.includes("HOSTINGER")) return "Hostinger";
+    if (u.includes("ANTHROPIC")) return "Anthropic";
+    if (u.includes("GOOGLE WORKSPACE")) return "Google Workspace";
+    return n.replace(/\s+—\s+IOF.*$/i, "").replace(/\s*-\s*Parcela.*$/i, "").trim() || "Outros";
+  };
+
+  const despesaEntriesMes = (monthData?.entries || []).filter((e) => e.tipo === "despesa");
+  const despesaEntriesAno = (cashFlow?.months || []).flatMap((m) => (m.entries || []).filter((e) => e.tipo === "despesa"));
+  const baseVendorEntries = topScope === "ano" ? despesaEntriesAno : despesaEntriesMes;
+  const vendorMap = new Map<string, { valor: number; categoria: string; count: number }>();
+  for (const e of baseVendorEntries) {
+    const key = canonicalVendor(e.nome || "");
+    const cur = vendorMap.get(key) || { valor: 0, categoria: e.categoria || "outros", count: 0 };
+    cur.valor += e.valor;
+    cur.count += 1;
+    vendorMap.set(key, cur);
+  }
+  const totalVendors = Array.from(vendorMap.values()).reduce((s, v) => s + v.valor, 0);
+  const topVendors = Array.from(vendorMap.entries())
+    .map(([nome, v]) => ({ nome, ...v, pct: totalVendors > 0 ? (v.valor / totalVendors) * 100 : 0 }))
+    .sort((a, b) => b.valor - a.valor)
+    .slice(0, 12);
+  const maxVendor = Math.max(1, ...topVendors.map((v) => v.valor));
 
   const CATEGORY_COLORS = [
     "bg-primary", "bg-hef-info", "bg-hef-success", "bg-hef-warning",
@@ -599,6 +635,61 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Principais despesas por fornecedor */}
+      <div className="bg-card border border-border rounded-xl p-5 mb-7">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div>
+            <h2 className="text-sm font-semibold">Principais Despesas por Fornecedor</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {topScope === "ano" ? `Acumulado ${selectedYear}` : format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR })}
+              {" · "}Total {fmt(totalVendors)}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+            {(["mes", "ano"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setTopScope(s)}
+                className={`text-[11px] px-3 py-1 rounded-md transition-colors ${
+                  topScope === s ? "bg-card text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s === "mes" ? "Mês" : "Ano"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {topVendors.length === 0 ? (
+          <div className="text-center text-sm text-muted-foreground py-8">Sem despesas no período</div>
+        ) : (
+          <div className="space-y-2.5">
+            {topVendors.map((v, i) => (
+              <div key={v.nome} className="flex items-center gap-3">
+                <span className="text-[11px] text-muted-foreground font-mono w-5 shrink-0">{i + 1}</span>
+                <div className="w-32 md:w-44 shrink-0 min-w-0">
+                  <div className="text-xs font-medium truncate" title={v.nome}>{v.nome}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">
+                    {categoryLabel(v.categoria)} · {v.count}x
+                  </div>
+                </div>
+                <div className="flex-1 h-3 bg-secondary rounded-full overflow-hidden min-w-[40px]">
+                  <div
+                    className={`h-full rounded-full ${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}`}
+                    style={{ width: `${(v.valor / maxVendor) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs font-mono font-semibold tabular-nums w-24 md:w-28 text-right shrink-0">
+                  {fmt(v.valor)}
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground tabular-nums w-12 text-right shrink-0">
+                  {v.pct.toFixed(1)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Visão Financeira por Produto */}
