@@ -28,11 +28,11 @@ interface Props {
 export default function GeneralDashboardPage({ products, melhorias }: Props) {
   const { isAdmin } = useAuth();
   const { data: allClients = [] } = useAllClients(isAdmin);
-  const { data: financialOverview = [] } = useFinancialOverview(isAdmin);
-  const { data: allAdjustments = [] } = useClientValueAdjustmentsForClients(allClients.map((c) => c.id));
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const { data: financialOverview = [] } = useFinancialOverview(isAdmin, selectedYear, selectedMonth);
+  const { data: allAdjustments = [] } = useClientValueAdjustmentsForClients(allClients.map((c) => c.id));
   const { data: cashFlow } = useCashFlowYear(selectedYear, isAdmin);
   const { investments, balances, totalSaldo } = useInvestments(isAdmin);
   const { taxRate } = useFinancialSettings(isAdmin);
@@ -56,15 +56,22 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
     arr.push({ data_inicio: a.data_inicio, novo_valor: a.novo_valor });
     adjustmentsByClient.set(a.client_id, arr);
   }
-  const revenueFor = (c: ClientRow) => clientMonthlyRevenue(c, now, adjustmentsByClient.get(c.id));
-
   const monthStart = new Date(selectedYear, selectedMonth, 1);
+  const revenueFor = (c: ClientRow) => clientMonthlyRevenue(c, monthStart, adjustmentsByClient.get(c.id));
+
   const monthEnd = new Date(selectedYear, selectedMonth + 1, 0);
   const isCurrentRealMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
   const isPastMonth = selectedYear < now.getFullYear() || (selectedYear === now.getFullYear() && selectedMonth < now.getMonth());
   const isFutureMonth = !isCurrentRealMonth && !isPastMonth;
 
-  const activeClients = allClients.filter((c) => c.status === "ativo");
+  // Recorte por mês: o cliente só entra na foto do mês selecionado a partir do
+  // início do contrato (ou da implementação, no caso de Plataformas de IA).
+  const startedByMonth = (c: ClientRow) => {
+    const ref = c.product_id === "plataformas" ? c.data_implementacao : c.data_inicio;
+    if (!ref) return true;
+    return new Date(ref + "T00:00:00") <= monthEnd;
+  };
+  const activeClients = allClients.filter((c) => c.status === "ativo" && startedByMonth(c));
   // Plataformas de IA são projetos pontuais/realizados — não contam como
   // clientes ativos recorrentes (exceto quando têm mensalidade vigente).
   const isRecurringActive = (c: ClientRow) => {
