@@ -274,7 +274,12 @@ export default function GeneralDashboardPage({ products, melhorias }: Props) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
-        <StatCard label="Clientes Ativos" value={recurringActiveClients.length} sub="recorrentes (sem projetos)" colorClass="text-primary" />
+        <StatCard
+          label="Clientes Ativos"
+          value={recurringActiveClients.length}
+          sub={`recorrentes em ${selectedDate.toLocaleDateString("pt-BR", { month: "short", year: "numeric" })}`}
+          colorClass="text-primary"
+        />
         <StatCard
           label="Faturamento Bruto"
           value={fmt(faturamentoBrutoMes)}
