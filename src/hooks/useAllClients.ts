@@ -15,6 +15,7 @@ export interface ClientRow {
   nivel_dificuldade: string | null;
   data_golive: string | null;
   data_kickoff: string | null;
+  data_inicio: string | null;
   created_at: string;
   valor_implementacao: number;
   valor_mensalidade: number;
@@ -54,7 +55,7 @@ export function useAllClients(productFilter?: string | null | boolean) {
     queryFn: async (): Promise<ClientRow[]> => {
       let query = supabase
         .from("clients")
-        .select("id, nome, contato, whatsapp, email, status, product_id, valor_contrato, faturamento, nivel_dificuldade, data_golive, data_kickoff, created_at, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, contrato_assinado")
+        .select("id, nome, contato, whatsapp, email, status, product_id, valor_contrato, faturamento, nivel_dificuldade, data_golive, data_kickoff, data_inicio, created_at, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, contrato_assinado")
         .order("nome");
       if (filter) query = query.eq("product_id", filter);
       const { data, error } = await query;
@@ -72,6 +73,7 @@ export function useAllClients(productFilter?: string | null | boolean) {
         nivel_dificuldade: r.nivel_dificuldade || null,
         data_golive: r.data_golive || null,
         data_kickoff: r.data_kickoff || null,
+        data_inicio: r.data_inicio || null,
         created_at: r.created_at,
         valor_implementacao: Number(r.valor_implementacao) || 0,
         valor_mensalidade: Number(r.valor_mensalidade) || 0,
