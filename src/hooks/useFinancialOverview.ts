@@ -8,14 +8,17 @@ export interface ProductFinancial {
   totalRevenue: number;
 }
 
-export function useFinancialOverview(enabled: boolean) {
+export function useFinancialOverview(enabled: boolean, year?: number, month?: number) {
+  const ref = new Date();
+  const y = year ?? ref.getFullYear();
+  const m = month ?? ref.getMonth();
   return useQuery({
-    queryKey: ["financial-overview"],
+    queryKey: ["financial-overview", y, m],
     enabled,
     queryFn: async (): Promise<ProductFinancial[]> => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, product_id, status, faturamento, valor_contrato, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao")
+        .select("id, product_id, status, faturamento, valor_contrato, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, data_inicio")
         .eq("status", "ativo");
       if (error) throw error;
 
@@ -35,14 +38,16 @@ export function useFinancialOverview(enabled: boolean) {
 
       const grouped = new Map<string, { count: number; revenue: number }>();
 
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const y = now.getFullYear();
-      const m = now.getMonth();
+      const monthStart = new Date(y, m, 1);
+      const monthEnd = new Date(y, m + 1, 0);
 
       for (const row of data || []) {
         const pid = row.product_id;
+        // Recorte temporal: cliente só conta a partir do início do contrato.
+        if (pid !== "plataformas" && (row as any).data_inicio) {
+          const di = new Date((row as any).data_inicio + "T00:00:00");
+          if (di > monthEnd) continue;
+        }
         const current = grouped.get(pid) || { count: 0, revenue: 0 };
         let revenue = 0;
         const adjs = adjustmentsByClient.get((row as any).id);
