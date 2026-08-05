@@ -94,6 +94,16 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
   const form = isHefsys ? hefsysForm : isTrafego ? trafegoForm : genericForm;
   const { register, handleSubmit, formState: { errors }, setValue, watch } = form as any;
 
+  const brutoContrato = isConsultoria ? Number(watch("valorBrutoContrato") || 0) : 0;
+  const parceriaPct = isConsultoria ? Number(watch("parceriaPercentual") || 0) : 0;
+  useEffect(() => {
+    if (!isConsultoria) return;
+    const efetivo = brutoContrato > 0 && parceriaPct > 0
+      ? +(brutoContrato * parceriaPct / 100).toFixed(2)
+      : brutoContrato > 0 ? brutoContrato : 0;
+    setValue("valorContrato", efetivo);
+  }, [brutoContrato, parceriaPct, isConsultoria, setValue]);
+
   const formaPagamento = isTrafego ? watch("formaPagamento") : "";
 
   useEffect(() => {
