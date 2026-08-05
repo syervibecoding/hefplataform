@@ -21,7 +21,7 @@ function isPastMonth(year: number, month: number, now: Date) {
   return month < now.getMonth();
 }
 
-const REVENUE_PRODUCTS = new Set(["hefsys", "consultoria-clix", "plataformas"]);
+const REVENUE_PRODUCTS = new Set(["hefsys", "consultoria-clix", "hef-consultoria-ia--business", "plataformas"]);
 
 interface SnapshotRow {
   ano: number;
@@ -41,7 +41,7 @@ export async function freezeClientHistory(clientId: string): Promise<void> {
   // Busca cliente
   const { data: c, error } = await supabase
     .from("clients")
-    .select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio, comissao_percentual, comissao_comercial")
+    .select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio, comissao_percentual, comissao_comercial, imposto_descontado")
     .eq("id", clientId)
     .maybeSingle();
   if (error || !c) return;
@@ -98,7 +98,7 @@ export async function freezeClientHistory(clientId: string): Promise<void> {
 
       if (c.product_id === "hefsys") {
         push("default", getValorEfetivo(Number(c.faturamento || 0), adjustments, year, m), c.nome, date);
-      } else if (c.product_id === "consultoria-clix") {
+      } else if (c.product_id === "consultoria-clix" || c.product_id === "hef-consultoria-ia--business") {
         const v = getValorEfetivo(Number(c.valor_contrato || 0), adjustments, year, m);
         push("default", v, c.nome, date);
         const pct = Number((c as any).comissao_percentual || 0);
@@ -108,6 +108,8 @@ export async function freezeClientHistory(clientId: string): Promise<void> {
           const nomeDespesa = `Comissão ${comercial ? comercial + " · " : ""}${c.nome}`;
           push("comissao", comissaoValor, nomeDespesa, date, "despesa", "comissoes");
         }
+        const imposto = Number((c as any).imposto_descontado || 0);
+        if (imposto > 0) push("imposto", imposto, `Imposto · ${c.nome}`, date, "despesa", "impostos");
       } else if (c.product_id === "plataformas") {
         const di = c.data_implementacao ? new Date(c.data_implementacao + "T00:00:00") : null;
         const monthStart = new Date(year, m, 1);

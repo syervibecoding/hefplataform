@@ -52,6 +52,10 @@ function mapRowToClient(row: any, productId: ProductId): AnyClient {
     valorMensalidade: Number(row.valor_mensalidade) || 0,
     comissaoPercentual: Number(row.comissao_percentual) || 0,
     comissaoComercial: row.comissao_comercial || null,
+    valorBrutoContrato: row.valor_bruto_contrato == null ? null : Number(row.valor_bruto_contrato),
+    parceriaPercentual: Number(row.parceria_percentual) || 0,
+    parceriaParceiro: row.parceria_parceiro || null,
+    impostoDescontado: Number(row.imposto_descontado) || 0,
   } as GenericClient;
 }
 
@@ -114,9 +118,13 @@ export function useClients(productId: ProductId) {
           row.tem_mensalidade = !!clientData.temMensalidade;
           row.valor_mensalidade = clientData.temMensalidade ? (clientData.valorMensalidade || 0) : 0;
         }
-        if (productId === "consultoria-clix") {
+        if (productId === "consultoria-clix" || productId === "hef-consultoria-ia--business") {
           row.comissao_percentual = Number(clientData.comissaoPercentual) || 0;
           row.comissao_comercial = clientData.comissaoComercial || null;
+          row.valor_bruto_contrato = clientData.valorBrutoContrato ? Number(clientData.valorBrutoContrato) : null;
+          row.parceria_percentual = Number(clientData.parceriaPercentual) || 0;
+          row.parceria_parceiro = clientData.parceriaParceiro || null;
+          row.imposto_descontado = Number(clientData.impostoDescontado) || 0;
         }
       }
       const { error } = await supabase.from("clients").insert(row);
@@ -167,9 +175,13 @@ export function useClients(productId: ProductId) {
           row.tem_mensalidade = !!data.temMensalidade;
           row.valor_mensalidade = data.temMensalidade ? (data.valorMensalidade || 0) : 0;
         }
-        if (productId === "consultoria-clix") {
+        if (productId === "consultoria-clix" || productId === "hef-consultoria-ia--business") {
           row.comissao_percentual = Number(data.comissaoPercentual) || 0;
           row.comissao_comercial = data.comissaoComercial || null;
+          row.valor_bruto_contrato = data.valorBrutoContrato ? Number(data.valorBrutoContrato) : null;
+          row.parceria_percentual = Number(data.parceriaPercentual) || 0;
+          row.parceria_parceiro = data.parceriaParceiro || null;
+          row.imposto_descontado = Number(data.impostoDescontado) || 0;
         }
       }
       const { error } = await supabase.from("clients").update(row).eq("id", id);

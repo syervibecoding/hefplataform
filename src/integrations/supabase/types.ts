@@ -474,10 +474,13 @@ export type Database = {
           frequencia: string | null
           gasto_diario_medio: number | null
           id: string
+          imposto_descontado: number
           nivel_dificuldade: string | null
           nome: string
           nome_plataforma: string | null
           notas_automacao: string | null
+          parceria_parceiro: string | null
+          parceria_percentual: number
           product_id: string
           rotina_conferencia: Json | null
           saldo_anuncio: number | null
@@ -487,6 +490,7 @@ export type Database = {
           tem_mensalidade: boolean | null
           tipo_plataforma: string | null
           updated_at: string
+          valor_bruto_contrato: number | null
           valor_contrato: number | null
           valor_implementacao: number | null
           valor_mensalidade: number | null
@@ -516,10 +520,13 @@ export type Database = {
           frequencia?: string | null
           gasto_diario_medio?: number | null
           id?: string
+          imposto_descontado?: number
           nivel_dificuldade?: string | null
           nome: string
           nome_plataforma?: string | null
           notas_automacao?: string | null
+          parceria_parceiro?: string | null
+          parceria_percentual?: number
           product_id: string
           rotina_conferencia?: Json | null
           saldo_anuncio?: number | null
@@ -529,6 +536,7 @@ export type Database = {
           tem_mensalidade?: boolean | null
           tipo_plataforma?: string | null
           updated_at?: string
+          valor_bruto_contrato?: number | null
           valor_contrato?: number | null
           valor_implementacao?: number | null
           valor_mensalidade?: number | null
@@ -558,10 +566,13 @@ export type Database = {
           frequencia?: string | null
           gasto_diario_medio?: number | null
           id?: string
+          imposto_descontado?: number
           nivel_dificuldade?: string | null
           nome?: string
           nome_plataforma?: string | null
           notas_automacao?: string | null
+          parceria_parceiro?: string | null
+          parceria_percentual?: number
           product_id?: string
           rotina_conferencia?: Json | null
           saldo_anuncio?: number | null
@@ -571,6 +582,7 @@ export type Database = {
           tem_mensalidade?: boolean | null
           tipo_plataforma?: string | null
           updated_at?: string
+          valor_bruto_contrato?: number | null
           valor_contrato?: number | null
           valor_implementacao?: number | null
           valor_mensalidade?: number | null
