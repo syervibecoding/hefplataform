@@ -3,9 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInMonths, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock } from "lucide-react";
+import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { generateClientReportPdf } from "@/lib/clientReportPdf";
+import { toast } from "sonner";
 import { useAllClients } from "@/hooks/useAllClients";
 import { useLovableProducts } from "@/hooks/useLovableProducts";
 import { useSupportTickets, STATUS_META, CATEGORIA_META, type SupportTicket } from "@/hooks/useSupport";
@@ -146,6 +149,36 @@ function ClientReport({
     return items.sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [client, plats, tickets, interactions, inicio]);
 
+  const exportPdf = () => {
+    try {
+      generateClientReportPdf({
+        clientName: client.nome,
+        inicio,
+        meses,
+        valorMensal,
+        kpis: [
+          { label: "Plataformas", value: String(plats.length) },
+          { label: "Chamados", value: String(tickets.length) },
+          { label: "Resolvidos", value: String(resolvidos) },
+          { label: "Interações", value: String(interactions.length) },
+        ],
+        plataformas: plats.map(({ link, product }) => ({
+          nome: product.nome,
+          data: format(
+            parseISO(link.data_replicacao || product.created_at.slice(0, 10)),
+            "dd/MM/yyyy"
+          ),
+          url: product.url_app,
+        })),
+        timeline,
+      });
+      toast.success("Relatório em PDF gerado");
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível gerar o PDF");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-xl p-4">
@@ -160,9 +193,15 @@ function ClientReport({
               {meses ? ` · ${meses} ${meses === 1 ? "mês" : "meses"}` : ""}
             </p>
           </div>
-          {valorMensal > 0 && (
-            <Badge variant="outline" className="ml-auto font-mono text-[11px]">{brl(valorMensal)}/mês</Badge>
-          )}
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            {valorMensal > 0 && (
+              <Badge variant="outline" className="font-mono text-[11px]">{brl(valorMensal)}/mês</Badge>
+            )}
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={exportPdf}>
+              <FileDown size={14} />
+              Exportar PDF
+            </Button>
+          </div>
         </div>
       </div>
 
