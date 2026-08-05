@@ -101,6 +101,11 @@ export interface GenericClient extends BaseClient {
   // Consultoria - comissão comercial
   comissaoPercentual?: number;
   comissaoComercial?: string | null;
+  // Consultoria - parceria / rateio de contrato
+  valorBrutoContrato?: number | null;
+  parceriaPercentual?: number;
+  parceriaParceiro?: string | null;
+  impostoDescontado?: number;
 }
 
 // Keep backward compat
