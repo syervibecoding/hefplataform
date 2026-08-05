@@ -314,6 +314,106 @@ export type Database = {
           },
         ]
       }
+      client_report_items: {
+        Row: {
+          client_id: string
+          created_at: string
+          data: string | null
+          descricao: string | null
+          hidden: boolean
+          id: string
+          item_key: string
+          kind: string
+          manual: boolean
+          titulo: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          hidden?: boolean
+          id?: string
+          item_key: string
+          kind?: string
+          manual?: boolean
+          titulo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          hidden?: boolean
+          id?: string
+          item_key?: string
+          kind?: string
+          manual?: boolean
+          titulo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_report_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_report_settings: {
+        Row: {
+          client_id: string
+          conclusao: string | null
+          created_at: string
+          data_referencia: string | null
+          id: string
+          introducao: string | null
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          subtitulo: string | null
+          titulo: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          conclusao?: string | null
+          created_at?: string
+          data_referencia?: string | null
+          id?: string
+          introducao?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          subtitulo?: string | null
+          titulo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          conclusao?: string | null
+          created_at?: string
+          data_referencia?: string | null
+          id?: string
+          introducao?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          subtitulo?: string | null
+          titulo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_report_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_value_adjustments: {
         Row: {
           client_id: string
@@ -864,6 +964,45 @@ export type Database = {
           tipo?: string
           titulo?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      nav_items: {
+        Row: {
+          admin_only: boolean
+          created_at: string
+          icon: string
+          id: string
+          label: string
+          page_key: string
+          position: number
+          section: string
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          admin_only?: boolean
+          created_at?: string
+          icon?: string
+          id?: string
+          label: string
+          page_key: string
+          position?: number
+          section?: string
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          admin_only?: boolean
+          created_at?: string
+          icon?: string
+          id?: string
+          label?: string
+          page_key?: string
+          position?: number
+          section?: string
+          updated_at?: string
+          visible?: boolean
         }
         Relationships: []
       }
