@@ -121,16 +121,48 @@ function ClientReport({
   };
 }) {
   const { client, plats, tickets, interactions, inicio } = data;
+  const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    titulo: "",
+    subtitulo: "",
+    data_referencia: "",
+    periodo_inicio: "",
+    periodo_fim: "",
+    introducao: "",
+    conclusao: "",
+  });
+  const [newItem, setNewItem] = useState({ titulo: "", data: "", descricao: "" });
+
+  useEffect(() => {
+    setForm({
+      titulo: settings?.titulo ?? "",
+      subtitulo: settings?.subtitulo ?? "",
+      data_referencia: settings?.data_referencia ?? "",
+      periodo_inicio: settings?.periodo_inicio ?? "",
+      periodo_fim: settings?.periodo_fim ?? "",
+      introducao: settings?.introducao ?? "",
+      conclusao: settings?.conclusao ?? "",
+    });
+  }, [settings, client.id]);
+
+  const overrides = useMemo(
+    () => Object.fromEntries(items.map((i) => [i.item_key, i])),
+    [items]
+  );
+
   const meses = inicio ? Math.max(1, differenceInMonths(new Date(), parseISO(inicio)) + 1) : null;
   const resolvidos = tickets.filter((t) => t.resolved_at || t.status === "fechado").length;
   const valorMensal = client.faturamento ?? client.valor_contrato ?? client.valor_mensalidade ?? 0;
 
-  const timeline = useMemo(() => {
-    const items: { date: string; kind: string; title: string; sub?: string }[] = [];
-    if (inicio) items.push({ date: inicio, kind: "inicio", title: "Início do contrato" });
-    if (client.data_golive) items.push({ date: client.data_golive, kind: "inicio", title: "Go-live" });
+  const timelineAll = useMemo(() => {
+    const base: { key: string; date: string; kind: string; title: string; sub?: string }[] = [];
+    if (inicio) base.push({ key: "inicio", date: inicio, kind: "inicio", title: "Início do contrato" });
+    if (client.data_golive)
+      base.push({ key: "golive", date: client.data_golive, kind: "inicio", title: "Go-live" });
     plats.forEach((p) =>
-      items.push({
+      base.push({
+        key: `plat:${p.product.id}`,
         date: p.link.data_replicacao || p.product.created_at.slice(0, 10),
         kind: "plataforma",
         title: `Plataforma entregue: ${p.product.nome}`,
@@ -138,7 +170,8 @@ function ClientReport({
       })
     );
     tickets.forEach((t) =>
-      items.push({
+      base.push({
+        key: `ticket:${t.id}`,
         date: t.opened_at.slice(0, 10),
         kind: "chamado",
         title: t.titulo,
@@ -146,15 +179,68 @@ function ClientReport({
       })
     );
     interactions.forEach((i) =>
-      items.push({ date: i.data, kind: "interacao", title: i.titulo, sub: i.descricao ?? undefined })
+      base.push({ key: `inter:${i.id}`, date: i.data, kind: "interacao", title: i.titulo, sub: i.descricao ?? undefined })
     );
-    return items.sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [client, plats, tickets, interactions, inicio]);
+    items
+      .filter((i) => i.manual)
+      .forEach((i) =>
+        base.push({
+          key: i.item_key,
+          date: i.data || new Date().toISOString().slice(0, 10),
+          kind: "interacao",
+          title: i.titulo || "Registro",
+          sub: i.descricao ?? undefined,
+        })
+      );
+
+    return base
+      .map((it) => {
+        const o = overrides[it.key];
+        return {
+          ...it,
+          title: o?.titulo ?? it.title,
+          sub: o?.descricao ?? it.sub,
+          date: o?.data ?? it.date,
+          hidden: o?.hidden ?? false,
+          manual: o?.manual ?? false,
+          overrideId: o?.id,
+        };
+      })
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [client, plats, tickets, interactions, inicio, items, overrides]);
+
+  const timeline = timelineAll.filter((t) => !t.hidden);
+
+  const handleSaveSettings = async () => {
+    try {
+      await saveSettings.mutateAsync({
+        titulo: form.titulo || null,
+        subtitulo: form.subtitulo || null,
+        data_referencia: form.data_referencia || null,
+        periodo_inicio: form.periodo_inicio || null,
+        periodo_fim: form.periodo_fim || null,
+        introducao: form.introducao || null,
+        conclusao: form.conclusao || null,
+      } as any);
+      toast.success("Relatório salvo");
+      setEditing(false);
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível salvar");
+    }
+  };
 
   const exportPdf = () => {
     try {
       generateClientReportPdf({
         clientName: client.nome,
+        titulo: form.titulo || null,
+        subtitulo: form.subtitulo || null,
+        dataReferencia: form.data_referencia || null,
+        periodoInicio: form.periodo_inicio || null,
+        periodoFim: form.periodo_fim || null,
+        introducao: form.introducao || null,
+        conclusao: form.conclusao || null,
         inicio,
         meses,
         valorMensal,
@@ -164,15 +250,21 @@ function ClientReport({
           { label: "Resolvidos", value: String(resolvidos) },
           { label: "Interações", value: String(interactions.length) },
         ],
-        plataformas: plats.map(({ link, product }) => ({
-          nome: product.nome,
-          data: format(
-            parseISO(link.data_replicacao || product.created_at.slice(0, 10)),
-            "dd/MM/yyyy"
-          ),
-          url: product.url_app,
-        })),
-        timeline,
+        plataformas: plats
+          .filter(({ product }) => !overrides[`plat:${product.id}`]?.hidden)
+          .map(({ link, product }) => ({
+            nome: overrides[`plat:${product.id}`]?.titulo ?? product.nome,
+            data: format(
+              parseISO(
+                overrides[`plat:${product.id}`]?.data ||
+                  link.data_replicacao ||
+                  product.created_at.slice(0, 10)
+              ),
+              "dd/MM/yyyy"
+            ),
+            url: product.url_app,
+          })),
+        timeline: timeline.map((t) => ({ date: t.date, kind: t.kind, title: t.title, sub: t.sub })),
       });
       toast.success("Relatório em PDF gerado");
     } catch (e) {
