@@ -4,6 +4,7 @@ import logoHef from "@/assets/logo-hefsys.png";
 import { type ProductId } from "@/data/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProducts, type Product } from "@/hooks/useProducts";
+import { useNavItems, type NavItem } from "@/hooks/useNavItems";
 import { getIcon, AVAILABLE_ICONS } from "@/lib/icon-map";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
@@ -20,19 +21,11 @@ interface SidebarProps {
   onMobileOpenChange?: (open: boolean) => void;
 }
 
-const NAV_ITEMS = [
-  { id: "home", label: "Início", icon: Home },
-  { id: "clients", label: "Clientes", icon: Users },
-  { id: "calendar", label: "Calendário", icon: Calendar },
-  { id: "materials", label: "Materiais", icon: BookOpen },
-  { id: "lovable-products", label: "Gerenciador de Plataformas", icon: Package },
-  { id: "crm", label: "CRM", icon: TrendingUp },
-  { id: "melhorias", label: "Melhorias", icon: Rocket },
-];
-
 export default function Sidebar({ activePage, onNavigate, activeProduct, onChangeProduct, mobileOpen = false, onMobileOpenChange }: SidebarProps) {
   const { profile, isAdmin, signOut } = useAuth();
   const { products, addProduct, editProduct, deleteProduct } = useProducts();
+  const { navItems, updateItem } = useNavItems();
+  const [editingNav, setEditingNav] = useState<NavItem | null>(null);
   const [productOpen, setProductOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({ id: "", nome: "", descricao: "", icon: "Box" });
