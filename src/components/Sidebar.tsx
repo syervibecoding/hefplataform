@@ -193,73 +193,33 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
         <span className="text-[10px] uppercase tracking-[1.5px] text-muted-foreground/60 font-semibold px-3 pb-2 pt-2">
           Menu
         </span>
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleNavigate(item.id)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                ${isActive
-                  ? "bg-primary/12 text-primary border border-primary/15"
-                  : "text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground"
-                }`}
-            >
-              <Icon size={18} />
-              {item.label}
-            </button>
-          );
-        })}
+        {navItems
+          .filter((i) => i.section === "main" && i.visible && (!i.admin_only || isAdmin))
+          .map((item) => (
+            <NavRow
+              key={item.page_key}
+              item={item}
+              isActive={activePage === item.page_key}
+              isAdmin={isAdmin}
+              onNavigate={handleNavigate}
+              onEdit={setEditingNav}
+            />
+          ))}
       </nav>
 
       <div className="px-3 pb-4 space-y-1">
-        {isAdmin && (
-          <button
-            onClick={() => handleNavigate("assistant")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full ${
-              activePage === "assistant"
-                ? "bg-primary/12 text-primary border border-primary/15"
-                : "text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground"
-            }`}
-          >
-            <Sparkles size={18} />
-            Assistente
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            onClick={() => handleNavigate("financial-imports")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full ${
-              activePage === "financial-imports"
-                ? "bg-primary/12 text-primary border border-primary/15"
-                : "text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground"
-            }`}
-          >
-            <FileUp size={18} />
-            Importações
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            onClick={() => handleNavigate("users")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full ${
-              activePage === "users"
-                ? "bg-primary/12 text-primary border border-primary/15"
-                : "text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground"
-            }`}
-          >
-            <UserCog size={18} />
-            Usuários
-          </button>
-        )}
-        <button
-          onClick={() => handleNavigate("settings")}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground transition-all w-full"
-        >
-          <Settings size={18} />
-          Configurações
-        </button>
+        {navItems
+          .filter((i) => i.section === "footer" && i.visible && (!i.admin_only || isAdmin))
+          .map((item) => (
+            <NavRow
+              key={item.page_key}
+              item={item}
+              isActive={activePage === item.page_key}
+              isAdmin={isAdmin}
+              onNavigate={handleNavigate}
+              onEdit={setEditingNav}
+            />
+          ))}
 
         <div className="border-t border-sidebar-border pt-3 mt-2">
           <div className="px-3 pb-2">
