@@ -3,6 +3,7 @@ import { LayoutGrid, Clock, CheckCircle2, Star, BarChart3, Search } from "lucide
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PlataformasTab from "@/components/PlataformasTab";
 import ClientesAcessosTab from "@/components/ClientesAcessosTab";
+import ClientReportsTab from "@/components/ClientReportsTab";
 import { useSupportTickets, computeMetrics, STATUS_META, CATEGORIA_META, type TicketStatus, type SupportTicket } from "@/hooks/useSupport";
 import { useAllClients } from "@/hooks/useAllClients";
 import { useLovableProducts } from "@/hooks/useLovableProducts";
@@ -34,15 +35,20 @@ export default function SupportPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="chamados" className="space-y-6">
+      <Tabs defaultValue="plataformas" className="space-y-6">
         <TabsList>
           <TabsTrigger value="plataformas">Plataformas</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="chamados">Chamados</TabsTrigger>
           <TabsTrigger value="clientes">Clientes & Acessos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="plataformas">
           <PlataformasTab />
+        </TabsContent>
+
+        <TabsContent value="relatorios">
+          <ClientReportsTab />
         </TabsContent>
 
         <TabsContent value="chamados">
