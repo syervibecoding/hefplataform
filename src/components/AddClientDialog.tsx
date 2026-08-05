@@ -112,10 +112,12 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
   const parceriaPct = isConsultoria ? Number(watch("parceriaPercentual") || 0) : 0;
   useEffect(() => {
     if (!isConsultoria) return;
-    const efetivo = brutoContrato > 0 && parceriaPct > 0
-      ? +(brutoContrato * parceriaPct / 100).toFixed(2)
-      : brutoContrato > 0 ? brutoContrato : 0;
-    setValue("valorContrato", efetivo);
+    if (brutoContrato > 0) {
+      const efetivo = parceriaPct > 0
+        ? +(brutoContrato * parceriaPct / 100).toFixed(2)
+        : brutoContrato;
+      setValue("valorContrato", efetivo);
+    }
   }, [brutoContrato, parceriaPct, isConsultoria, setValue]);
 
   const formaPagamento = isTrafego ? watch("formaPagamento") : "";
