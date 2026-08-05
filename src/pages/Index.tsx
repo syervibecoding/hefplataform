@@ -10,7 +10,6 @@ import MelhoriasPage from "./MelhoriasPage";
 import CalendarPage from "./CalendarPage";
 import UsersPage from "./UsersPage";
 import MaterialsPage from "./MaterialsPage";
-import LovableProductsPage from "./LovableProductsPage";
 import SupportPage from "./SupportPage";
 import CRMPage from "./CRMPage";
 import WorkflowPage from "./WorkflowPage";
@@ -234,7 +233,6 @@ export default function Index() {
       case "materials":
         return <MaterialsPage />;
       case "lovable-products":
-        return <LovableProductsPage />;
       case "support":
         return <SupportPage />;
       case "crm":
