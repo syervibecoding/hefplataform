@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInMonths, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown } from "lucide-react";
+import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown, Pencil, Eye, EyeOff, Plus, Trash2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { generateClientReportPdf } from "@/lib/clientReportPdf";
 import { toast } from "sonner";
+import { useClientReport } from "@/hooks/useClientReport";
 import { useAllClients } from "@/hooks/useAllClients";
 import { useLovableProducts } from "@/hooks/useLovableProducts";
 import { useSupportTickets, STATUS_META, CATEGORIA_META, type SupportTicket } from "@/hooks/useSupport";
@@ -119,16 +121,48 @@ function ClientReport({
   };
 }) {
   const { client, plats, tickets, interactions, inicio } = data;
+  const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    titulo: "",
+    subtitulo: "",
+    data_referencia: "",
+    periodo_inicio: "",
+    periodo_fim: "",
+    introducao: "",
+    conclusao: "",
+  });
+  const [newItem, setNewItem] = useState({ titulo: "", data: "", descricao: "" });
+
+  useEffect(() => {
+    setForm({
+      titulo: settings?.titulo ?? "",
+      subtitulo: settings?.subtitulo ?? "",
+      data_referencia: settings?.data_referencia ?? "",
+      periodo_inicio: settings?.periodo_inicio ?? "",
+      periodo_fim: settings?.periodo_fim ?? "",
+      introducao: settings?.introducao ?? "",
+      conclusao: settings?.conclusao ?? "",
+    });
+  }, [settings, client.id]);
+
+  const overrides = useMemo(
+    () => Object.fromEntries(items.map((i) => [i.item_key, i])),
+    [items]
+  );
+
   const meses = inicio ? Math.max(1, differenceInMonths(new Date(), parseISO(inicio)) + 1) : null;
   const resolvidos = tickets.filter((t) => t.resolved_at || t.status === "fechado").length;
   const valorMensal = client.faturamento ?? client.valor_contrato ?? client.valor_mensalidade ?? 0;
 
-  const timeline = useMemo(() => {
-    const items: { date: string; kind: string; title: string; sub?: string }[] = [];
-    if (inicio) items.push({ date: inicio, kind: "inicio", title: "Início do contrato" });
-    if (client.data_golive) items.push({ date: client.data_golive, kind: "inicio", title: "Go-live" });
+  const timelineAll = useMemo(() => {
+    const base: { key: string; date: string; kind: string; title: string; sub?: string }[] = [];
+    if (inicio) base.push({ key: "inicio", date: inicio, kind: "inicio", title: "Início do contrato" });
+    if (client.data_golive)
+      base.push({ key: "golive", date: client.data_golive, kind: "inicio", title: "Go-live" });
     plats.forEach((p) =>
-      items.push({
+      base.push({
+        key: `plat:${p.product.id}`,
         date: p.link.data_replicacao || p.product.created_at.slice(0, 10),
         kind: "plataforma",
         title: `Plataforma entregue: ${p.product.nome}`,
@@ -136,7 +170,8 @@ function ClientReport({
       })
     );
     tickets.forEach((t) =>
-      items.push({
+      base.push({
+        key: `ticket:${t.id}`,
         date: t.opened_at.slice(0, 10),
         kind: "chamado",
         title: t.titulo,
@@ -144,15 +179,68 @@ function ClientReport({
       })
     );
     interactions.forEach((i) =>
-      items.push({ date: i.data, kind: "interacao", title: i.titulo, sub: i.descricao ?? undefined })
+      base.push({ key: `inter:${i.id}`, date: i.data, kind: "interacao", title: i.titulo, sub: i.descricao ?? undefined })
     );
-    return items.sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [client, plats, tickets, interactions, inicio]);
+    items
+      .filter((i) => i.manual)
+      .forEach((i) =>
+        base.push({
+          key: i.item_key,
+          date: i.data || new Date().toISOString().slice(0, 10),
+          kind: "interacao",
+          title: i.titulo || "Registro",
+          sub: i.descricao ?? undefined,
+        })
+      );
+
+    return base
+      .map((it) => {
+        const o = overrides[it.key];
+        return {
+          ...it,
+          title: o?.titulo ?? it.title,
+          sub: o?.descricao ?? it.sub,
+          date: o?.data ?? it.date,
+          hidden: o?.hidden ?? false,
+          manual: o?.manual ?? false,
+          overrideId: o?.id,
+        };
+      })
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [client, plats, tickets, interactions, inicio, items, overrides]);
+
+  const timeline = timelineAll.filter((t) => !t.hidden);
+
+  const handleSaveSettings = async () => {
+    try {
+      await saveSettings.mutateAsync({
+        titulo: form.titulo || null,
+        subtitulo: form.subtitulo || null,
+        data_referencia: form.data_referencia || null,
+        periodo_inicio: form.periodo_inicio || null,
+        periodo_fim: form.periodo_fim || null,
+        introducao: form.introducao || null,
+        conclusao: form.conclusao || null,
+      } as any);
+      toast.success("Relatório salvo");
+      setEditing(false);
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível salvar");
+    }
+  };
 
   const exportPdf = () => {
     try {
       generateClientReportPdf({
         clientName: client.nome,
+        titulo: form.titulo || null,
+        subtitulo: form.subtitulo || null,
+        dataReferencia: form.data_referencia || null,
+        periodoInicio: form.periodo_inicio || null,
+        periodoFim: form.periodo_fim || null,
+        introducao: form.introducao || null,
+        conclusao: form.conclusao || null,
         inicio,
         meses,
         valorMensal,
@@ -162,15 +250,21 @@ function ClientReport({
           { label: "Resolvidos", value: String(resolvidos) },
           { label: "Interações", value: String(interactions.length) },
         ],
-        plataformas: plats.map(({ link, product }) => ({
-          nome: product.nome,
-          data: format(
-            parseISO(link.data_replicacao || product.created_at.slice(0, 10)),
-            "dd/MM/yyyy"
-          ),
-          url: product.url_app,
-        })),
-        timeline,
+        plataformas: plats
+          .filter(({ product }) => !overrides[`plat:${product.id}`]?.hidden)
+          .map(({ link, product }) => ({
+            nome: overrides[`plat:${product.id}`]?.titulo ?? product.nome,
+            data: format(
+              parseISO(
+                overrides[`plat:${product.id}`]?.data ||
+                  link.data_replicacao ||
+                  product.created_at.slice(0, 10)
+              ),
+              "dd/MM/yyyy"
+            ),
+            url: product.url_app,
+          })),
+        timeline: timeline.map((t) => ({ date: t.date, kind: t.kind, title: t.title, sub: t.sub })),
       });
       toast.success("Relatório em PDF gerado");
     } catch (e) {
@@ -187,22 +281,66 @@ function ClientReport({
             <Building2 size={18} className="text-primary" />
           </div>
           <div className="min-w-0">
-            <h2 className="font-bold truncate">{client.nome}</h2>
+            <h2 className="font-bold truncate">{form.titulo || client.nome}</h2>
             <p className="text-xs text-muted-foreground">
-              {inicio ? `Cliente desde ${format(parseISO(inicio), "dd 'de' MMM 'de' yyyy", { locale: ptBR })}` : "Sem data de início"}
-              {meses ? ` · ${meses} ${meses === 1 ? "mês" : "meses"}` : ""}
+              {form.subtitulo ||
+                `${inicio ? `Cliente desde ${format(parseISO(inicio), "dd 'de' MMM 'de' yyyy", { locale: ptBR })}` : "Sem data de início"}${meses ? ` · ${meses} ${meses === 1 ? "mês" : "meses"}` : ""}`}
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2 shrink-0">
             {valorMensal > 0 && (
               <Badge variant="outline" className="font-mono text-[11px]">{brl(valorMensal)}/mês</Badge>
             )}
+            <Button
+              size="sm"
+              variant={editing ? "default" : "outline"}
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => (editing ? handleSaveSettings() : setEditing(true))}
+            >
+              {editing ? <Check size={14} /> : <Pencil size={14} />}
+              {editing ? "Salvar" : "Editar"}
+            </Button>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={exportPdf}>
               <FileDown size={14} />
               Exportar PDF
             </Button>
           </div>
         </div>
+
+        {editing && (
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-border pt-4">
+            <div>
+              <label className="text-[11px] text-muted-foreground">Título do relatório</label>
+              <Input value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} placeholder={client.nome} className="mt-1 h-8 bg-secondary border-border text-sm" />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground">Subtítulo</label>
+              <Input value={form.subtitulo} onChange={(e) => setForm((f) => ({ ...f, subtitulo: e.target.value }))} className="mt-1 h-8 bg-secondary border-border text-sm" />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground">Data do relatório</label>
+              <Input type="date" value={form.data_referencia} onChange={(e) => setForm((f) => ({ ...f, data_referencia: e.target.value }))} className="mt-1 h-8 bg-secondary border-border text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] text-muted-foreground">Período de</label>
+                <Input type="date" value={form.periodo_inicio} onChange={(e) => setForm((f) => ({ ...f, periodo_inicio: e.target.value }))} className="mt-1 h-8 bg-secondary border-border text-sm" />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground">até</label>
+                <Input type="date" value={form.periodo_fim} onChange={(e) => setForm((f) => ({ ...f, periodo_fim: e.target.value }))} className="mt-1 h-8 bg-secondary border-border text-sm" />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-[11px] text-muted-foreground">Introdução</label>
+              <Textarea value={form.introducao} onChange={(e) => setForm((f) => ({ ...f, introducao: e.target.value }))} rows={3} className="mt-1 bg-secondary border-border text-sm" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-[11px] text-muted-foreground">Conclusão</label>
+              <Textarea value={form.conclusao} onChange={(e) => setForm((f) => ({ ...f, conclusao: e.target.value }))} rows={3} className="mt-1 bg-secondary border-border text-sm" />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -218,24 +356,54 @@ function ClientReport({
             Plataformas entregues
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {plats.map(({ link, product }) => (
-              <div key={product.id} className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2">
-                <Package size={14} className="text-primary shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{product.nome}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {link.data_replicacao
-                      ? format(parseISO(link.data_replicacao), "dd/MM/yyyy")
-                      : format(parseISO(product.created_at.slice(0, 10)), "dd/MM/yyyy")}
-                  </p>
+            {plats.map(({ link, product }) => {
+              const key = `plat:${product.id}`;
+              const o = overrides[key];
+              const dataVal = o?.data || link.data_replicacao || product.created_at.slice(0, 10);
+              if (!editing && o?.hidden) return null;
+              return (
+                <div key={product.id} className={`flex items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2 ${o?.hidden ? "opacity-40" : ""}`}>
+                  <Package size={14} className="text-primary shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    {editing ? (
+                      <div className="flex gap-1.5">
+                        <Input
+                          defaultValue={o?.titulo ?? product.nome}
+                          onBlur={(e) => saveItem.mutate({ item_key: key, kind: "plataforma", titulo: e.target.value })}
+                          className="h-7 bg-background border-border text-xs"
+                        />
+                        <Input
+                          type="date"
+                          defaultValue={dataVal}
+                          onChange={(e) => saveItem.mutate({ item_key: key, kind: "plataforma", data: e.target.value })}
+                          className="h-7 w-[130px] bg-background border-border text-xs"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs font-medium truncate">{o?.titulo ?? product.nome}</p>
+                        <p className="text-[10px] text-muted-foreground">{format(parseISO(dataVal), "dd/MM/yyyy")}</p>
+                      </>
+                    )}
+                  </div>
+                  {editing ? (
+                    <button
+                      onClick={() => saveItem.mutate({ item_key: key, kind: "plataforma", hidden: !o?.hidden })}
+                      className="p-1 text-muted-foreground hover:text-foreground"
+                      title={o?.hidden ? "Mostrar no PDF" : "Ocultar do PDF"}
+                    >
+                      {o?.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                    </button>
+                  ) : (
+                    product.url_app && (
+                      <a href={product.url_app} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline">
+                        Abrir
+                      </a>
+                    )
+                  )}
                 </div>
-                {product.url_app && (
-                  <a href={product.url_app} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline">
-                    Abrir
-                  </a>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -244,13 +412,47 @@ function ClientReport({
         <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3">
           Linha do tempo desde o início do contrato
         </p>
-        {timeline.length === 0 ? (
+        {editing && (
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <Input
+              placeholder="Novo registro..."
+              value={newItem.titulo}
+              onChange={(e) => setNewItem((n) => ({ ...n, titulo: e.target.value }))}
+              className="h-8 bg-secondary border-border text-sm"
+            />
+            <Input
+              type="date"
+              value={newItem.data}
+              onChange={(e) => setNewItem((n) => ({ ...n, data: e.target.value }))}
+              className="h-8 w-full sm:w-[150px] bg-secondary border-border text-sm"
+            />
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 text-xs shrink-0"
+              disabled={!newItem.titulo}
+              onClick={() => {
+                saveItem.mutate({
+                  item_key: `manual:${Date.now()}`,
+                  kind: "timeline",
+                  manual: true,
+                  titulo: newItem.titulo,
+                  data: newItem.data || new Date().toISOString().slice(0, 10),
+                });
+                setNewItem({ titulo: "", data: "", descricao: "" });
+              }}
+            >
+              <Plus size={14} />
+              Adicionar
+            </Button>
+          </div>
+        )}
+        {(editing ? timelineAll : timeline).length === 0 ? (
           <p className="text-xs text-muted-foreground">Sem registros.</p>
         ) : (
           <div className="relative pl-4 space-y-3 max-h-[420px] overflow-y-auto">
             <div className="absolute left-[5px] top-1 bottom-1 w-px bg-border" />
-            {timeline.map((it, idx) => (
-              <div key={idx} className="relative">
+            {(editing ? timelineAll : timeline).map((it) => (
+              <div key={it.key} className={`relative ${it.hidden ? "opacity-40" : ""}`}>
                 <span
                   className={`absolute -left-4 top-1.5 w-[9px] h-[9px] rounded-full border-2 border-background ${
                     it.kind === "plataforma"
@@ -262,16 +464,48 @@ function ClientReport({
                       : "bg-muted-foreground"
                   }`}
                 />
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium">{it.title}</p>
-                    {it.sub && <p className="text-[11px] text-muted-foreground line-clamp-2">{it.sub}</p>}
+                {editing ? (
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      defaultValue={it.title}
+                      onBlur={(e) => saveItem.mutate({ item_key: it.key, kind: it.kind, manual: it.manual, titulo: e.target.value })}
+                      className="h-7 bg-background border-border text-xs"
+                    />
+                    <Input
+                      type="date"
+                      defaultValue={it.date}
+                      onChange={(e) => saveItem.mutate({ item_key: it.key, kind: it.kind, manual: it.manual, data: e.target.value })}
+                      className="h-7 w-[130px] bg-background border-border text-xs shrink-0"
+                    />
+                    <button
+                      onClick={() => saveItem.mutate({ item_key: it.key, kind: it.kind, manual: it.manual, hidden: !it.hidden })}
+                      className="p-1 text-muted-foreground hover:text-foreground shrink-0"
+                      title={it.hidden ? "Mostrar no PDF" : "Ocultar do PDF"}
+                    >
+                      {it.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                    </button>
+                    {it.manual && it.overrideId && (
+                      <button
+                        onClick={() => deleteItem.mutate(it.overrideId!)}
+                        className="p-1 text-destructive/70 hover:text-destructive shrink-0"
+                        title="Excluir registro"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0 inline-flex items-center gap-1">
-                    <Clock size={10} />
-                    {format(parseISO(it.date), "dd/MM/yy")}
-                  </span>
-                </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium">{it.title}</p>
+                      {it.sub && <p className="text-[11px] text-muted-foreground line-clamp-2">{it.sub}</p>}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-mono shrink-0 inline-flex items-center gap-1">
+                      <Clock size={10} />
+                      {format(parseISO(it.date), "dd/MM/yy")}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

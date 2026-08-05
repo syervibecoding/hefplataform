@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import SupportTicketDialog from "@/components/SupportTicketDialog";
 import { useUnreadSupport, markTicketRead } from "@/hooks/useUnreadSupport";
+import { useNavLabels } from "@/hooks/useNavItems";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -23,6 +24,8 @@ function fmtHours(h: number | null) {
 }
 
 export default function SupportPage() {
+  const navLabels = useNavLabels();
+  const titulo = navLabels["lovable-products"] || "Gerenciador de Plataformas";
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -30,7 +33,7 @@ export default function SupportPage() {
           <LayoutGrid size={18} className="text-primary" />
         </div>
         <div>
-          <h1 className="text-lg font-bold">Gerenciador de Plataformas</h1>
+          <h1 className="text-lg font-bold">{titulo}</h1>
           <p className="text-xs text-muted-foreground">Plataformas, chamados e acessos dos clientes</p>
         </div>
       </div>
