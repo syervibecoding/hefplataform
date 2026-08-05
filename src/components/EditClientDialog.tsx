@@ -45,6 +45,10 @@ const genericSchema = baseSchema.extend({
   valorMensalidade: z.coerce.number().min(0).optional(),
   comissaoPercentual: z.coerce.number().min(0).max(100).optional(),
   comissaoComercial: z.string().optional(),
+  valorBrutoContrato: z.coerce.number().min(0).optional(),
+  parceriaPercentual: z.coerce.number().min(0).max(100).optional(),
+  parceriaParceiro: z.string().optional(),
+  impostoDescontado: z.coerce.number().min(0).optional(),
 });
 
 const trafegoSchema = baseSchema.extend({
@@ -69,7 +73,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
   const isTrafego = activeProduct === "trafego";
   const isAutomacao = activeProduct === "automacao";
   const isPlataformas = activeProduct === "plataformas";
-  const isConsultoria = activeProduct === "consultoria-clix";
+  const isConsultoria = activeProduct === "consultoria-clix" || activeProduct === "hef-consultoria-ia--business";
   const [agendaCertidoes, setAgendaCertidoes] = useState<ScheduleConfig>({});
   const [agendaCaixasPostais, setAgendaCaixasPostais] = useState<ScheduleConfig>({});
   const [rotinaConferencia, setRotinaConferencia] = useState<ScheduleConfig>({});
@@ -158,6 +162,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
           valorMensalidade: client.valorMensalidade || 0,
           comissaoPercentual: (client as any).comissaoPercentual || 0,
           comissaoComercial: (client as any).comissaoComercial || "",
+          valorBrutoContrato: (client as any).valorBrutoContrato || 0,
+          parceriaPercentual: (client as any).parceriaPercentual || 0,
+          parceriaParceiro: (client as any).parceriaParceiro || "",
+          impostoDescontado: (client as any).impostoDescontado || 0,
         });
       }
     }
@@ -201,6 +209,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
         valorMensalidade: data.temMensalidade ? (Number(data.valorMensalidade) || 0) : 0,
         comissaoPercentual: Number(data.comissaoPercentual) || 0,
         comissaoComercial: (data.comissaoComercial || "").trim() || null,
+        valorBrutoContrato: Number(data.valorBrutoContrato) || null,
+        parceriaPercentual: Number(data.parceriaPercentual) || 0,
+        parceriaParceiro: (data.parceriaParceiro || "").trim() || null,
+        impostoDescontado: Number(data.impostoDescontado) || 0,
       });
     }
     setOpen(false);
@@ -478,6 +490,31 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                   <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
                   <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
                   {errors.valorContrato && <p className="text-[11px] text-hef-danger mt-0.5">{(errors.valorContrato as any).message}</p>}
+                </div>
+              )}
+
+              {isConsultoria && (
+                <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Parceria / Rateio do contrato</p>
+                  <p className="text-[10px] text-muted-foreground">Informativo. O "Valor do contrato" acima deve ser apenas a nossa parte — é ela que entra no faturamento.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Valor bruto do contrato (R$)</Label>
+                      <Input {...register("valorBrutoContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Nossa parte (%)</Label>
+                      <Input {...register("parceriaPercentual")} type="number" min={0} max={100} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Parceiro</Label>
+                      <Input {...register("parceriaParceiro")} placeholder="Nome do parceiro" className="mt-1 bg-secondary border-border" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Imposto descontado (R$/mês)</Label>
+                      <Input {...register("impostoDescontado")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
+                    </div>
+                  </div>
                 </div>
               )}
 
