@@ -46,7 +46,7 @@ async function fetchAll(year: number) {
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
   const [clientsRes, expensesRes, overridesRes, settingsRes, snapshotsRes, adjustmentsRes] = await Promise.all([
-    supabase.from("clients").select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio, comissao_percentual, comissao_comercial").eq("status", "ativo"),
+    supabase.from("clients").select("id, nome, product_id, status, valor_contrato, faturamento, valor_implementacao, valor_mensalidade, tem_mensalidade, data_implementacao, dia_pagamento, data_inicio, comissao_percentual, comissao_comercial, imposto_descontado").eq("status", "ativo"),
     supabase.from("cash_expenses").select("*").eq("ativo", true),
     supabase.from("cash_overrides").select("*").gte("data", yearStart).lte("data", yearEnd),
     supabase.from("cash_settings").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
@@ -69,7 +69,7 @@ async function fetchAll(year: number) {
   };
 }
 
-const REVENUE_PRODUCTS = new Set(["hefsys", "consultoria-clix", "plataformas"]);
+const REVENUE_PRODUCTS = new Set(["hefsys", "consultoria-clix", "hef-consultoria-ia--business", "plataformas"]);
 
 interface SnapshotRow {
   id?: string;
@@ -185,7 +185,7 @@ function projectClientEntries(
             );
           }
         }
-      } else if (c.product_id === "consultoria-clix") {
+      } else if (c.product_id === "consultoria-clix" || c.product_id === "hef-consultoria-ia--business") {
         const base = Number(c.valor_contrato || 0);
         const v = getValorEfetivo(base, adjs, year, m);
         pushWithSnapshot(
@@ -205,6 +205,16 @@ function projectClientEntries(
             { id: `cli-com-${c.id}-${date}`, tipo: "despesa", date, nome: nomeDespesa, categoria: "comissoes", valor: comissaoValor, origemTipo: "cliente", origemId: c.id },
             comissaoValor,
             "comissoes",
+          );
+        }
+        // Imposto informado manualmente para este cliente (despesa mensal)
+        const imposto = Number((c as any).imposto_descontado || 0);
+        if (imposto > 0) {
+          pushWithSnapshot(
+            "imposto",
+            { id: `cli-imp-${c.id}-${date}`, tipo: "despesa", date, nome: `Imposto · ${c.nome}`, categoria: "impostos", valor: imposto, origemTipo: "cliente", origemId: c.id },
+            imposto,
+            "impostos",
           );
         }
       }
