@@ -7,6 +7,13 @@ export type ReportTimelineItem = { date: string; kind: string; title: string; su
 
 export type ClientReportPdfData = {
   clientName: string;
+  titulo?: string | null;
+  subtitulo?: string | null;
+  dataReferencia?: string | null;
+  periodoInicio?: string | null;
+  periodoFim?: string | null;
+  introducao?: string | null;
+  conclusao?: string | null;
   inicio: string | null;
   meses: number | null;
   valorMensal: number;
@@ -36,24 +43,42 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text(data.clientName, M, 42);
+  doc.text(data.titulo || data.clientName, M, 42);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(200, 190, 220);
-  const sub = [
-    data.inicio
-      ? `Cliente desde ${format(parseISO(data.inicio), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`
-      : "Sem data de início",
-    data.meses ? `${data.meses} ${data.meses === 1 ? "mês" : "meses"} de parceria` : null,
-    data.valorMensal > 0 ? `${brl(data.valorMensal)}/mês` : null,
-  ]
-    .filter(Boolean)
-    .join("  ·  ");
+  const sub =
+    data.subtitulo ||
+    [
+      data.inicio
+        ? `Cliente desde ${format(parseISO(data.inicio), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`
+        : "Sem data de início",
+      data.meses ? `${data.meses} ${data.meses === 1 ? "mês" : "meses"} de parceria` : null,
+      data.valorMensal > 0 ? `${brl(data.valorMensal)}/mês` : null,
+      data.periodoInicio && data.periodoFim
+        ? `Período: ${format(parseISO(data.periodoInicio), "dd/MM/yyyy")} a ${format(parseISO(data.periodoFim), "dd/MM/yyyy")}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("  ·  ");
   doc.text(sub, M, 62);
   doc.setFontSize(8);
-  doc.text(`Relatório gerado em ${format(new Date(), "dd/MM/yyyy")}`, M, 78);
+  const refDate = data.dataReferencia ? parseISO(data.dataReferencia) : new Date();
+  doc.text(`Relatório gerado em ${format(refDate, "dd/MM/yyyy")}`, M, 78);
 
   let y = 122;
+
+  const paragraph = (text: string, top: number) => {
+    doc.setTextColor(60, 54, 80);
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(text, W - M * 2);
+    doc.text(lines, M, top);
+    return top + lines.length * 13 + 14;
+  };
+
+  if (data.introducao?.trim()) {
+    y = paragraph(data.introducao.trim(), y);
+  }
 
   // KPIs
   const cardW = (W - M * 2 - 12 * (data.kpis.length - 1)) / data.kpis.length;
@@ -117,6 +142,16 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
       alternateRowStyles: { fillColor: [249, 248, 252] },
       columnStyles: { 0: { cellWidth: 66 }, 1: { cellWidth: 72 } },
     });
+    y = (doc as any).lastAutoTable.finalY + 26;
+  }
+
+  if (data.conclusao?.trim()) {
+    if (y > 700) {
+      doc.addPage();
+      y = 60;
+    }
+    y = sectionTitle("Conclusão", y) + 8;
+    y = paragraph(data.conclusao.trim(), y);
   }
 
   const pages = doc.getNumberOfPages();
