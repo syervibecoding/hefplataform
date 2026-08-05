@@ -366,6 +366,136 @@ export default function Sidebar({ activePage, onNavigate, activeProduct, onChang
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Editar item do menu */}
+      <Dialog open={!!editingNav} onOpenChange={(o) => !o && setEditingNav(null)}>
+        <DialogContent className="max-w-sm bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold font-heading">Editar item do menu</DialogTitle>
+          </DialogHeader>
+          {editingNav && (
+            <div className="space-y-3 mt-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Nome exibido</Label>
+                <Input
+                  value={editingNav.label}
+                  onChange={(e) => setEditingNav((p) => (p ? { ...p, label: e.target.value } : p))}
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Ícone</Label>
+                <div className="flex flex-wrap gap-1.5 mt-1 max-h-32 overflow-y-auto">
+                  {AVAILABLE_ICONS.map((iconName) => {
+                    const Ic = getIcon(iconName);
+                    return (
+                      <button
+                        key={iconName}
+                        type="button"
+                        onClick={() => setEditingNav((p) => (p ? { ...p, icon: iconName } : p))}
+                        className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
+                          editingNav.icon === iconName
+                            ? "bg-primary/20 text-primary border border-primary/30"
+                            : "bg-secondary hover:bg-secondary/80 border border-border"
+                        }`}
+                        title={iconName}
+                      >
+                        <Ic size={14} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/40 px-3 py-2">
+                <span className="text-xs">Visível no menu</span>
+                <input
+                  type="checkbox"
+                  checked={editingNav.visible}
+                  onChange={(e) => setEditingNav((p) => (p ? { ...p, visible: e.target.checked } : p))}
+                  className="accent-[hsl(var(--primary))] w-4 h-4"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Ordem</Label>
+                <Input
+                  type="number"
+                  value={editingNav.position}
+                  onChange={(e) => setEditingNav((p) => (p ? { ...p, position: Number(e.target.value) } : p))}
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingNav(null)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    if (!editingNav?.id) { setEditingNav(null); return; }
+                    updateItem.mutate({
+                      id: editingNav.id,
+                      data: {
+                        label: editingNav.label,
+                        icon: editingNav.icon,
+                        visible: editingNav.visible,
+                        position: editingNav.position,
+                      },
+                    });
+                    setEditingNav(null);
+                  }}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function NavRow({
+  item,
+  isActive,
+  isAdmin,
+  onNavigate,
+  onEdit,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  isAdmin: boolean;
+  onNavigate: (page: string) => void;
+  onEdit: (item: NavItem) => void;
+}) {
+  const Icon = getIcon(item.icon);
+  return (
+    <div className="relative group">
+      <button
+        onClick={() => onNavigate(item.page_key)}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full text-left
+          ${isActive
+            ? "bg-primary/12 text-primary border border-primary/15"
+            : "text-sidebar-foreground border border-transparent hover:bg-card hover:text-foreground"
+          }`}
+      >
+        <Icon size={18} className="shrink-0" />
+        <span className="truncate">{item.label}</span>
+      </button>
+      {isAdmin && item.id && (
+        <span
+          role="button"
+          onClick={(e) => { e.stopPropagation(); onEdit({ ...item }); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-secondary"
+          title="Renomear"
+        >
+          <Pencil size={12} className="text-muted-foreground hover:text-foreground" />
+        </span>
+      )}
+    </div>
   );
 }
