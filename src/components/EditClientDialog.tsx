@@ -495,7 +495,7 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
 
           {!isHefsys && !isTrafego && (
             <>
-              {!isPlataformas && (
+              {!isPlataformas && !isConsultoria && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Valor do Contrato (R$/mês)</Label>
                   <Input {...register("valorContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
@@ -506,10 +506,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
               {isConsultoria && (
                 <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
                   <p className="text-[10px] uppercase tracking-wider text-primary font-semibold">Parceria / Rateio do contrato</p>
-                  <p className="text-[10px] text-muted-foreground">Informativo. O "Valor do contrato" acima deve ser apenas a nossa parte — é ela que entra no faturamento.</p>
+                  <p className="text-[10px] text-muted-foreground">Informe o valor total do contrato e nossa parte. O faturamento usa o valor calculado automaticamente.</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs text-muted-foreground">Valor bruto do contrato (R$)</Label>
+                      <Label className="text-xs text-muted-foreground">Valor total do contrato (R$/mês)</Label>
                       <Input {...register("valorBrutoContrato")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
                     </div>
                     <div>
@@ -524,6 +524,10 @@ export default function EditClientDialog({ client, activeProduct, onEditClient }
                       <Label className="text-xs text-muted-foreground">Imposto descontado (R$/mês)</Label>
                       <Input {...register("impostoDescontado")} type="number" min={0} step={0.01} className="mt-1 bg-secondary border-border" />
                     </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Valor efetivo da Ref (R$/mês) — simbólico, calculado</Label>
+                    <Input {...register("valorContrato")} type="number" min={0} step={0.01} readOnly className="mt-1 bg-secondary/50 border-border cursor-not-allowed opacity-70" />
                   </div>
                 </div>
               )}
