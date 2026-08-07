@@ -13,6 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useDistinctClients, type DistinctClient } from "@/hooks/useDistinctClients";
 import { useProducts } from "@/hooks/useProducts";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 const baseSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -123,6 +124,15 @@ export default function AddClientDialog({ activeProduct, onAddClient }: Props) {
   const formaPagamento = isTrafego ? watch("formaPagamento") : "";
 
   const onSubmit = (data: any) => {
+    if (isConsultoria) {
+      const bruto = Number(data.valorBrutoContrato) || 0;
+      if (bruto <= 0) {
+        toast({ title: "Informe o valor total do contrato", description: "O valor total do contrato precisa ser maior que zero.", variant: "destructive" });
+        return;
+      }
+      const pct = Number(data.parceriaPercentual) || 0;
+      data.valorContrato = pct > 0 ? +(bruto * pct / 100).toFixed(2) : bruto;
+    }
     if (isHefsys) {
       onAddClient({ ...data, dataInicio: data.dataInicio || null, agendaCertidoes, agendaCaixasPostais, consultasExtras });
     } else if (isTrafego) {
