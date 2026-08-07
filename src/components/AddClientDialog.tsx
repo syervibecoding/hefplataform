@@ -13,6 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useDistinctClients, type DistinctClient } from "@/hooks/useDistinctClients";
 import { useProducts } from "@/hooks/useProducts";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 const baseSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
