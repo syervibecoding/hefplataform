@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PlataformasTab from "@/components/PlataformasTab";
 import ClientesAcessosTab from "@/components/ClientesAcessosTab";
 import ClientReportsTab from "@/components/ClientReportsTab";
+import PortaisTab from "@/components/PortaisTab";
 import { useSupportTickets, computeMetrics, STATUS_META, CATEGORIA_META, type TicketStatus, type SupportTicket } from "@/hooks/useSupport";
 import { useAllClients } from "@/hooks/useAllClients";
 import { useLovableProducts } from "@/hooks/useLovableProducts";
@@ -43,6 +44,7 @@ export default function SupportPage() {
           <TabsTrigger value="plataformas">Plataformas</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="chamados">Chamados</TabsTrigger>
+          <TabsTrigger value="portais">Portais</TabsTrigger>
           <TabsTrigger value="clientes">Clientes & Acessos</TabsTrigger>
         </TabsList>
 
@@ -56,6 +58,10 @@ export default function SupportPage() {
 
         <TabsContent value="chamados">
           <ChamadosTab />
+        </TabsContent>
+
+        <TabsContent value="portais">
+          <PortaisTab />
         </TabsContent>
 
         <TabsContent value="clientes">
