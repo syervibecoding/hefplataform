@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
     if (!client || !client.support_enabled) return j({ error: 'not_found' }, 404)
     const { data: prodLinks } = await sb
       .from('lovable_product_clients')
-      .select('product_id, lovable_products(id, nome)')
+      .select('product_id, lovable_products(id, nome, descricao, url_app)')
       .eq('client_id', client.id)
     const products = (prodLinks ?? [])
       .map((p: any) => p.lovable_products)
