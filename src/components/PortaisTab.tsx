@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link2, Copy, Search, AlertTriangle, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useClientSupportSettings } from "@/hooks/useSupport";
@@ -36,6 +36,7 @@ function usePortalClients() {
 export default function PortaisTab() {
   const { data, isLoading } = usePortalClients();
   const settings = useClientSupportSettings();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [onlyWithPlatforms, setOnlyWithPlatforms] = useState(false);
 
@@ -128,7 +129,12 @@ export default function PortaisTab() {
                     <Switch
                       checked={c.support_enabled}
                       disabled={settings.isPending}
-                      onCheckedChange={(v) => settings.mutate({ id: c.id, support_enabled: v })}
+                      onCheckedChange={(v) =>
+                        settings.mutate(
+                          { id: c.id, support_enabled: v },
+                          { onSuccess: () => qc.invalidateQueries({ queryKey: ["portal_clients_admin"] }) }
+                        )
+                      }
                     />
                   </div>
                 </div>
