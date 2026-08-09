@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { LifeBuoy, Send, Plus, Star, Loader2, RotateCcw, Paperclip } from "lucide-react";
+import { LifeBuoy, Send, Plus, Star, Loader2, RotateCcw, Paperclip, LayoutGrid, ExternalLink, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,7 +59,7 @@ async function uploadAttachments(slug: string, ticket_id: string, message_id: st
 
 interface PortalData {
   client: { id: string; nome: string };
-  products: { id: string; nome: string }[];
+  products: { id: string; nome: string; descricao?: string | null; url_app?: string | null }[];
   tickets: SupportTicket[];
   messages: TicketMessage[];
   attachments: SupportAttachment[];
@@ -119,6 +119,36 @@ export default function PublicSupportPortal() {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-6 space-y-3">
+        <section className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <LayoutGrid size={14} className="text-primary" />
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Suas plataformas</p>
+          </div>
+          {data.products.length === 0 ? (
+            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+              <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+              <span>Ainda não há plataformas vinculadas ao seu cadastro. Você pode abrir um chamado normalmente e nossa equipe cuida do resto.</span>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-2">
+              {data.products.map((p) => (
+                <div key={p.id} className="border border-border rounded-lg p-3 flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{p.nome}</p>
+                    {p.descricao && <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{p.descricao}</p>}
+                  </div>
+                  {p.url_app && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="Abrir plataforma"
+                            onClick={() => window.open(p.url_app!, "_blank")}>
+                      <ExternalLink size={13} />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {data.tickets.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
             <LifeBuoy size={32} className="mx-auto text-muted-foreground/30 mb-3" />
