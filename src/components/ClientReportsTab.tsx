@@ -287,6 +287,8 @@ function ClientReport({
     try {
       generateClientReportPdf({
         clientName: client.nome,
+        periodoRef,
+        periodoLabel,
         titulo: form.titulo || null,
         subtitulo: form.subtitulo || null,
         dataReferencia: form.data_referencia || null,
@@ -298,11 +300,20 @@ function ClientReport({
         meses,
         valorMensal,
         kpis: [
-          { label: "Plataformas", value: String(plats.length) },
-          { label: "Chamados", value: String(tickets.length) },
-          { label: "Resolvidos", value: String(resolvidos) },
-          { label: "Interações", value: String(interactions.length) },
+          { label: "Chamados no mês", value: String(monthTickets.length) },
+          { label: "Resolvidos", value: String(resolvidosMes) },
+          { label: "Tempo médio", value: tempoMedio },
+          { label: "Plataformas ativas", value: String(plats.length) },
         ],
+        portalUrl,
+        chamados: monthTickets.map((t) => ({
+          titulo: t.titulo,
+          plataforma: platNome(t.product_id),
+          categoria: CATEGORIA_META[t.categoria]?.label ?? t.categoria,
+          status: STATUS_META[t.status]?.label ?? t.status,
+          aberto: format(parseISO(t.opened_at), "dd/MM/yyyy"),
+          resolvido: t.resolved_at ? format(parseISO(t.resolved_at), "dd/MM/yyyy") : "—",
+        })),
         plataformas: plats
           .filter(({ product }) => !overrides[`plat:${product.id}`]?.hidden)
           .map(({ link, product }) => ({
