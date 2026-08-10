@@ -348,10 +348,27 @@ function ClientReport({
             <h2 className="font-bold truncate">{form.titulo || client.nome}</h2>
             <p className="text-xs text-muted-foreground">
               {form.subtitulo ||
-                `${inicio ? `Cliente desde ${format(parseISO(inicio), "dd 'de' MMM 'de' yyyy", { locale: ptBR })}` : "Sem data de início"}${meses ? ` · ${meses} ${meses === 1 ? "mês" : "meses"}` : ""}`}
+                `Competência ${periodoLabel}${inicio ? ` · Cliente desde ${format(parseISO(inicio), "MMM/yyyy", { locale: ptBR })}` : ""}${meses ? ` · ${meses} ${meses === 1 ? "mês" : "meses"}` : ""}`}
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 px-1 py-0.5">
+              <button
+                onClick={() => setPeriodo((p) => addMonths(p, -1))}
+                className="p-1 text-muted-foreground hover:text-foreground"
+                title="Mês anterior"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="text-[11px] font-medium capitalize min-w-[92px] text-center">{periodoLabel}</span>
+              <button
+                onClick={() => setPeriodo((p) => addMonths(p, 1))}
+                className="p-1 text-muted-foreground hover:text-foreground"
+                title="Próximo mês"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
             {valorMensal > 0 && (
               <Badge variant="outline" className="font-mono text-[11px]">{brl(valorMensal)}/mês</Badge>
             )}
@@ -408,10 +425,59 @@ function ClientReport({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi icon={Package} label="Plataformas" value={String(plats.length)} />
-        <Kpi icon={LifeBuoy} label="Chamados" value={String(tickets.length)} />
-        <Kpi icon={CheckCircle2} label="Resolvidos" value={String(resolvidos)} />
-        <Kpi icon={CalendarDays} label="Interações" value={String(interactions.length)} />
+        <Kpi icon={LifeBuoy} label="Chamados no mês" value={String(monthTickets.length)} />
+        <Kpi icon={CheckCircle2} label="Resolvidos" value={String(resolvidosMes)} />
+        <Kpi icon={Timer} label="Tempo médio" value={tempoMedio} />
+        <Kpi icon={Package} label="Plataformas ativas" value={String(plats.length)} />
+      </div>
+
+      <div className="bg-card border border-border rounded-xl p-4">
+        <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+          Chamados atendidos em {periodoLabel}
+        </p>
+        {monthTickets.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum chamado com atividade neste mês.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left font-semibold py-1.5 pr-3">Chamado</th>
+                  <th className="text-left font-semibold py-1.5 pr-3">Plataforma</th>
+                  <th className="text-left font-semibold py-1.5 pr-3">Categoria</th>
+                  <th className="text-left font-semibold py-1.5 pr-3">Status</th>
+                  <th className="text-left font-semibold py-1.5 pr-3">Aberto</th>
+                  <th className="text-left font-semibold py-1.5">Resolvido</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {monthTickets.map((t) => (
+                  <tr key={t.id}>
+                    <td className="py-2 pr-3 font-medium max-w-[220px] truncate">{t.titulo}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">{platNome(t.product_id)}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">{CATEGORIA_META[t.categoria]?.label ?? t.categoria}</td>
+                    <td className="py-2 pr-3">
+                      <Badge variant="outline" className="text-[10px]">{STATUS_META[t.status]?.label ?? t.status}</Badge>
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-[11px] text-muted-foreground">{format(parseISO(t.opened_at), "dd/MM")}</td>
+                    <td className="py-2 font-mono text-[11px] text-muted-foreground">
+                      {t.resolved_at ? format(parseISO(t.resolved_at), "dd/MM") : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {portalUrl && (
+          <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Link2 size={12} className="text-primary" />
+            Portal do cliente:{" "}
+            <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+              {portalUrl}
+            </a>
+          </p>
+        )}
       </div>
 
       {plats.length > 0 && (
