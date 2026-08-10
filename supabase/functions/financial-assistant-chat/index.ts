@@ -100,6 +100,27 @@ function buildContext(payload: any): string {
       lines.push('Despesas por categoria (ano):');
       for (const [cat, v] of sorted) lines.push(`- ${cat}: ${fmtBRL(v)}`);
     }
+
+    const MESES2 = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    if (Array.isArray(cf.avulsoPorMes) && cf.avulsoPorMes.length) {
+      lines.push('');
+      lines.push('# Despesas recorrentes vs. avulsas (avulsas = importadas de extrato/fatura ou lançadas manualmente)');
+      lines.push('');
+      lines.push('| Mês | Despesas recorrentes | Despesas avulsas | Qtd. avulsas | Investimentos avulsos |');
+      lines.push('|---|---|---|---|---|');
+      for (const a of cf.avulsoPorMes) {
+        lines.push(`| ${MESES2[a.month]} | ${fmtBRL(a.despesasRecorrentes)} | ${fmtBRL(a.despesasAvulsas)} | ${a.qtdAvulsas} | ${fmtBRL(a.investimentosAvulsos)} |`);
+      }
+      lines.push('');
+      lines.push('Meses ainda não fechados (sem importação de extrato/fatura do mês) tendem a mostrar avulsas em zero — considere isso ao projetar.');
+    }
+    if (Array.isArray(cf.lancamentosAvulsos) && cf.lancamentosAvulsos.length) {
+      lines.push('');
+      lines.push('# Lançamentos avulsos detalhados (data | descrição | categoria | tipo | valor)');
+      for (const t of cf.lancamentosAvulsos) {
+        lines.push(`- ${t.data} | ${t.nome} | ${t.categoria} | ${t.tipo} | ${fmtBRL(t.valor)}`);
+      }
+    }
   }
 
   const mrr = payload?.mrr;
