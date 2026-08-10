@@ -641,6 +641,22 @@ function ClientReport({
           </div>
         )}
       </div>
+
+      {historico.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
+            Histórico anterior
+          </p>
+          <ul className="space-y-1">
+            {historico.map((h) => (
+              <li key={`${h.date}-${h.title}`} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="font-mono">{format(parseISO(h.date), "dd/MM/yy")}</span>
+                <span className="truncate">{h.title}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
