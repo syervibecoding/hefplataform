@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface ClientReportSettings {
   id: string;
   client_id: string;
+  periodo_ref: string;
   titulo: string | null;
   subtitulo: string | null;
   data_referencia: string | null;
@@ -16,6 +17,7 @@ export interface ClientReportSettings {
 export interface ClientReportItem {
   id: string;
   client_id: string;
+  periodo_ref: string;
   item_key: string;
   kind: string;
   titulo: string | null;
@@ -25,17 +27,18 @@ export interface ClientReportItem {
   manual: boolean;
 }
 
-export function useClientReport(clientId: string | null) {
+export function useClientReport(clientId: string | null, periodoRef: string) {
   const qc = useQueryClient();
 
   const settings = useQuery({
-    queryKey: ["client_report_settings", clientId],
+    queryKey: ["client_report_settings", clientId, periodoRef],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_report_settings")
         .select("*")
         .eq("client_id", clientId!)
+        .eq("periodo_ref", periodoRef)
         .maybeSingle();
       if (error) throw error;
       return (data as ClientReportSettings | null) ?? null;
@@ -43,13 +46,14 @@ export function useClientReport(clientId: string | null) {
   });
 
   const items = useQuery({
-    queryKey: ["client_report_items", clientId],
+    queryKey: ["client_report_items", clientId, periodoRef],
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_report_items")
         .select("*")
-        .eq("client_id", clientId!);
+        .eq("client_id", clientId!)
+        .eq("periodo_ref", periodoRef);
       if (error) throw error;
       return (data || []) as ClientReportItem[];
     },
@@ -59,20 +63,24 @@ export function useClientReport(clientId: string | null) {
     mutationFn: async (values: Partial<ClientReportSettings>) => {
       const { error } = await supabase
         .from("client_report_settings")
-        .upsert({ client_id: clientId!, ...values } as any, { onConflict: "client_id" });
+        .upsert({ client_id: clientId!, periodo_ref: periodoRef, ...values } as any, {
+          onConflict: "client_id,periodo_ref",
+        });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["client_report_settings", clientId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["client_report_settings", clientId, periodoRef] }),
   });
 
   const saveItem = useMutation({
     mutationFn: async (values: Partial<ClientReportItem> & { item_key: string }) => {
       const { error } = await supabase
         .from("client_report_items")
-        .upsert({ client_id: clientId!, ...values } as any, { onConflict: "client_id,item_key" });
+        .upsert({ client_id: clientId!, periodo_ref: periodoRef, ...values } as any, {
+          onConflict: "client_id,periodo_ref,item_key",
+        });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["client_report_items", clientId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["client_report_items", clientId, periodoRef] }),
   });
 
   const deleteItem = useMutation({
@@ -80,7 +88,7 @@ export function useClientReport(clientId: string | null) {
       const { error } = await supabase.from("client_report_items").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["client_report_items", clientId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["client_report_items", clientId, periodoRef] }),
   });
 
   return {

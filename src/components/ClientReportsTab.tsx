@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, differenceInMonths, parseISO } from "date-fns";
+import { format, differenceInMonths, parseISO, startOfMonth, endOfMonth, addMonths, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown, Pencil, Eye, EyeOff, Plus, Trash2, Check } from "lucide-react";
+import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown, Pencil, Eye, EyeOff, Plus, Trash2, Check, ChevronLeft, ChevronRight, Link2, Timer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -121,7 +121,11 @@ function ClientReport({
   };
 }) {
   const { client, plats, tickets, interactions, inicio } = data;
-  const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id);
+  const [periodo, setPeriodo] = useState(() => startOfMonth(new Date()));
+  const periodoRef = format(periodo, "yyyy-MM");
+  const periodoLabel = format(periodo, "MMMM 'de' yyyy", { locale: ptBR });
+  const range = { start: startOfMonth(periodo), end: endOfMonth(periodo) };
+  const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id, periodoRef);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     titulo: "",
@@ -138,13 +142,13 @@ function ClientReport({
     setForm({
       titulo: settings?.titulo ?? "",
       subtitulo: settings?.subtitulo ?? "",
-      data_referencia: settings?.data_referencia ?? "",
-      periodo_inicio: settings?.periodo_inicio ?? "",
-      periodo_fim: settings?.periodo_fim ?? "",
+      data_referencia: settings?.data_referencia ?? format(range.end, "yyyy-MM-dd"),
+      periodo_inicio: settings?.periodo_inicio ?? format(range.start, "yyyy-MM-dd"),
+      periodo_fim: settings?.periodo_fim ?? format(range.end, "yyyy-MM-dd"),
       introducao: settings?.introducao ?? "",
       conclusao: settings?.conclusao ?? "",
     });
-  }, [settings, client.id]);
+  }, [settings, client.id, periodoRef]);
 
   const overrides = useMemo(
     () => Object.fromEntries(items.map((i) => [i.item_key, i])),
@@ -152,8 +156,41 @@ function ClientReport({
   );
 
   const meses = inicio ? Math.max(1, differenceInMonths(new Date(), parseISO(inicio)) + 1) : null;
-  const resolvidos = tickets.filter((t) => t.resolved_at || t.status === "fechado").length;
   const valorMensal = client.faturamento ?? client.valor_contrato ?? client.valor_mensalidade ?? 0;
+  const portalUrl =
+    client.support_enabled && client.support_slug
+      ? `${window.location.origin}/suporte/p/${client.support_slug}`
+      : null;
+
+  const inMonth = (iso?: string | null) =>
+    !!iso && isWithinInterval(parseISO(iso), { start: range.start, end: range.end });
+
+  const monthTickets = useMemo(
+    () =>
+      tickets
+        .filter(
+          (t) =>
+            inMonth(t.opened_at) ||
+            inMonth(t.first_response_at) ||
+            inMonth(t.resolved_at) ||
+            inMonth(t.closed_at)
+        )
+        .sort((a, b) => (a.opened_at < b.opened_at ? 1 : -1)),
+    [tickets, periodoRef]
+  );
+
+  const resolvidosMes = monthTickets.filter((t) => inMonth(t.resolved_at) || inMonth(t.closed_at)).length;
+  const tempoMedio = useMemo(() => {
+    const durs = monthTickets
+      .filter((t) => t.resolved_at)
+      .map((t) => (new Date(t.resolved_at!).getTime() - new Date(t.opened_at).getTime()) / 36e5);
+    if (!durs.length) return "—";
+    const h = durs.reduce((a, b) => a + b, 0) / durs.length;
+    return h < 24 ? `${Math.round(h)}h` : `${(h / 24).toFixed(1)}d`;
+  }, [monthTickets]);
+
+  const platNome = (productId: string | null) =>
+    plats.find((p) => p.product.id === productId)?.product.nome ?? "—";
 
   const timelineAll = useMemo(() => {
     const base: { key: string; date: string; kind: string; title: string; sub?: string }[] = [];
@@ -169,7 +206,7 @@ function ClientReport({
         sub: p.product.descricao ?? undefined,
       })
     );
-    tickets.forEach((t) =>
+    monthTickets.forEach((t) =>
       base.push({
         key: `ticket:${t.id}`,
         date: t.opened_at.slice(0, 10),
@@ -206,8 +243,24 @@ function ClientReport({
           overrideId: o?.id,
         };
       })
+      .filter((it) => it.date >= format(range.start, "yyyy-MM-dd") && it.date <= format(range.end, "yyyy-MM-dd"))
       .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [client, plats, tickets, interactions, inicio, items, overrides]);
+  }, [client, plats, monthTickets, interactions, inicio, items, overrides, periodoRef]);
+
+  const historico = useMemo(() => {
+    const marcos: { date: string; title: string }[] = [];
+    if (inicio) marcos.push({ date: inicio, title: "Início do contrato" });
+    if (client.data_golive) marcos.push({ date: client.data_golive, title: "Go-live" });
+    plats.forEach((p) =>
+      marcos.push({
+        date: p.link.data_replicacao || p.product.created_at.slice(0, 10),
+        title: `Plataforma entregue: ${p.product.nome}`,
+      })
+    );
+    return marcos
+      .filter((m) => m.date < format(range.start, "yyyy-MM-dd"))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [client, plats, inicio, periodoRef]);
 
   const timeline = timelineAll.filter((t) => !t.hidden);
 
@@ -234,6 +287,8 @@ function ClientReport({
     try {
       generateClientReportPdf({
         clientName: client.nome,
+        periodoRef,
+        periodoLabel,
         titulo: form.titulo || null,
         subtitulo: form.subtitulo || null,
         dataReferencia: form.data_referencia || null,
@@ -245,11 +300,20 @@ function ClientReport({
         meses,
         valorMensal,
         kpis: [
-          { label: "Plataformas", value: String(plats.length) },
-          { label: "Chamados", value: String(tickets.length) },
-          { label: "Resolvidos", value: String(resolvidos) },
-          { label: "Interações", value: String(interactions.length) },
+          { label: "Chamados no mês", value: String(monthTickets.length) },
+          { label: "Resolvidos", value: String(resolvidosMes) },
+          { label: "Tempo médio", value: tempoMedio },
+          { label: "Plataformas ativas", value: String(plats.length) },
         ],
+        portalUrl,
+        chamados: monthTickets.map((t) => ({
+          titulo: t.titulo,
+          plataforma: platNome(t.product_id),
+          categoria: CATEGORIA_META[t.categoria]?.label ?? t.categoria,
+          status: STATUS_META[t.status]?.label ?? t.status,
+          aberto: format(parseISO(t.opened_at), "dd/MM/yyyy"),
+          resolvido: t.resolved_at ? format(parseISO(t.resolved_at), "dd/MM/yyyy") : "—",
+        })),
         plataformas: plats
           .filter(({ product }) => !overrides[`plat:${product.id}`]?.hidden)
           .map(({ link, product }) => ({
@@ -284,10 +348,27 @@ function ClientReport({
             <h2 className="font-bold truncate">{form.titulo || client.nome}</h2>
             <p className="text-xs text-muted-foreground">
               {form.subtitulo ||
-                `${inicio ? `Cliente desde ${format(parseISO(inicio), "dd 'de' MMM 'de' yyyy", { locale: ptBR })}` : "Sem data de início"}${meses ? ` · ${meses} ${meses === 1 ? "mês" : "meses"}` : ""}`}
+                `Competência ${periodoLabel}${inicio ? ` · Cliente desde ${format(parseISO(inicio), "MMM/yyyy", { locale: ptBR })}` : ""}${meses ? ` · ${meses} ${meses === 1 ? "mês" : "meses"}` : ""}`}
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 px-1 py-0.5">
+              <button
+                onClick={() => setPeriodo((p) => addMonths(p, -1))}
+                className="p-1 text-muted-foreground hover:text-foreground"
+                title="Mês anterior"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="text-[11px] font-medium capitalize min-w-[92px] text-center">{periodoLabel}</span>
+              <button
+                onClick={() => setPeriodo((p) => addMonths(p, 1))}
+                className="p-1 text-muted-foreground hover:text-foreground"
+                title="Próximo mês"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
             {valorMensal > 0 && (
               <Badge variant="outline" className="font-mono text-[11px]">{brl(valorMensal)}/mês</Badge>
             )}
@@ -344,10 +425,59 @@ function ClientReport({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi icon={Package} label="Plataformas" value={String(plats.length)} />
-        <Kpi icon={LifeBuoy} label="Chamados" value={String(tickets.length)} />
-        <Kpi icon={CheckCircle2} label="Resolvidos" value={String(resolvidos)} />
-        <Kpi icon={CalendarDays} label="Interações" value={String(interactions.length)} />
+        <Kpi icon={LifeBuoy} label="Chamados no mês" value={String(monthTickets.length)} />
+        <Kpi icon={CheckCircle2} label="Resolvidos" value={String(resolvidosMes)} />
+        <Kpi icon={Timer} label="Tempo médio" value={tempoMedio} />
+        <Kpi icon={Package} label="Plataformas ativas" value={String(plats.length)} />
+      </div>
+
+      <div className="bg-card border border-border rounded-xl p-4">
+        <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+          Chamados atendidos em {periodoLabel}
+        </p>
+        {monthTickets.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum chamado com atividade neste mês.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left font-semibold py-1.5 pr-3">Chamado</th>
+                  <th className="text-left font-semibold py-1.5 pr-3">Plataforma</th>
+                  <th className="text-left font-semibold py-1.5 pr-3">Categoria</th>
+                  <th className="text-left font-semibold py-1.5 pr-3">Status</th>
+                  <th className="text-left font-semibold py-1.5 pr-3">Aberto</th>
+                  <th className="text-left font-semibold py-1.5">Resolvido</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {monthTickets.map((t) => (
+                  <tr key={t.id}>
+                    <td className="py-2 pr-3 font-medium max-w-[220px] truncate">{t.titulo}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">{platNome(t.product_id)}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">{CATEGORIA_META[t.categoria]?.label ?? t.categoria}</td>
+                    <td className="py-2 pr-3">
+                      <Badge variant="outline" className="text-[10px]">{STATUS_META[t.status]?.label ?? t.status}</Badge>
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-[11px] text-muted-foreground">{format(parseISO(t.opened_at), "dd/MM")}</td>
+                    <td className="py-2 font-mono text-[11px] text-muted-foreground">
+                      {t.resolved_at ? format(parseISO(t.resolved_at), "dd/MM") : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {portalUrl && (
+          <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Link2 size={12} className="text-primary" />
+            Portal do cliente:{" "}
+            <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+              {portalUrl}
+            </a>
+          </p>
+        )}
       </div>
 
       {plats.length > 0 && (
@@ -410,7 +540,7 @@ function ClientReport({
 
       <div className="bg-card border border-border rounded-xl p-4">
         <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3">
-          Linha do tempo desde o início do contrato
+          Linha do tempo de {periodoLabel}
         </p>
         {editing && (
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -511,6 +641,22 @@ function ClientReport({
           </div>
         )}
       </div>
+
+      {historico.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
+            Histórico anterior
+          </p>
+          <ul className="space-y-1">
+            {historico.map((h) => (
+              <li key={`${h.date}-${h.title}`} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="font-mono">{format(parseISO(h.date), "dd/MM/yy")}</span>
+                <span className="truncate">{h.title}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
