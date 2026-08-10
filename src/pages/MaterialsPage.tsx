@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { BookOpen, Link2, Video, Plus, Pencil, Trash2, ExternalLink, Search } from "lucide-react";
+import { BookOpen, Link2, Video, Plus, Pencil, Trash2, ExternalLink, Search, Folder, FolderPlus, FolderOpen } from "lucide-react";
 import { useMaterials, type Material, type MaterialInsert } from "@/hooks/useMaterials";
+import { useMaterialFolders, type MaterialFolder } from "@/hooks/useMaterialFolders";
 import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -138,21 +139,30 @@ const EMPTY_FORM: MaterialInsert = {
   url: "",
   product_id: null,
   categoria: "",
+  folder_id: null,
 };
+
+const FOLDER_COLORS = ["#8b5cf6", "#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6"];
 
 export default function MaterialsPage() {
   const { isAdmin } = useAuth();
   const { products } = useProducts();
   const [productFilter, setProductFilter] = useState<string | null>(null);
   const [categoriaFilter, setCategoriaFilter] = useState<string | null>(null);
+  const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<MaterialInsert>(EMPTY_FORM);
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<MaterialFolder | null>(null);
+  const [folderForm, setFolderForm] = useState({ nome: "", cor: FOLDER_COLORS[0] });
+  const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
 
   const { materials, isLoading, addMaterial, editMaterial, deleteMaterial, categorias } =
-    useMaterials(productFilter, categoriaFilter);
+    useMaterials(productFilter, categoriaFilter, folderFilter);
+  const { folders, addFolder, editFolder, deleteFolder } = useMaterialFolders();
 
   const filtered = materials.filter(
     (m) =>
@@ -175,6 +185,7 @@ export default function MaterialsPage() {
       url: m.url,
       product_id: m.product_id,
       categoria: m.categoria ?? "",
+      folder_id: m.folder_id ?? null,
     });
     setDialogOpen(true);
   };
@@ -184,6 +195,7 @@ export default function MaterialsPage() {
       ...form,
       product_id: form.product_id || null,
       categoria: form.categoria || null,
+      folder_id: form.folder_id || null,
     };
     if (editingMaterial) {
       editMaterial.mutate({ id: editingMaterial.id, data: payload }, { onSuccess: () => setDialogOpen(false) });
@@ -196,6 +208,43 @@ export default function MaterialsPage() {
     if (deleteId) {
       deleteMaterial.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
     }
+  };
+
+  const openAddFolder = () => {
+    setEditingFolder(null);
+    setFolderForm({ nome: "", cor: FOLDER_COLORS[0] });
+    setFolderDialogOpen(true);
+  };
+
+  const openEditFolder = (f: MaterialFolder) => {
+    setEditingFolder(f);
+    setFolderForm({ nome: f.nome, cor: f.cor });
+    setFolderDialogOpen(true);
+  };
+
+  const handleSaveFolder = () => {
+    if (!folderForm.nome.trim()) return;
+    if (editingFolder) {
+      editFolder.mutate(
+        { id: editingFolder.id, data: { nome: folderForm.nome.trim(), cor: folderForm.cor } },
+        { onSuccess: () => setFolderDialogOpen(false) }
+      );
+    } else {
+      addFolder.mutate(
+        { nome: folderForm.nome.trim(), cor: folderForm.cor },
+        { onSuccess: () => setFolderDialogOpen(false) }
+      );
+    }
+  };
+
+  const handleDeleteFolder = () => {
+    if (!deleteFolderId) return;
+    deleteFolder.mutate(deleteFolderId, {
+      onSuccess: () => {
+        if (folderFilter === deleteFolderId) setFolderFilter(null);
+        setDeleteFolderId(null);
+      },
+    });
   };
 
   return (
@@ -212,11 +261,77 @@ export default function MaterialsPage() {
           </div>
         </div>
         {isAdmin && (
-          <Button onClick={openAdd} size="sm" className="gap-1.5">
-            <Plus size={15} />
-            Adicionar Material
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={openAddFolder} size="sm" variant="outline" className="gap-1.5">
+              <FolderPlus size={15} />
+              Nova Pasta
+            </Button>
+            <Button onClick={openAdd} size="sm" className="gap-1.5">
+              <Plus size={15} />
+              Adicionar Material
+            </Button>
+          </div>
         )}
+      </div>
+
+      {/* Folders */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setFolderFilter(null)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+            !folderFilter
+              ? "bg-primary/10 border-primary text-primary"
+              : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FolderOpen size={14} />
+          Todas as pastas
+        </button>
+        {folders.map((f) => (
+          <div
+            key={f.id}
+            className={`group flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+              folderFilter === f.id
+                ? "border-primary bg-primary/10"
+                : "bg-secondary border-border hover:border-primary/40"
+            }`}
+          >
+            <button
+              onClick={() => setFolderFilter(folderFilter === f.id ? null : f.id)}
+              className="flex items-center gap-1.5"
+            >
+              <Folder size={14} style={{ color: f.cor }} />
+              <span>{f.nome}</span>
+            </button>
+            {isAdmin && (
+              <span className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => openEditFolder(f)}
+                  className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil size={11} />
+                </button>
+                <button
+                  onClick={() => setDeleteFolderId(f.id)}
+                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </span>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={() => setFolderFilter(folderFilter === "__none__" ? null : "__none__")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+            folderFilter === "__none__"
+              ? "border-primary bg-primary/10 text-primary"
+              : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Folder size={14} />
+          Sem pasta
+        </button>
       </div>
 
       {/* Filters */}
@@ -386,6 +501,25 @@ export default function MaterialsPage() {
                 placeholder="Ex: Tutorial, Processo, Template"
               />
             </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Pasta</Label>
+              <Select
+                value={form.folder_id ?? "none"}
+                onValueChange={(v) => setForm((f) => ({ ...f, folder_id: v === "none" ? null : v }))}
+              >
+                <SelectTrigger className="mt-1 bg-secondary border-border">
+                  <SelectValue placeholder="Sem pasta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem pasta</SelectItem>
+                  {folders.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)}>
                 Cancelar
@@ -401,6 +535,67 @@ export default function MaterialsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Folder dialog */}
+      <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
+        <DialogContent className="max-w-sm bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>{editingFolder ? "Editar Pasta" : "Nova Pasta"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div>
+              <Label className="text-xs text-muted-foreground">Nome *</Label>
+              <Input
+                value={folderForm.nome}
+                onChange={(e) => setFolderForm((f) => ({ ...f, nome: e.target.value }))}
+                className="mt-1 bg-secondary border-border"
+                placeholder="Ex: Onboarding, Templates"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Cor</Label>
+              <div className="flex flex-wrap gap-2 mt-1.5">
+                {FOLDER_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setFolderForm((f) => ({ ...f, cor: c }))}
+                    className={`w-7 h-7 rounded-md border-2 transition-all ${
+                      folderForm.cor === c ? "border-foreground scale-110" : "border-transparent"
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" size="sm" onClick={() => setFolderDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={handleSaveFolder} disabled={!folderForm.nome.trim()}>
+                {editingFolder ? "Salvar" : "Criar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete folder confirm */}
+      <AlertDialog open={!!deleteFolderId} onOpenChange={(o) => !o && setDeleteFolderId(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir pasta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Os materiais dentro dela não serão excluídos — apenas ficarão sem pasta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFolder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete confirm */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
