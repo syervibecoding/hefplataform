@@ -98,6 +98,27 @@ export default function AssistantPage() {
 
   const contextPayload = useMemo(() => {
     const cfData = cf.data;
+    // Lançamentos avulsos (entram via importação de extrato/fatura ou manualmente)
+    // separados dos recorrentes, para permitir análise de "extras" mês a mês.
+    const avulsos: Array<{ data: string; nome: string; categoria: string; valor: number; tipo: string }> = [];
+    const avulsoPorMes: Array<{ month: number; despesasAvulsas: number; despesasRecorrentes: number; investimentosAvulsos: number; qtdAvulsas: number }> = [];
+    if (cfData) {
+      for (const m of cfData.months) {
+        let despAvulsa = 0, despRec = 0, invAvulso = 0, qtd = 0;
+        for (const e of m.entries) {
+          const isAvulso = e.origemTipo === "avulso" || !!e.overrideId;
+          if (e.tipo === "despesa") {
+            if (isAvulso) { despAvulsa += e.valor; qtd++; } else { despRec += e.valor; }
+          } else if (e.tipo === "investimento") {
+            if (isAvulso) invAvulso += e.valor;
+          }
+          if (isAvulso && (e.tipo === "despesa" || e.tipo === "investimento")) {
+            avulsos.push({ data: e.date, nome: e.nome, categoria: e.categoria || "outros", valor: e.valor, tipo: e.tipo });
+          }
+        }
+        avulsoPorMes.push({ month: m.month, despesasAvulsas: despAvulsa, despesasRecorrentes: despRec, investimentosAvulsos: invAvulso, qtdAvulsas: qtd });
+      }
+    }
     return {
       cashFlow: cfData ? {
         year: cfData.year,
@@ -120,6 +141,8 @@ export default function AssistantPage() {
           byCategoryDespesa: m.byCategoryDespesa,
           byCategoryReceita: m.byCategoryReceita,
         })),
+        avulsoPorMes,
+        lancamentosAvulsos: avulsos.sort((a, b) => a.data.localeCompare(b.data)).slice(0, 400),
       } : null,
       mrr: mrr.data || null,
     };
