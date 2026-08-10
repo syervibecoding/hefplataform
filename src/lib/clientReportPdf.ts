@@ -5,8 +5,19 @@ import { ptBR } from "date-fns/locale";
 
 export type ReportTimelineItem = { date: string; kind: string; title: string; sub?: string };
 
+export type ReportTicketRow = {
+  titulo: string;
+  plataforma: string;
+  categoria: string;
+  status: string;
+  aberto: string;
+  resolvido: string;
+};
+
 export type ClientReportPdfData = {
   clientName: string;
+  periodoRef: string;
+  periodoLabel: string;
   titulo?: string | null;
   subtitulo?: string | null;
   dataReferencia?: string | null;
@@ -19,6 +30,8 @@ export type ClientReportPdfData = {
   valorMensal: number;
   kpis: { label: string; value: string }[];
   plataformas: { nome: string; data: string; url?: string | null }[];
+  chamados: ReportTicketRow[];
+  portalUrl?: string | null;
   timeline: ReportTimelineItem[];
 };
 
@@ -50,14 +63,12 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
   const sub =
     data.subtitulo ||
     [
+      `Competência ${data.periodoLabel}`,
       data.inicio
         ? `Cliente desde ${format(parseISO(data.inicio), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`
         : "Sem data de início",
       data.meses ? `${data.meses} ${data.meses === 1 ? "mês" : "meses"} de parceria` : null,
       data.valorMensal > 0 ? `${brl(data.valorMensal)}/mês` : null,
-      data.periodoInicio && data.periodoFim
-        ? `Período: ${format(parseISO(data.periodoInicio), "dd/MM/yyyy")} a ${format(parseISO(data.periodoFim), "dd/MM/yyyy")}`
-        : null,
     ]
       .filter(Boolean)
       .join("  ·  ");
@@ -122,12 +133,37 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
     y = (doc as any).lastAutoTable.finalY + 26;
   }
 
+  if (data.chamados.length) {
+    if (y > 640) {
+      doc.addPage();
+      y = 60;
+    }
+    y = sectionTitle(`Chamados atendidos em ${data.periodoLabel}`, y);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M },
+      head: [["Chamado", "Plataforma", "Categoria", "Status", "Aberto em", "Resolvido em"]],
+      body: data.chamados.map((c) => [c.titulo, c.plataforma, c.categoria, c.status, c.aberto, c.resolvido]),
+      styles: { fontSize: 8.5, cellPadding: 5, valign: "top", textColor: [40, 34, 60] },
+      headStyles: { fillColor: [124, 58, 237], textColor: 255, fontSize: 8.5 },
+      alternateRowStyles: { fillColor: [249, 248, 252] },
+      columnStyles: {
+        1: { cellWidth: 90 },
+        2: { cellWidth: 60 },
+        3: { cellWidth: 68 },
+        4: { cellWidth: 58 },
+        5: { cellWidth: 62 },
+      },
+    });
+    y = (doc as any).lastAutoTable.finalY + 26;
+  }
+
   if (data.timeline.length) {
     if (y > 700) {
       doc.addPage();
       y = 60;
     }
-    y = sectionTitle("Linha do tempo desde o início do contrato", y);
+    y = sectionTitle(`Linha do tempo de ${data.periodoLabel}`, y);
     autoTable(doc, {
       startY: y,
       margin: { left: M, right: M },
@@ -154,6 +190,22 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
     y = paragraph(data.conclusao.trim(), y);
   }
 
+  if (data.portalUrl) {
+    if (y > 720) {
+      doc.addPage();
+      y = 60;
+    }
+    doc.setDrawColor(228, 224, 236);
+    doc.setFillColor(249, 248, 252);
+    doc.roundedRect(M, y, W - M * 2, 46, 6, 6, "FD");
+    doc.setTextColor(120, 112, 140);
+    doc.setFontSize(8);
+    doc.text("PORTAL DE CHAMADOS", M + 12, y + 17);
+    doc.setTextColor(124, 58, 237);
+    doc.setFontSize(9);
+    doc.text(data.portalUrl, M + 12, y + 33);
+  }
+
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
@@ -163,5 +215,5 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
   }
 
   const slug = data.clientName.normalize("NFD").replace(/[^\w]+/g, "-").toLowerCase();
-  doc.save(`relatorio-${slug}-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+  doc.save(`relatorio-${slug}-${data.periodoRef}.pdf`);
 }
