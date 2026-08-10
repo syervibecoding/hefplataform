@@ -540,7 +540,7 @@ function ClientReport({
 
       <div className="bg-card border border-border rounded-xl p-4">
         <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3">
-          Linha do tempo desde o início do contrato
+          Linha do tempo de {periodoLabel}
         </p>
         {editing && (
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
