@@ -10,22 +10,29 @@ export interface Material {
   url: string;
   product_id: string | null;
   categoria: string | null;
+  folder_id: string | null;
   created_by: string | null;
   created_at: string;
 }
 
 export type MaterialInsert = Omit<Material, "id" | "created_at" | "created_by">;
 
-export function useMaterials(productFilter?: string | null, categoriaFilter?: string | null) {
+export function useMaterials(
+  productFilter?: string | null,
+  categoriaFilter?: string | null,
+  folderFilter?: string | null
+) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const { data: materials = [], isLoading } = useQuery({
-    queryKey: ["materials", productFilter, categoriaFilter],
+    queryKey: ["materials", productFilter, categoriaFilter, folderFilter],
     queryFn: async () => {
       let q = supabase.from("materials").select("*").order("created_at", { ascending: false });
       if (productFilter) q = q.eq("product_id", productFilter);
       if (categoriaFilter) q = q.eq("categoria", categoriaFilter);
+      if (folderFilter === "__none__") q = q.is("folder_id", null);
+      else if (folderFilter) q = q.eq("folder_id", folderFilter);
       const { data, error } = await q;
       if (error) throw error;
       return data as Material[];

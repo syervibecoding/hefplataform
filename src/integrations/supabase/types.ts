@@ -919,12 +919,43 @@ export type Database = {
         }
         Relationships: []
       }
+      material_folders: {
+        Row: {
+          cor: string
+          created_at: string
+          created_by: string | null
+          id: string
+          nome: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          cor?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          cor?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       materials: {
         Row: {
           categoria: string | null
           created_at: string
           created_by: string | null
           descricao: string | null
+          folder_id: string | null
           id: string
           product_id: string | null
           tipo: string
@@ -936,6 +967,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          folder_id?: string | null
           id?: string
           product_id?: string | null
           tipo?: string
@@ -947,13 +979,22 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          folder_id?: string | null
           id?: string
           product_id?: string | null
           tipo?: string
           titulo?: string
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "materials_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "material_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       melhorias: {
         Row: {
