@@ -325,6 +325,7 @@ export type Database = {
           item_key: string
           kind: string
           manual: boolean
+          periodo_ref: string
           titulo: string | null
           updated_at: string
         }
@@ -338,6 +339,7 @@ export type Database = {
           item_key: string
           kind?: string
           manual?: boolean
+          periodo_ref?: string
           titulo?: string | null
           updated_at?: string
         }
@@ -351,6 +353,7 @@ export type Database = {
           item_key?: string
           kind?: string
           manual?: boolean
+          periodo_ref?: string
           titulo?: string | null
           updated_at?: string
         }
@@ -374,6 +377,7 @@ export type Database = {
           introducao: string | null
           periodo_fim: string | null
           periodo_inicio: string | null
+          periodo_ref: string
           subtitulo: string | null
           titulo: string | null
           updated_at: string
@@ -387,6 +391,7 @@ export type Database = {
           introducao?: string | null
           periodo_fim?: string | null
           periodo_inicio?: string | null
+          periodo_ref?: string
           subtitulo?: string | null
           titulo?: string | null
           updated_at?: string
@@ -400,6 +405,7 @@ export type Database = {
           introducao?: string | null
           periodo_fim?: string | null
           periodo_inicio?: string | null
+          periodo_ref?: string
           subtitulo?: string | null
           titulo?: string | null
           updated_at?: string
@@ -408,7 +414,7 @@ export type Database = {
           {
             foreignKeyName: "client_report_settings_client_id_fkey"
             columns: ["client_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
