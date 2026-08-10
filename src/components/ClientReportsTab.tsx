@@ -121,7 +121,11 @@ function ClientReport({
   };
 }) {
   const { client, plats, tickets, interactions, inicio } = data;
-  const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id);
+  const [periodo, setPeriodo] = useState(() => startOfMonth(new Date()));
+  const periodoRef = format(periodo, "yyyy-MM");
+  const periodoLabel = format(periodo, "MMMM 'de' yyyy", { locale: ptBR });
+  const range = { start: startOfMonth(periodo), end: endOfMonth(periodo) };
+  const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id, periodoRef);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     titulo: "",
@@ -138,13 +142,13 @@ function ClientReport({
     setForm({
       titulo: settings?.titulo ?? "",
       subtitulo: settings?.subtitulo ?? "",
-      data_referencia: settings?.data_referencia ?? "",
-      periodo_inicio: settings?.periodo_inicio ?? "",
-      periodo_fim: settings?.periodo_fim ?? "",
+      data_referencia: settings?.data_referencia ?? format(range.end, "yyyy-MM-dd"),
+      periodo_inicio: settings?.periodo_inicio ?? format(range.start, "yyyy-MM-dd"),
+      periodo_fim: settings?.periodo_fim ?? format(range.end, "yyyy-MM-dd"),
       introducao: settings?.introducao ?? "",
       conclusao: settings?.conclusao ?? "",
     });
-  }, [settings, client.id]);
+  }, [settings, client.id, periodoRef]);
 
   const overrides = useMemo(
     () => Object.fromEntries(items.map((i) => [i.item_key, i])),
@@ -152,8 +156,41 @@ function ClientReport({
   );
 
   const meses = inicio ? Math.max(1, differenceInMonths(new Date(), parseISO(inicio)) + 1) : null;
-  const resolvidos = tickets.filter((t) => t.resolved_at || t.status === "fechado").length;
   const valorMensal = client.faturamento ?? client.valor_contrato ?? client.valor_mensalidade ?? 0;
+  const portalUrl =
+    client.support_enabled && client.support_slug
+      ? `${window.location.origin}/suporte/p/${client.support_slug}`
+      : null;
+
+  const inMonth = (iso?: string | null) =>
+    !!iso && isWithinInterval(parseISO(iso), { start: range.start, end: range.end });
+
+  const monthTickets = useMemo(
+    () =>
+      tickets
+        .filter(
+          (t) =>
+            inMonth(t.opened_at) ||
+            inMonth(t.first_response_at) ||
+            inMonth(t.resolved_at) ||
+            inMonth(t.closed_at)
+        )
+        .sort((a, b) => (a.opened_at < b.opened_at ? 1 : -1)),
+    [tickets, periodoRef]
+  );
+
+  const resolvidosMes = monthTickets.filter((t) => inMonth(t.resolved_at) || inMonth(t.closed_at)).length;
+  const tempoMedio = useMemo(() => {
+    const durs = monthTickets
+      .filter((t) => t.resolved_at)
+      .map((t) => (new Date(t.resolved_at!).getTime() - new Date(t.opened_at).getTime()) / 36e5);
+    if (!durs.length) return "—";
+    const h = durs.reduce((a, b) => a + b, 0) / durs.length;
+    return h < 24 ? `${Math.round(h)}h` : `${(h / 24).toFixed(1)}d`;
+  }, [monthTickets]);
+
+  const platNome = (productId: string | null) =>
+    plats.find((p) => p.product.id === productId)?.product.nome ?? "—";
 
   const timelineAll = useMemo(() => {
     const base: { key: string; date: string; kind: string; title: string; sub?: string }[] = [];
@@ -169,7 +206,7 @@ function ClientReport({
         sub: p.product.descricao ?? undefined,
       })
     );
-    tickets.forEach((t) =>
+    monthTickets.forEach((t) =>
       base.push({
         key: `ticket:${t.id}`,
         date: t.opened_at.slice(0, 10),
@@ -206,8 +243,24 @@ function ClientReport({
           overrideId: o?.id,
         };
       })
+      .filter((it) => it.date >= format(range.start, "yyyy-MM-dd") && it.date <= format(range.end, "yyyy-MM-dd"))
       .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [client, plats, tickets, interactions, inicio, items, overrides]);
+  }, [client, plats, monthTickets, interactions, inicio, items, overrides, periodoRef]);
+
+  const historico = useMemo(() => {
+    const marcos: { date: string; title: string }[] = [];
+    if (inicio) marcos.push({ date: inicio, title: "Início do contrato" });
+    if (client.data_golive) marcos.push({ date: client.data_golive, title: "Go-live" });
+    plats.forEach((p) =>
+      marcos.push({
+        date: p.link.data_replicacao || p.product.created_at.slice(0, 10),
+        title: `Plataforma entregue: ${p.product.nome}`,
+      })
+    );
+    return marcos
+      .filter((m) => m.date < format(range.start, "yyyy-MM-dd"))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [client, plats, inicio, periodoRef]);
 
   const timeline = timelineAll.filter((t) => !t.hidden);
 
