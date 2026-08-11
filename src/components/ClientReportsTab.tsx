@@ -127,6 +127,8 @@ function ClientReport({
   const range = { start: startOfMonth(periodo), end: endOfMonth(periodo) };
   const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id, periodoRef);
   const [editing, setEditing] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [form, setForm] = useState({
     titulo: "",
     subtitulo: "",
