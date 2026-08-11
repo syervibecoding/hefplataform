@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { generateClientReportPdf, clientReportPdfDataUri } from "@/lib/clientReportPdf";
+import { generateClientReportPdf, clientReportPdfArrayBuffer } from "@/lib/clientReportPdf";
+import PdfCanvasPreview from "@/components/PdfCanvasPreview";
 import { toast } from "sonner";
 import { useClientReport } from "@/hooks/useClientReport";
 import { useAllClients } from "@/hooks/useAllClients";
@@ -128,7 +129,7 @@ function ClientReport({
   const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id, periodoRef);
   const [editing, setEditing] = useState(false);
   const [preview, setPreview] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBuffer, setPreviewBuffer] = useState<ArrayBuffer | null>(null);
   const [form, setForm] = useState({
     titulo: "",
     subtitulo: "",
