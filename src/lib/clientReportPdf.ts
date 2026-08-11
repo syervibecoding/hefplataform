@@ -29,7 +29,7 @@ export type ClientReportPdfData = {
   meses: number | null;
   valorMensal: number;
   kpis: { label: string; value: string }[];
-  plataformas: { nome: string; data: string; url?: string | null }[];
+  plataformas: { nome: string; data: string; url?: string | null; descricao?: string | null }[];
   chamados: ReportTicketRow[];
   portalUrl?: string | null;
   timeline: ReportTimelineItem[];
@@ -124,8 +124,12 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
       startY: y,
       margin: { left: M, right: M },
       head: [["Plataforma", "Entrega", "Link"]],
-      body: data.plataformas.map((p) => [p.nome, p.data, p.url || "-"]),
-      styles: { fontSize: 9, cellPadding: 6, textColor: [40, 34, 60] },
+      body: data.plataformas.map((p) => [
+        p.descricao?.trim() ? `${p.nome}\n${p.descricao.trim()}` : p.nome,
+        p.data,
+        p.url || "-",
+      ]),
+      styles: { fontSize: 9, cellPadding: 6, valign: "top", textColor: [40, 34, 60] },
       headStyles: { fillColor: [124, 58, 237], textColor: 255, fontSize: 9 },
       alternateRowStyles: { fillColor: [249, 248, 252] },
       columnStyles: { 1: { cellWidth: 70 }, 2: { cellWidth: 180, fontSize: 7 } },

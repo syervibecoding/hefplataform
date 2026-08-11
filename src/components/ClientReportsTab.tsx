@@ -192,6 +192,15 @@ function ClientReport({
   const platNome = (productId: string | null) =>
     plats.find((p) => p.product.id === productId)?.product.nome ?? "—";
 
+  const ticketsDaPlataforma = (productId: string) =>
+    monthTickets.filter((t) => t.product_id === productId);
+
+  const ticketsResumo = (productId: string) => {
+    const list = ticketsDaPlataforma(productId);
+    if (!list.length) return null;
+    return list.map((t) => `• ${t.titulo} (${STATUS_META[t.status]?.label ?? t.status})`).join("\n");
+  };
+
   const timelineAll = useMemo(() => {
     const base: { key: string; date: string; kind: string; title: string; sub?: string }[] = [];
     if (inicio) base.push({ key: "inicio", date: inicio, kind: "inicio", title: "Início do contrato" });
@@ -318,6 +327,11 @@ function ClientReport({
           .filter(({ product }) => !overrides[`plat:${product.id}`]?.hidden)
           .map(({ link, product }) => ({
             nome: overrides[`plat:${product.id}`]?.titulo ?? product.nome,
+            descricao:
+              overrides[`plat:${product.id}`]?.descricao ??
+              ticketsResumo(product.id) ??
+              product.descricao ??
+              null,
             data: format(
               parseISO(
                 overrides[`plat:${product.id}`]?.data ||
@@ -491,12 +505,14 @@ function ClientReport({
               const o = overrides[key];
               const dataVal = o?.data || link.data_replicacao || product.created_at.slice(0, 10);
               if (!editing && o?.hidden) return null;
+              const desc = o?.descricao ?? ticketsResumo(product.id) ?? product.descricao ?? "";
               return (
-                <div key={product.id} className={`flex items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2 ${o?.hidden ? "opacity-40" : ""}`}>
-                  <Package size={14} className="text-primary shrink-0" />
+                <div key={product.id} className={`flex items-start gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2 ${o?.hidden ? "opacity-40" : ""}`}>
+                  <Package size={14} className="text-primary shrink-0 mt-1" />
                   <div className="min-w-0 flex-1">
                     {editing ? (
-                      <div className="flex gap-1.5">
+                      <div className="space-y-1.5">
+                        <div className="flex gap-1.5">
                         <Input
                           defaultValue={o?.titulo ?? product.nome}
                           onBlur={(e) => saveItem.mutate({ item_key: key, kind: "plataforma", titulo: e.target.value })}
@@ -508,18 +524,29 @@ function ClientReport({
                           onChange={(e) => saveItem.mutate({ item_key: key, kind: "plataforma", data: e.target.value })}
                           className="h-7 w-[130px] bg-background border-border text-xs"
                         />
+                        </div>
+                        <Textarea
+                          defaultValue={desc}
+                          rows={2}
+                          placeholder="O que foi feito nesta entrega..."
+                          onBlur={(e) => saveItem.mutate({ item_key: key, kind: "plataforma", descricao: e.target.value })}
+                          className="bg-background border-border text-xs"
+                        />
                       </div>
                     ) : (
                       <>
                         <p className="text-xs font-medium truncate">{o?.titulo ?? product.nome}</p>
                         <p className="text-[10px] text-muted-foreground">{format(parseISO(dataVal), "dd/MM/yyyy")}</p>
+                        {desc && (
+                          <p className="mt-1 text-[10px] text-muted-foreground whitespace-pre-line">{desc}</p>
+                        )}
                       </>
                     )}
                   </div>
                   {editing ? (
                     <button
                       onClick={() => saveItem.mutate({ item_key: key, kind: "plataforma", hidden: !o?.hidden })}
-                      className="p-1 text-muted-foreground hover:text-foreground"
+                      className="p-1 text-muted-foreground hover:text-foreground shrink-0"
                       title={o?.hidden ? "Mostrar no PDF" : "Ocultar do PDF"}
                     >
                       {o?.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
@@ -595,7 +622,8 @@ function ClientReport({
                   }`}
                 />
                 {editing ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
                     <Input
                       defaultValue={it.title}
                       onBlur={(e) => saveItem.mutate({ item_key: it.key, kind: it.kind, manual: it.manual, titulo: e.target.value })}
@@ -623,6 +651,16 @@ function ClientReport({
                         <Trash2 size={13} />
                       </button>
                     )}
+                    </div>
+                    <Textarea
+                      defaultValue={it.sub ?? ""}
+                      rows={2}
+                      placeholder="Descrição do que foi feito..."
+                      onBlur={(e) =>
+                        saveItem.mutate({ item_key: it.key, kind: it.kind, manual: it.manual, descricao: e.target.value })
+                      }
+                      className="bg-background border-border text-xs"
+                    />
                   </div>
                 ) : (
                   <div className="flex items-start gap-2">
