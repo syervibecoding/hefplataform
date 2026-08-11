@@ -47,3 +47,4 @@ generateClientReportPdf({
     { date: "2026-07-31", kind: "chamado", title: "Fechamento do mês", sub: "11 de 12 chamados resolvidos" },
   ],
 });
+console.log("done");
