@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInMonths, parseISO, startOfMonth, endOfMonth, addMonths, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown, Pencil, Eye, EyeOff, Plus, Trash2, Check, ChevronLeft, ChevronRight, Link2, Timer } from "lucide-react";
+import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown, FileText, Pencil, Eye, EyeOff, Plus, Trash2, Check, ChevronLeft, ChevronRight, Link2, Timer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
