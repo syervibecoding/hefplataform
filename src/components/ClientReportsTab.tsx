@@ -622,7 +622,8 @@ function ClientReport({
                   }`}
                 />
                 {editing ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
                     <Input
                       defaultValue={it.title}
                       onBlur={(e) => saveItem.mutate({ item_key: it.key, kind: it.kind, manual: it.manual, titulo: e.target.value })}
