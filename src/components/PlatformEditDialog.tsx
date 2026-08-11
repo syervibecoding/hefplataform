@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useLovableProducts, type LovableProduct } from "@/hooks/useLovableProducts";
+import { useAllClients } from "@/hooks/useAllClients";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   usePlatformCredentials,
   usePlatformFiles,
@@ -23,7 +25,8 @@ interface Props {
 }
 
 export default function PlatformEditDialog({ platform, isNew, onClose }: Props) {
-  const { addProduct, editProduct } = useLovableProducts();
+  const { addProduct, editProduct, clientIdsFor } = useLovableProducts();
+  const { data: allClients = [] } = useAllClients();
   const { toast } = useToast();
   const open = !!platform || !!isNew;
 
@@ -31,6 +34,10 @@ export default function PlatformEditDialog({ platform, isNew, onClose }: Props) 
   const [descricao, setDescricao] = useState("");
   const [url_app, setUrlApp] = useState("");
   const [links, setLinks] = useState<PlatformLink[]>([]);
+  const [categoria, setCategoria] = useState("");
+  const [status, setStatus] = useState("ativo");
+  const [clientIds, setClientIds] = useState<string[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
 
   useEffect(() => {
     if (platform) {
@@ -38,15 +45,29 @@ export default function PlatformEditDialog({ platform, isNew, onClose }: Props) 
       setDescricao(platform.descricao ?? "");
       setUrlApp(platform.url_app ?? "");
       setLinks(platform.links ?? []);
+      setCategoria(platform.categoria ?? "");
+      setStatus(platform.status || "ativo");
+      setClientIds(clientIdsFor(platform.id));
     } else if (isNew) {
       setNome("");
       setDescricao("");
       setUrlApp("");
       setLinks([]);
+      setCategoria("");
+      setStatus("ativo");
+      setClientIds([]);
     }
+    setClientSearch("");
   }, [platform, isNew]);
 
   const isCreating = !platform && isNew;
+
+  const consultoriaClients = allClients
+    .filter((c) => c.product_id !== "trafego")
+    .filter((c) => c.nome.toLowerCase().includes(clientSearch.trim().toLowerCase()));
+
+  const toggleClient = (id: string) =>
+    setClientIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const saveBasic = async () => {
     if (!nome.trim()) {
@@ -59,8 +80,8 @@ export default function PlatformEditDialog({ platform, isNew, onClose }: Props) 
           values: {
             nome: nome.trim(),
             descricao: descricao.trim() || null,
-            categoria: null,
-            status: "ativo",
+            categoria: categoria.trim() || null,
+            status,
             url_app: url_app.trim() || null,
             thumbnail_url: null,
             video_demo_url: null,
@@ -69,7 +90,7 @@ export default function PlatformEditDialog({ platform, isNew, onClose }: Props) 
             tags: [],
             links,
           },
-          clientIds: [],
+          clientIds,
         },
         {
           onSuccess: () => {
@@ -87,8 +108,11 @@ export default function PlatformEditDialog({ platform, isNew, onClose }: Props) 
             nome: nome.trim(),
             descricao: descricao.trim() || null,
             url_app: url_app.trim() || null,
+            categoria: categoria.trim() || null,
+            status,
             links,
           } as any,
+          clientIds,
         },
         {
           onSuccess: () => toast({ title: "Plataforma atualizada" }),
