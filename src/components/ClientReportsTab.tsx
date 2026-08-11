@@ -457,10 +457,21 @@ function ClientReport({
               <span className="text-[11px] text-muted-foreground">
                 Prévia atualizada automaticamente conforme suas edições
               </span>
+              {previewUrl && (
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-primary hover:underline"
+                >
+                  Abrir em nova aba
+                </a>
+              )}
             </div>
             {previewUrl ? (
               <iframe
-                src={previewUrl}
+                key={previewUrl}
+                src={`${previewUrl}#toolbar=0&view=FitH`}
                 title={`Prévia do relatório de ${client.nome}`}
                 className="w-full h-[70vh] min-h-[420px] rounded-lg border border-border bg-secondary"
               />
