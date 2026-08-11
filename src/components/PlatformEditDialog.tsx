@@ -166,6 +166,61 @@ export default function PlatformEditDialog({ platform, isNew, onClose }: Props) 
                 className="mt-1 bg-secondary border-border"
               />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Categoria</Label>
+                <Input
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  placeholder="Ex: Fiscal, Contábil..."
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Status</Label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="mt-1 w-full h-10 rounded-md bg-secondary border border-border px-3 text-sm"
+                >
+                  <option value="ativo">Ativo</option>
+                  <option value="prototipo">Protótipo</option>
+                  <option value="pausado">Pausado</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Clientes vinculados</Label>
+              <Input
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                placeholder="Buscar cliente..."
+                className="mt-1 bg-secondary border-border h-8 text-sm"
+              />
+              <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                {consultoriaClients.length === 0 ? (
+                  <p className="p-3 text-xs text-muted-foreground">Nenhum cliente encontrado.</p>
+                ) : (
+                  consultoriaClients.map((c) => (
+                    <label
+                      key={c.id}
+                      className="flex items-center gap-2 px-3 py-2 text-xs cursor-pointer hover:bg-secondary/50"
+                    >
+                      <Checkbox
+                        checked={clientIds.includes(c.id)}
+                        onCheckedChange={() => toggleClient(c.id)}
+                      />
+                      <span className="truncate">{c.nome}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+              {clientIds.length > 0 && (
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {clientIds.length} cliente(s) selecionado(s)
+                </p>
+              )}
+            </div>
             {isCreating && (
               <LinksEditor
                 links={links}
