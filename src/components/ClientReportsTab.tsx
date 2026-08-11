@@ -192,6 +192,15 @@ function ClientReport({
   const platNome = (productId: string | null) =>
     plats.find((p) => p.product.id === productId)?.product.nome ?? "—";
 
+  const ticketsDaPlataforma = (productId: string) =>
+    monthTickets.filter((t) => t.product_id === productId);
+
+  const ticketsResumo = (productId: string) => {
+    const list = ticketsDaPlataforma(productId);
+    if (!list.length) return null;
+    return list.map((t) => `• ${t.titulo} (${STATUS_META[t.status]?.label ?? t.status})`).join("\n");
+  };
+
   const timelineAll = useMemo(() => {
     const base: { key: string; date: string; kind: string; title: string; sub?: string }[] = [];
     if (inicio) base.push({ key: "inicio", date: inicio, kind: "inicio", title: "Início do contrato" });
