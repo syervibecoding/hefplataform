@@ -1,3 +1,4 @@
+console.log("start");
 import jsPDF from "jspdf";
 (jsPDF as any).prototype.save = function (name: string) {
   const fs = require("fs");
