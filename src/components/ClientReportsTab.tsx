@@ -651,6 +651,16 @@ function ClientReport({
                         <Trash2 size={13} />
                       </button>
                     )}
+                    </div>
+                    <Textarea
+                      defaultValue={it.sub ?? ""}
+                      rows={2}
+                      placeholder="Descrição do que foi feito..."
+                      onBlur={(e) =>
+                        saveItem.mutate({ item_key: it.key, kind: it.kind, manual: it.manual, descricao: e.target.value })
+                      }
+                      className="bg-background border-border text-xs"
+                    />
                   </div>
                 ) : (
                   <div className="flex items-start gap-2">
