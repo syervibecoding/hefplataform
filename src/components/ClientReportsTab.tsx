@@ -451,6 +451,25 @@ function ClientReport({
               <span className="text-[11px] text-muted-foreground">
                 Prévia atualizada automaticamente conforme suas edições
               </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1.5 text-[11px]"
+                onClick={() => {
+                  try {
+                    const buf = clientReportPdfArrayBuffer(buildPdfData());
+                    const url = URL.createObjectURL(new Blob([buf], { type: "application/pdf" }));
+                    window.open(url, "_blank", "noopener");
+                    setTimeout(() => URL.revokeObjectURL(url), 30000);
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Não foi possível abrir o PDF");
+                  }
+                }}
+              >
+                <Link2 size={12} />
+                Abrir em nova aba
+              </Button>
             </div>
             <div className="max-h-[70vh] overflow-y-auto rounded-lg bg-secondary/40 p-3">
               <PdfCanvasPreview data={previewBuffer} />
