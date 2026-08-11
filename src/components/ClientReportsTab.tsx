@@ -505,12 +505,14 @@ function ClientReport({
               const o = overrides[key];
               const dataVal = o?.data || link.data_replicacao || product.created_at.slice(0, 10);
               if (!editing && o?.hidden) return null;
+              const desc = o?.descricao ?? ticketsResumo(product.id) ?? product.descricao ?? "";
               return (
-                <div key={product.id} className={`flex items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2 ${o?.hidden ? "opacity-40" : ""}`}>
-                  <Package size={14} className="text-primary shrink-0" />
+                <div key={product.id} className={`flex items-start gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2 ${o?.hidden ? "opacity-40" : ""}`}>
+                  <Package size={14} className="text-primary shrink-0 mt-1" />
                   <div className="min-w-0 flex-1">
                     {editing ? (
-                      <div className="flex gap-1.5">
+                      <div className="space-y-1.5">
+                        <div className="flex gap-1.5">
                         <Input
                           defaultValue={o?.titulo ?? product.nome}
                           onBlur={(e) => saveItem.mutate({ item_key: key, kind: "plataforma", titulo: e.target.value })}
@@ -522,18 +524,29 @@ function ClientReport({
                           onChange={(e) => saveItem.mutate({ item_key: key, kind: "plataforma", data: e.target.value })}
                           className="h-7 w-[130px] bg-background border-border text-xs"
                         />
+                        </div>
+                        <Textarea
+                          defaultValue={desc}
+                          rows={2}
+                          placeholder="O que foi feito nesta entrega..."
+                          onBlur={(e) => saveItem.mutate({ item_key: key, kind: "plataforma", descricao: e.target.value })}
+                          className="bg-background border-border text-xs"
+                        />
                       </div>
                     ) : (
                       <>
                         <p className="text-xs font-medium truncate">{o?.titulo ?? product.nome}</p>
                         <p className="text-[10px] text-muted-foreground">{format(parseISO(dataVal), "dd/MM/yyyy")}</p>
+                        {desc && (
+                          <p className="mt-1 text-[10px] text-muted-foreground whitespace-pre-line">{desc}</p>
+                        )}
                       </>
                     )}
                   </div>
                   {editing ? (
                     <button
                       onClick={() => saveItem.mutate({ item_key: key, kind: "plataforma", hidden: !o?.hidden })}
-                      className="p-1 text-muted-foreground hover:text-foreground"
+                      className="p-1 text-muted-foreground hover:text-foreground shrink-0"
                       title={o?.hidden ? "Mostrar no PDF" : "Ocultar do PDF"}
                     >
                       {o?.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
