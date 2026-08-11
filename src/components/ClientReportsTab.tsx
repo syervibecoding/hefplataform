@@ -355,30 +355,41 @@ function ClientReport({
     }
   };
 
+  const previewKey = useMemo(
+    () =>
+      JSON.stringify([
+        client.id,
+        periodoRef,
+        form,
+        portalUrl,
+        monthTickets.map((t) => t.id),
+        timeline.map((t) => [t.date, t.title, t.sub]),
+        plats.map(({ product }) => product.id),
+        overrides,
+      ]),
+    [client.id, periodoRef, form, portalUrl, monthTickets, timeline, plats, overrides]
+  );
+
   useEffect(() => {
-    if (!preview) {
-      setPreviewUrl((old) => {
-        if (old) URL.revokeObjectURL(old);
-        return null;
-      });
-      return;
-    }
+    if (!preview) return;
+    let revoked = false;
     let url: string | null = null;
     try {
       url = clientReportPdfDataUri(buildPdfData());
-      setPreviewUrl((old) => {
-        if (old) URL.revokeObjectURL(old);
-        return url;
-      });
+      setPreviewUrl(url);
     } catch (e) {
       console.error(e);
       toast.error("Não foi possível gerar a prévia");
     }
     return () => {
-      if (url) URL.revokeObjectURL(url);
+      if (url && !revoked) {
+        revoked = true;
+        // libera o blob antigo apenas depois que o novo já foi renderizado
+        setTimeout(() => URL.revokeObjectURL(url as string), 2000);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview, client.id, periodoRef, form, overrides, monthTickets, timeline, plats, portalUrl]);
+  }, [preview, previewKey]);
 
   return (
     <div className="space-y-4">
