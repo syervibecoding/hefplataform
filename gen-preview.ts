@@ -1,6 +1,6 @@
 console.log("start");
 import jsPDF from "jspdf";
-(jsPDF as any).prototype.save = function (name: string) {
+(jsPDF as any).API.save = function (name: string) {
   const fs = require("fs");
   fs.writeFileSync("/tmp/pdfq/" + name, Buffer.from(this.output("arraybuffer")));
   console.log("saved", name);
