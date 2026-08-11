@@ -355,30 +355,41 @@ function ClientReport({
     }
   };
 
+  const previewKey = useMemo(
+    () =>
+      JSON.stringify([
+        client.id,
+        periodoRef,
+        form,
+        portalUrl,
+        monthTickets.map((t) => t.id),
+        timeline.map((t) => [t.date, t.title, t.sub]),
+        plats.map(({ product }) => product.id),
+        overrides,
+      ]),
+    [client.id, periodoRef, form, portalUrl, monthTickets, timeline, plats, overrides]
+  );
+
   useEffect(() => {
-    if (!preview) {
-      setPreviewUrl((old) => {
-        if (old) URL.revokeObjectURL(old);
-        return null;
-      });
-      return;
-    }
+    if (!preview) return;
+    let revoked = false;
     let url: string | null = null;
     try {
       url = clientReportPdfDataUri(buildPdfData());
-      setPreviewUrl((old) => {
-        if (old) URL.revokeObjectURL(old);
-        return url;
-      });
+      setPreviewUrl(url);
     } catch (e) {
       console.error(e);
       toast.error("Não foi possível gerar a prévia");
     }
     return () => {
-      if (url) URL.revokeObjectURL(url);
+      if (url && !revoked) {
+        revoked = true;
+        // libera o blob antigo apenas depois que o novo já foi renderizado
+        setTimeout(() => URL.revokeObjectURL(url as string), 2000);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview, client.id, periodoRef, form, overrides, monthTickets, timeline, plats, portalUrl]);
+  }, [preview, previewKey]);
 
   return (
     <div className="space-y-4">
@@ -446,10 +457,21 @@ function ClientReport({
               <span className="text-[11px] text-muted-foreground">
                 Prévia atualizada automaticamente conforme suas edições
               </span>
+              {previewUrl && (
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-primary hover:underline"
+                >
+                  Abrir em nova aba
+                </a>
+              )}
             </div>
             {previewUrl ? (
               <iframe
-                src={previewUrl}
+                key={previewUrl}
+                src={`${previewUrl}#toolbar=0&view=FitH`}
                 title={`Prévia do relatório de ${client.nome}`}
                 className="w-full h-[70vh] min-h-[420px] rounded-lg border border-border bg-secondary"
               />
