@@ -52,7 +52,7 @@ const KIND_LABEL: Record<string, string> = {
   interacao: "Interação",
 };
 
-export function generateClientReportPdf(data: ClientReportPdfData) {
+export function buildClientReportPdf(data: ClientReportPdfData) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
