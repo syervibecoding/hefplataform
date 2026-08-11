@@ -318,6 +318,11 @@ function ClientReport({
           .filter(({ product }) => !overrides[`plat:${product.id}`]?.hidden)
           .map(({ link, product }) => ({
             nome: overrides[`plat:${product.id}`]?.titulo ?? product.nome,
+            descricao:
+              overrides[`plat:${product.id}`]?.descricao ??
+              ticketsResumo(product.id) ??
+              product.descricao ??
+              null,
             data: format(
               parseISO(
                 overrides[`plat:${product.id}`]?.data ||
