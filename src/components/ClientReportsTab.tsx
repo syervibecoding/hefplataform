@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { generateClientReportPdf, clientReportPdfDataUri } from "@/lib/clientReportPdf";
+import { generateClientReportPdf, clientReportPdfArrayBuffer } from "@/lib/clientReportPdf";
+import PdfCanvasPreview from "@/components/PdfCanvasPreview";
 import { toast } from "sonner";
 import { useClientReport } from "@/hooks/useClientReport";
 import { useAllClients } from "@/hooks/useAllClients";
@@ -128,7 +129,7 @@ function ClientReport({
   const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id, periodoRef);
   const [editing, setEditing] = useState(false);
   const [preview, setPreview] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBuffer, setPreviewBuffer] = useState<ArrayBuffer | null>(null);
   const [form, setForm] = useState({
     titulo: "",
     subtitulo: "",
@@ -371,23 +372,16 @@ function ClientReport({
   );
 
   useEffect(() => {
-    if (!preview) return;
-    let revoked = false;
-    let url: string | null = null;
+    if (!preview) {
+      setPreviewBuffer(null);
+      return;
+    }
     try {
-      url = clientReportPdfDataUri(buildPdfData());
-      setPreviewUrl(url);
+      setPreviewBuffer(clientReportPdfArrayBuffer(buildPdfData()));
     } catch (e) {
       console.error(e);
       toast.error("Não foi possível gerar a prévia");
     }
-    return () => {
-      if (url && !revoked) {
-        revoked = true;
-        // libera o blob antigo apenas depois que o novo já foi renderizado
-        setTimeout(() => URL.revokeObjectURL(url as string), 2000);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preview, previewKey]);
 
@@ -457,29 +451,10 @@ function ClientReport({
               <span className="text-[11px] text-muted-foreground">
                 Prévia atualizada automaticamente conforme suas edições
               </span>
-              {previewUrl && (
-                <a
-                  href={previewUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[11px] text-primary hover:underline"
-                >
-                  Abrir em nova aba
-                </a>
-              )}
             </div>
-            {previewUrl ? (
-              <iframe
-                key={previewUrl}
-                src={`${previewUrl}#toolbar=0&view=FitH`}
-                title={`Prévia do relatório de ${client.nome}`}
-                className="w-full h-[70vh] min-h-[420px] rounded-lg border border-border bg-secondary"
-              />
-            ) : (
-              <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
-                Gerando prévia…
-              </div>
-            )}
+            <div className="max-h-[70vh] overflow-y-auto rounded-lg bg-secondary/40 p-3">
+              <PdfCanvasPreview data={previewBuffer} />
+            </div>
           </div>
         )}
 
