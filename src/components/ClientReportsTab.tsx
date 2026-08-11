@@ -3,12 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInMonths, parseISO, startOfMonth, endOfMonth, addMonths, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown, Pencil, Eye, EyeOff, Plus, Trash2, Check, ChevronLeft, ChevronRight, Link2, Timer } from "lucide-react";
+import { Building2, Package, LifeBuoy, CalendarDays, Search, CheckCircle2, Clock, FileDown, FileText, Pencil, Eye, EyeOff, Plus, Trash2, Check, ChevronLeft, ChevronRight, Link2, Timer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { generateClientReportPdf } from "@/lib/clientReportPdf";
+import { generateClientReportPdf, clientReportPdfDataUri } from "@/lib/clientReportPdf";
 import { toast } from "sonner";
 import { useClientReport } from "@/hooks/useClientReport";
 import { useAllClients } from "@/hooks/useAllClients";
@@ -127,6 +127,8 @@ function ClientReport({
   const range = { start: startOfMonth(periodo), end: endOfMonth(periodo) };
   const { settings, items, saveSettings, saveItem, deleteItem } = useClientReport(client.id, periodoRef);
   const [editing, setEditing] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [form, setForm] = useState({
     titulo: "",
     subtitulo: "",
@@ -292,9 +294,7 @@ function ClientReport({
     }
   };
 
-  const exportPdf = () => {
-    try {
-      generateClientReportPdf({
+  const buildPdfData = () => ({
         clientName: client.nome,
         periodoRef,
         periodoLabel,
@@ -343,13 +343,42 @@ function ClientReport({
             url: product.url_app,
           })),
         timeline: timeline.map((t) => ({ date: t.date, kind: t.kind, title: t.title, sub: t.sub })),
-      });
+  });
+
+  const exportPdf = () => {
+    try {
+      generateClientReportPdf(buildPdfData());
       toast.success("Relatório em PDF gerado");
     } catch (e) {
       console.error(e);
       toast.error("Não foi possível gerar o PDF");
     }
   };
+
+  useEffect(() => {
+    if (!preview) {
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
+      return;
+    }
+    let url: string | null = null;
+    try {
+      url = clientReportPdfDataUri(buildPdfData());
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return url;
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível gerar a prévia");
+    }
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, client.id, periodoRef, form, overrides, monthTickets, timeline, plats, portalUrl]);
 
   return (
     <div className="space-y-4">
@@ -395,12 +424,42 @@ function ClientReport({
               {editing ? <Check size={14} /> : <Pencil size={14} />}
               {editing ? "Salvar" : "Editar"}
             </Button>
+            <Button
+              size="sm"
+              variant={preview ? "default" : "outline"}
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setPreview((p) => !p)}
+            >
+              <FileText size={14} />
+              {preview ? "Fechar prévia" : "Prévia do PDF"}
+            </Button>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={exportPdf}>
               <FileDown size={14} />
               Exportar PDF
             </Button>
           </div>
         </div>
+
+        {preview && (
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-muted-foreground">
+                Prévia atualizada automaticamente conforme suas edições
+              </span>
+            </div>
+            {previewUrl ? (
+              <iframe
+                src={previewUrl}
+                title={`Prévia do relatório de ${client.nome}`}
+                className="w-full h-[70vh] min-h-[420px] rounded-lg border border-border bg-secondary"
+              />
+            ) : (
+              <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+                Gerando prévia…
+              </div>
+            )}
+          </div>
+        )}
 
         {editing && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-border pt-4">

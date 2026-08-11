@@ -52,7 +52,7 @@ const KIND_LABEL: Record<string, string> = {
   interacao: "Interação",
 };
 
-export function generateClientReportPdf(data: ClientReportPdfData) {
+export function buildClientReportPdf(data: ClientReportPdfData) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -278,5 +278,15 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
   }
 
   const slug = data.clientName.normalize("NFD").replace(/[^\w]+/g, "-").toLowerCase();
-  doc.save(`relatorio-hef-${slug}-${data.periodoRef}.pdf`);
+  return { doc, filename: `relatorio-hef-${slug}-${data.periodoRef}.pdf` };
+}
+
+export function generateClientReportPdf(data: ClientReportPdfData) {
+  const { doc, filename } = buildClientReportPdf(data);
+  doc.save(filename);
+}
+
+export function clientReportPdfDataUri(data: ClientReportPdfData) {
+  const { doc } = buildClientReportPdf(data);
+  return doc.output("bloburl").toString();
 }
