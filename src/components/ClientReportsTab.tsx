@@ -292,9 +292,7 @@ function ClientReport({
     }
   };
 
-  const exportPdf = () => {
-    try {
-      generateClientReportPdf({
+  const buildPdfData = () => ({
         clientName: client.nome,
         periodoRef,
         periodoLabel,
@@ -343,7 +341,11 @@ function ClientReport({
             url: product.url_app,
           })),
         timeline: timeline.map((t) => ({ date: t.date, kind: t.kind, title: t.title, sub: t.sub })),
-      });
+  });
+
+  const exportPdf = () => {
+    try {
+      generateClientReportPdf(buildPdfData());
       toast.success("Relatório em PDF gerado");
     } catch (e) {
       console.error(e);
