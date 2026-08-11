@@ -235,7 +235,7 @@ export function generateClientReportPdf(data: ClientReportPdfData) {
         t.sub ? `${t.title}\n${t.sub}` : t.title,
       ]),
       ...tableTheme,
-      columnStyles: { 0: { cellWidth: 64, font: "courier" }, 1: { cellWidth: 74, font: "courier", fontSize: 8 } },
+      columnStyles: { 0: { cellWidth: 78, font: "courier", fontSize: 8 }, 1: { cellWidth: 74, font: "courier", fontSize: 8 } },
     });
     y = (doc as any).lastAutoTable.finalY + 30;
   }
