@@ -355,6 +355,31 @@ function ClientReport({
     }
   };
 
+  useEffect(() => {
+    if (!preview) {
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return null;
+      });
+      return;
+    }
+    let url: string | null = null;
+    try {
+      url = clientReportPdfDataUri(buildPdfData());
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return url;
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível gerar a prévia");
+    }
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, client.id, periodoRef, form, overrides, monthTickets, timeline, plats, portalUrl]);
+
   return (
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-xl p-4">
