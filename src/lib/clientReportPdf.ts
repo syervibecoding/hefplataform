@@ -290,3 +290,8 @@ export function clientReportPdfDataUri(data: ClientReportPdfData) {
   const { doc } = buildClientReportPdf(data);
   return doc.output("bloburl").toString();
 }
+
+export function clientReportPdfArrayBuffer(data: ClientReportPdfData): ArrayBuffer {
+  const { doc } = buildClientReportPdf(data);
+  return doc.output("arraybuffer");
+}
